@@ -1,0 +1,105 @@
+:root {
+  --page-bg: #edf1f4;
+  --page-scrollbar: rgba(24, 34, 45, 0.24);
+  --page-scrollbar-track: rgba(24, 34, 45, 0.08);
+  --panel-bg: #fbfcf7;
+  --panel-bg-soft: #f1f4ec;
+  --panel-border: #d8ded1;
+  --primary-text: #1f2d37;
+  --secondary-text: #5f6c73;
+  --muted-text: #89949a;
+  --accent: #d86933;
+  --accent-strong: #bb4f1f;
+  --chip-bg: #edf1e7;
+  --chip-border: #d7ded0;
+  --item-bg: #ffffff;
+  --item-hover: #fff6ef;
+  --mono:
+    'SFMono-Regular', 'JetBrains Mono', 'SF Mono', 'Roboto Mono', Consolas,
+    monospace;
+  font-family:
+    'Avenir Next', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  color: #18222d;
+  background: var(--page-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+  --page-bg: #101416;
+  --page-scrollbar: rgba(245, 239, 231, 0.28);
+  --page-scrollbar-track: rgba(245, 239, 231, 0.08);
+  --panel-bg: #18201f;
+  --panel-bg-soft: #121918;
+  --panel-border: #2f3a37;
+  --primary-text: #f2eee5;
+  --secondary-text: #bac3bc;
+  --muted-text: #818b86;
+  --accent: #ff8a48;
+  --accent-strong: #ff9c67;
+  --chip-bg: #202927;
+  --chip-border: #36423f;
+  --item-bg: #1e2725;
+  --item-hover: #2b2a22;
+  color: #f5efe7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--page-bg);
+}
+
+button,
+input,
+textarea,
+.monaco-editor,
+.monaco-editor .view-lines {
+  font-family: inherit;
+}
+
+code {
+  font-family: var(--mono);
+}
+
+.ant-typography,
+.ant-tag,
+.ant-btn,
+.ant-select,
+.ant-segmented,
+.ant-checkbox-wrapper {
+  font-family: inherit;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--page-scrollbar) var(--page-scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--page-scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--page-scrollbar);
+  background-clip: padding-box;
+}
