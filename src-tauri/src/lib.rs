@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::process::Command;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, Serialize)]
@@ -102,6 +102,64 @@ struct ToolSpec {
     skill_dir: Option<&'static str>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UserToolConfigFile {
+    label: String,
+    path: String,
+    kind: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UserToolSpec {
+    id: String,
+    name: String,
+    enabled: bool,
+    config_files: Vec<UserToolConfigFile>,
+    skill_dir: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpsertToolRequest {
+    id: String,
+    name: String,
+    enabled: bool,
+    config_files: Vec<UserToolConfigFile>,
+    skill_dir: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeleteToolRequest {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DetectToolPathsRequest {
+    id: Option<String>,
+    name: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ToolRegistryEntry {
+    id: String,
+    name: String,
+    enabled: bool,
+    config_files: Vec<ConfigFile>,
+    skill_dir: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DetectToolPathsResult {
+    config_files: Vec<ConfigFile>,
+    skill_dir: Option<String>,
+}
+
 const TOOL_SPECS: &[ToolSpec] = &[
     ToolSpec {
         id: "codex",
@@ -168,6 +226,59 @@ const TOOL_SPECS: &[ToolSpec] = &[
         skill_dir: Some("/Users/smzdm/.agents/skills"),
     },
 ];
+
+fn registry_dir() -> PathBuf {
+    PathBuf::from("/Users/smzdm/.ai-toolbox")
+}
+
+fn registry_file() -> PathBuf {
+    registry_dir().join("tools.json")
+}
+
+fn default_user_tools() -> Vec<UserToolSpec> {
+    TOOL_SPECS
+        .iter()
+        .map(|spec| UserToolSpec {
+            id: spec.id.to_string(),
+            name: spec.name.to_string(),
+            enabled: true,
+            config_files: spec
+                .config_files
+                .iter()
+                .map(|(label, path, kind)| UserToolConfigFile {
+                    label: (*label).to_string(),
+                    path: (*path).to_string(),
+                    kind: (*kind).to_string(),
+                })
+                .collect(),
+            skill_dir: spec.skill_dir.map(|value| value.to_string()),
+        })
+        .collect()
+}
+
+fn ensure_tool_registry() -> Result<(), String> {
+    let file = registry_file();
+    if file.exists() {
+        return Ok(());
+    }
+    fs::create_dir_all(registry_dir()).map_err(|err| err.to_string())?;
+    let data = serde_json::to_string_pretty(&default_user_tools()).map_err(|err| err.to_string())?;
+    fs::write(file, data).map_err(|err| err.to_string())
+}
+
+fn load_tool_registry() -> Result<Vec<UserToolSpec>, String> {
+    ensure_tool_registry()?;
+    let content = fs::read_to_string(registry_file()).map_err(|err| err.to_string())?;
+    let mut items = serde_json::from_str::<Vec<UserToolSpec>>(&content).map_err(|err| err.to_string())?;
+    items.retain(|item| !item.id.trim().is_empty() && !item.name.trim().is_empty());
+    Ok(items)
+}
+
+fn save_tool_registry(items: &[UserToolSpec]) -> Result<(), String> {
+    fs::create_dir_all(registry_dir()).map_err(|err| err.to_string())?;
+    let data = serde_json::to_string_pretty(items).map_err(|err| err.to_string())?;
+    fs::write(registry_file(), data).map_err(|err| err.to_string())
+}
 
 fn current_timestamp() -> u64 {
     SystemTime::now()
@@ -259,8 +370,167 @@ fn sanitize_skill_name(value: &str) -> Result<String, String> {
     Ok(value.to_string())
 }
 
-fn tool_spec_by_id(id: &str) -> Option<&'static ToolSpec> {
-    TOOL_SPECS.iter().find(|spec| spec.id == id)
+fn normalize_tool_id(id: &str) -> String {
+    id.trim()
+        .to_lowercase()
+        .replace([' ', '/', '\\', ':'], "-")
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric() || *ch == '-' || *ch == '_')
+        .collect::<String>()
+}
+
+fn registry_tool_by_id<'a>(items: &'a [UserToolSpec], id: &str) -> Option<&'a UserToolSpec> {
+    items.iter().find(|item| item.id == id)
+}
+
+fn build_tool_entry_from_user(spec: &UserToolSpec) -> ToolEntry {
+    let config_files = spec
+        .config_files
+        .iter()
+        .map(|file| ConfigFile {
+            label: file.label.clone(),
+            path: file.path.clone(),
+            kind: file.kind.clone(),
+            exists: Path::new(&file.path).exists(),
+        })
+        .collect::<Vec<_>>();
+
+    let skill_dir = spec.skill_dir.clone();
+    let skills = spec
+        .skill_dir
+        .as_ref()
+        .map(|path| scan_skill_dir(Path::new(path)))
+        .unwrap_or_default();
+
+    ToolEntry {
+        id: spec.id.clone(),
+        name: spec.name.clone(),
+        config_files,
+        skill_dir,
+        skills,
+    }
+}
+
+fn sanitize_upsert_request(request: UpsertToolRequest) -> Result<UserToolSpec, String> {
+    let id = normalize_tool_id(&request.id);
+    if id.is_empty() {
+        return Err("工具 ID 不能为空".to_string());
+    }
+    if request.name.trim().is_empty() {
+        return Err("工具名称不能为空".to_string());
+    }
+    if request.config_files.is_empty() && request.skill_dir.as_deref().unwrap_or("").trim().is_empty() {
+        return Err("至少提供一个配置文件或技能目录".to_string());
+    }
+
+    let mut config_files = Vec::new();
+    for item in request.config_files {
+        if item.path.trim().is_empty() || item.label.trim().is_empty() {
+            continue;
+        }
+        let kind = if item.kind.trim().is_empty() {
+            "plaintext".to_string()
+        } else {
+            item.kind.trim().to_string()
+        };
+        config_files.push(UserToolConfigFile {
+            label: item.label.trim().to_string(),
+            path: item.path.trim().to_string(),
+            kind,
+        });
+    }
+
+    Ok(UserToolSpec {
+        id,
+        name: request.name.trim().to_string(),
+        enabled: request.enabled,
+        config_files,
+        skill_dir: request
+            .skill_dir
+            .and_then(|value| if value.trim().is_empty() { None } else { Some(value.trim().to_string()) }),
+    })
+}
+
+fn detect_tool_paths_from_name(input: &str) -> DetectToolPathsResult {
+    let key = input.to_lowercase();
+    let mut config_files = Vec::new();
+    let mut skill_dir = None::<String>;
+
+    let apply = |configs: &[(&str, &str, &str)], skills: Option<&str>, out: &mut Vec<ConfigFile>, skill_out: &mut Option<String>| {
+        for (label, path, kind) in configs {
+            if Path::new(path).exists() {
+                out.push(ConfigFile {
+                    label: (*label).to_string(),
+                    path: (*path).to_string(),
+                    kind: (*kind).to_string(),
+                    exists: true,
+                });
+            }
+        }
+        if let Some(skills_path) = skills {
+            if Path::new(skills_path).exists() {
+                *skill_out = Some(skills_path.to_string());
+            }
+        }
+    };
+
+    if key.contains("codex") {
+        apply(
+            &[("config.toml", "/Users/smzdm/.codex/config.toml", "toml")],
+            Some("/Users/smzdm/.codex/skills"),
+            &mut config_files,
+            &mut skill_dir,
+        );
+    } else if key.contains("claude") {
+        apply(
+            &[("settings.json", "/Users/smzdm/.claude/settings.json", "json")],
+            Some("/Users/smzdm/.claude/skills"),
+            &mut config_files,
+            &mut skill_dir,
+        );
+    } else if key.contains("cursor") {
+        apply(
+            &[
+                ("settings.json", "/Users/smzdm/Library/Application Support/Cursor/User/settings.json", "json"),
+                ("mcp.json", "/Users/smzdm/.cursor/mcp.json", "json"),
+                ("hooks.json", "/Users/smzdm/.cursor/hooks.json", "json"),
+            ],
+            Some("/Users/smzdm/.cursor/skills-cursor"),
+            &mut config_files,
+            &mut skill_dir,
+        );
+    } else if key.contains("qoder") {
+        apply(
+            &[("settings.json", "/Users/smzdm/Library/Application Support/Qoder/User/settings.json", "json")],
+            Some("/Users/smzdm/.qoder/skills"),
+            &mut config_files,
+            &mut skill_dir,
+        );
+    } else if key.contains("trae") {
+        apply(
+            &[
+                ("settings.json", "/Users/smzdm/Library/Application Support/Trae CN/User/settings.json", "json"),
+                ("skill-config.json", "/Users/smzdm/.trae-cn/skill-config.json", "json"),
+            ],
+            Some("/Users/smzdm/.trae-cn/skills"),
+            &mut config_files,
+            &mut skill_dir,
+        );
+    } else if key.contains("opencode") {
+        apply(
+            &[
+                ("opencode.jsonc", "/Users/smzdm/.config/opencode/opencode.jsonc", "jsonc"),
+                ("config.json", "/Users/smzdm/.config/opencode/config.json", "json"),
+            ],
+            Some("/Users/smzdm/.config/opencode/skills"),
+            &mut config_files,
+            &mut skill_dir,
+        );
+    } else if key.contains("agent") {
+        apply(&[], Some("/Users/smzdm/.agents/skills"), &mut config_files, &mut skill_dir);
+    }
+
+    DetectToolPathsResult { config_files, skill_dir }
 }
 
 fn scan_skill_dir(skill_dir: &Path) -> Vec<SkillEntry> {
@@ -318,33 +588,6 @@ fn scan_skill_dir(skill_dir: &Path) -> Vec<SkillEntry> {
 
     items.sort_by(|left, right| left.name.cmp(&right.name));
     items
-}
-
-fn build_tool_entry(spec: &ToolSpec) -> ToolEntry {
-    let config_files = spec
-        .config_files
-        .iter()
-        .map(|(label, path, kind)| ConfigFile {
-            label: (*label).to_string(),
-            path: (*path).to_string(),
-            kind: (*kind).to_string(),
-            exists: Path::new(path).exists(),
-        })
-        .collect::<Vec<_>>();
-
-    let skill_dir = spec.skill_dir.map(String::from);
-    let skills = spec
-        .skill_dir
-        .map(|path| scan_skill_dir(Path::new(path)))
-        .unwrap_or_default();
-
-    ToolEntry {
-        id: spec.id.to_string(),
-        name: spec.name.to_string(),
-        config_files,
-        skill_dir,
-        skills,
-    }
 }
 
 fn ensure_parent_dir(path: &Path) -> Result<(), String> {
@@ -445,7 +688,91 @@ fn with_conflict_policy(path: &Path, policy: &str) -> Result<(PathBuf, String), 
 
 #[tauri::command]
 fn list_tools() -> Result<Vec<ToolEntry>, String> {
-    Ok(TOOL_SPECS.iter().map(build_tool_entry).collect())
+    let items = load_tool_registry()?;
+    Ok(items
+        .iter()
+        .filter(|item| item.enabled)
+        .map(build_tool_entry_from_user)
+        .collect())
+}
+
+#[tauri::command]
+fn list_tool_registry() -> Result<Vec<ToolRegistryEntry>, String> {
+    let items = load_tool_registry()?;
+    Ok(items
+        .iter()
+        .map(|item| ToolRegistryEntry {
+            id: item.id.clone(),
+            name: item.name.clone(),
+            enabled: item.enabled,
+            config_files: item
+                .config_files
+                .iter()
+                .map(|file| ConfigFile {
+                    label: file.label.clone(),
+                    path: file.path.clone(),
+                    kind: file.kind.clone(),
+                    exists: Path::new(&file.path).exists(),
+                })
+                .collect(),
+            skill_dir: item.skill_dir.clone(),
+        })
+        .collect())
+}
+
+#[tauri::command]
+fn upsert_tool_registry_item(request: UpsertToolRequest) -> Result<ToolRegistryEntry, String> {
+    let next = sanitize_upsert_request(request)?;
+    let mut items = load_tool_registry()?;
+    if let Some(index) = items.iter().position(|item| item.id == next.id) {
+        items[index] = next.clone();
+    } else {
+        items.push(next.clone());
+    }
+    save_tool_registry(&items)?;
+    Ok(ToolRegistryEntry {
+        id: next.id,
+        name: next.name,
+        enabled: next.enabled,
+        config_files: next
+            .config_files
+            .iter()
+            .map(|file| ConfigFile {
+                label: file.label.clone(),
+                path: file.path.clone(),
+                kind: file.kind.clone(),
+                exists: Path::new(&file.path).exists(),
+            })
+            .collect(),
+        skill_dir: next.skill_dir,
+    })
+}
+
+#[tauri::command]
+fn delete_tool_registry_item(request: DeleteToolRequest) -> Result<String, String> {
+    let mut items = load_tool_registry()?;
+    let before = items.len();
+    items.retain(|item| item.id != request.id);
+    if items.len() == before {
+        return Err("未找到工具".to_string());
+    }
+    let enabled_count = items.iter().filter(|item| item.enabled).count();
+    if enabled_count == 0 {
+        return Err("至少保留一个启用工具".to_string());
+    }
+    save_tool_registry(&items)?;
+    Ok("工具已删除".to_string())
+}
+
+#[tauri::command]
+fn detect_tool_paths(request: DetectToolPathsRequest) -> Result<DetectToolPathsResult, String> {
+    let lookup = request
+        .id
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .or(request.name.as_deref())
+        .unwrap_or("");
+    Ok(detect_tool_paths_from_name(lookup))
 }
 
 #[tauri::command]
@@ -533,21 +860,24 @@ fn open_path_in_finder(path: String) -> Result<(), String> {
 
 #[tauri::command]
 fn sync_skills(request: SyncSkillsRequest) -> Result<Vec<SyncSkillOutcome>, String> {
-    let source_tool = tool_spec_by_id(&request.source_tool_id)
+    let registry = load_tool_registry()?;
+    let source_tool = registry_tool_by_id(&registry, &request.source_tool_id)
         .ok_or_else(|| format!("unknown source tool: {}", request.source_tool_id))?;
     let source_root = Path::new(
         source_tool
             .skill_dir
+            .as_deref()
             .ok_or_else(|| format!("tool {} has no skill directory", source_tool.id))?,
     );
 
     let mut outcomes = Vec::new();
     for target_tool_id in &request.target_tool_ids {
-        let target_tool = tool_spec_by_id(target_tool_id)
+        let target_tool = registry_tool_by_id(&registry, target_tool_id)
             .ok_or_else(|| format!("unknown target tool: {target_tool_id}"))?;
         let target_root = Path::new(
             target_tool
                 .skill_dir
+                .as_deref()
                 .ok_or_else(|| format!("tool {} has no skill directory", target_tool.id))?,
         );
 
@@ -631,10 +961,12 @@ fn sync_skills(request: SyncSkillsRequest) -> Result<Vec<SyncSkillOutcome>, Stri
 
 #[tauri::command]
 fn delete_skill(request: DeleteSkillRequest) -> Result<String, String> {
-    let tool = tool_spec_by_id(&request.tool_id)
+    let registry = load_tool_registry()?;
+    let tool = registry_tool_by_id(&registry, &request.tool_id)
         .ok_or_else(|| format!("unknown tool: {}", request.tool_id))?;
     let skill_root = Path::new(
         tool.skill_dir
+            .as_deref()
             .ok_or_else(|| format!("tool {} has no skill directory", tool.id))?,
     );
     let skill_name = sanitize_skill_name(&request.skill_name)?;
@@ -669,6 +1001,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             healthcheck,
             list_tools,
+            list_tool_registry,
+            upsert_tool_registry_item,
+            delete_tool_registry_item,
+            detect_tool_paths,
             read_config_file,
             save_config_file,
             list_config_backups,

@@ -50,3 +50,18 @@ export interface BackupItem {
   name: string
   updatedAt?: number
 }
+
+export interface ToolRegistryConfigFile {
+  label: string
+  path: string
+  kind: string
+  exists?: boolean
+}
+
+export interface ToolRegistryEntry {
+  id: string
+  name: string
+  enabled: boolean
+  configFiles: ToolRegistryConfigFile[]
+  skillDir?: string
+}

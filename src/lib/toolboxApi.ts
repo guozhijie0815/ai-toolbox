@@ -6,6 +6,8 @@ import type {
   ConflictStrategy,
   SkillItem,
   SyncMode,
+  ToolRegistryConfigFile,
+  ToolRegistryEntry,
   ToolItem,
 } from '../types/toolbox'
 
@@ -36,6 +38,13 @@ const mockTools: ToolItem[] = [
       { id: 'frontend-design', name: 'frontend-design' },
       { id: 'skill-creator', name: 'skill-creator' },
       { id: 'openai-docs', name: 'openai-docs' },
+      { id: 'find-skills', name: 'find-skills' },
+      { id: 'show-dont-tell', name: 'show-dont-tell' },
+      { id: 'de-gpt-ify', name: 'de-gpt-ify' },
+      { id: 'zdm-create-skill', name: 'zdm-create-skill' },
+      { id: 'zdm-feishu', name: 'zdm-feishu' },
+      { id: 'zdm-loki', name: 'zdm-loki' },
+      { id: 'zdm-dot', name: 'zdm-dot' },
     ],
   },
   {
@@ -208,6 +217,22 @@ const normalizeConfigFile = (value: unknown): ConfigFileItem | null => {
   }
 }
 
+const normalizeRegistryConfigFile = (value: unknown): ToolRegistryConfigFile | null => {
+  const record = asRecord(value)
+  const path = readString(record.path, record.file, record.filePath, record.file_path)
+  const label = readString(record.label, record.name, record.fileName, record.file_name)
+  const kind = readString(record.kind, record.language, record.lang) ?? (path ? languageFromPath(path) : 'plaintext')
+
+  if (!path || !label) return null
+
+  return {
+    label,
+    path,
+    kind,
+    exists: Boolean(record.exists),
+  }
+}
+
 const normalizeTool = (value: unknown): ToolItem | null => {
   const record = asRecord(value)
   const name = readString(
@@ -254,6 +279,25 @@ const normalizeToolsResponse = (value: unknown) => {
   return uniqById(
     list.map(normalizeTool).filter((item): item is ToolItem => Boolean(item)),
   )
+}
+
+const normalizeToolRegistryEntry = (value: unknown): ToolRegistryEntry | null => {
+  const record = asRecord(value)
+  const id = readString(record.id)
+  const name = readString(record.name)
+  if (!id || !name) return null
+
+  const configFiles = readArray(record.configFiles ?? record.config_files)
+    .map(normalizeRegistryConfigFile)
+    .filter((item): item is ToolRegistryConfigFile => item !== null)
+
+  return {
+    id,
+    name,
+    enabled: Boolean(record.enabled ?? true),
+    configFiles,
+    skillDir: readString(record.skillDir, record.skill_dir),
+  }
 }
 
 const readContentResponse = (value: unknown) => {
@@ -408,4 +452,86 @@ export const deleteSkill = async (params: { toolId: string; skillName: string })
   })
 
   return readMessageResponse(response, `已删除 ${params.skillName}`)
+}
+
+export const listToolRegistry = async () => {
+  if (!hasTauriRuntime()) {
+    return mockTools.map<ToolRegistryEntry>((tool) => ({
+      id: tool.id,
+      name: tool.name,
+      enabled: true,
+      configFiles: tool.configFiles.map((item) => ({
+        label: item.name,
+        path: item.path,
+        kind: item.language,
+        exists: true,
+      })),
+      skillDir: tool.path ? `${tool.path}/skills` : undefined,
+    }))
+  }
+
+  const response = await invoke<unknown>('list_tool_registry')
+  const list = Array.isArray(response) ? response : readArray(asRecord(response).items ?? asRecord(response).data)
+  return list
+    .map(normalizeToolRegistryEntry)
+    .filter((item): item is ToolRegistryEntry => item !== null)
+}
+
+export const upsertToolRegistryItem = async (payload: {
+  id: string
+  name: string
+  enabled: boolean
+  configFiles: ToolRegistryConfigFile[]
+  skillDir?: string
+}) => {
+  const response = await invoke<unknown>('upsert_tool_registry_item', {
+    request: {
+      id: payload.id,
+      name: payload.name,
+      enabled: payload.enabled,
+      configFiles: payload.configFiles.map((item) => ({
+        label: item.label,
+        path: item.path,
+        kind: item.kind,
+      })),
+      skillDir: payload.skillDir,
+    },
+  })
+
+  const entry = normalizeToolRegistryEntry(response)
+  if (!entry) {
+    throw new Error('保存工具失败：响应格式错误')
+  }
+  return entry
+}
+
+export const deleteToolRegistryItem = async (id: string) => {
+  const response = await invoke<unknown>('delete_tool_registry_item', {
+    request: { id },
+  })
+  return readMessageResponse(response, '工具已删除')
+}
+
+export const detectToolPaths = async (params: { id?: string; name?: string }) => {
+  if (!hasTauriRuntime()) {
+    return {
+      configFiles: [] as ToolRegistryConfigFile[],
+      skillDir: undefined as string | undefined,
+    }
+  }
+
+  const response = await invoke<unknown>('detect_tool_paths', {
+    request: {
+      id: params.id,
+      name: params.name,
+    },
+  })
+  const record = asRecord(response)
+  const configFiles = readArray(record.configFiles ?? record.config_files)
+    .map(normalizeRegistryConfigFile)
+    .filter((item): item is ToolRegistryConfigFile => item !== null)
+  return {
+    configFiles,
+    skillDir: readString(record.skillDir, record.skill_dir),
+  }
 }

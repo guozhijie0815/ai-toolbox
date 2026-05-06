@@ -18,6 +18,8 @@
   --item-bg: #ffffff;
   --item-hover: #fff6ef;
   --active-bg: #fde8dc;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
   padding: 12px 18px 18px;
@@ -53,12 +55,17 @@
   --active-bg: rgba(255, 138, 72, 0.14);
 }
 
-.window-dragbar {
-  height: 58px;
-  margin: -12px -18px -20px;
+.window-dragbar-hitbox {
+  flex: 0 0 32px;
+  height: 32px;
+  margin: -12px -18px 0;
+  position: relative;
+  cursor: grab;
   background: transparent;
-  -webkit-app-region: drag;
-  pointer-events: auto;
+}
+
+.window-dragbar-hitbox:active {
+  cursor: grabbing;
 }
 
 .app-header {
@@ -66,6 +73,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
+  margin-top: 2px;
   margin-bottom: 14px;
   padding: 18px 20px;
   border: 1px solid var(--panel-border);
@@ -76,12 +84,6 @@
 
 .app-header * {
   -webkit-app-region: no-drag;
-}
-
-.app-header,
-.app-header > div:first-child,
-.app-header > div:first-child * {
-  -webkit-app-region: drag;
 }
 
 .eyebrow,
@@ -115,18 +117,33 @@
   color: var(--secondary-text);
 }
 
+.header-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .header-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
+  align-items: center;
+}
+
+.runtime-mini-tag {
+  font-size: 12px;
+  font-weight: 560;
+  letter-spacing: 0.01em;
 }
 
 .app-grid {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr) 360px;
   gap: 12px;
-  height: calc(100vh - 118px);
+  height: auto;
   min-height: 0;
 }
 
@@ -388,7 +405,7 @@
   overflow: hidden;
   border: 1px solid var(--panel-border);
   border-radius: 8px;
-  background: #151817;
+  background: var(--item-bg);
 }
 
 .editor-empty,
@@ -406,6 +423,10 @@
 
 .toolbox-shell[data-theme='dark'] .editor-mask {
   background: rgba(10, 12, 13, 0.46);
+}
+
+.toolbox-shell[data-theme='dark'] .editor-wrap {
+  background: #151817;
 }
 
 .skill-view-list {
@@ -458,6 +479,10 @@
   padding-bottom: 0;
 }
 
+.sync-modal-wrap {
+  overflow: hidden !important;
+}
+
 .sync-modal .ant-modal-wrap {
   display: flex;
   align-items: center;
@@ -468,14 +493,16 @@
 .sync-modal .ant-modal {
   top: auto;
   padding-bottom: 0;
+  margin: 0;
   transform: none;
+  max-height: calc(100vh - 20px);
 }
 
 .sync-modal .ant-modal-content {
   display: flex;
   flex-direction: column;
-  height: 750px;
-  max-height: calc(100vh - 56px);
+  height: min(860px, calc(100vh - 20px));
+  max-height: calc(100vh - 20px);
   border-radius: 10px;
   overflow: hidden;
   background: var(--panel-bg);
@@ -483,82 +510,195 @@
 
 .sync-modal .ant-modal-header {
   margin: 0;
-  padding: 18px 28px 10px;
+  padding: 12px 20px 6px;
   border-bottom: 0;
   background: transparent;
 }
 
 .sync-modal .ant-modal-close {
-  top: 20px;
-  inset-inline-end: 22px;
-  width: 36px;
-  height: 36px;
-  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--chip-border));
-  border-radius: 999px;
-  color: color-mix(in srgb, var(--primary-text) 82%, white);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--item-bg) 90%, white), var(--item-bg));
-  box-shadow:
-    0 8px 18px rgba(31, 45, 55, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  top: 16px;
+  inset-inline-end: 18px;
+}
+
+.tool-manager-modal .ant-modal-content {
+  display: flex;
+  flex-direction: column;
+  height: min(860px, calc(100vh - 20px));
+  max-height: calc(100vh - 20px);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tool-manager-modal .ant-modal-body {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 12px 20px 14px;
+  overflow: hidden;
+}
+
+.tool-manager-modal .ant-modal-header {
+  margin: 0;
+  padding: 12px 20px 6px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.tool-manager-modal .ant-modal-close,
+.sync-modal .ant-modal-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted-text);
+  background: transparent;
+  box-shadow: none;
   transition:
-    border-color 0.16s ease,
-    background-color 0.16s ease,
     color 0.16s ease,
-    box-shadow 0.16s ease,
+    background-color 0.16s ease,
     transform 0.16s ease;
 }
 
+.tool-manager-modal .ant-modal-close:hover,
 .sync-modal .ant-modal-close:hover {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--chip-border));
   color: var(--primary-text);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--item-hover) 90%, white), var(--item-hover));
-  box-shadow:
-    0 10px 22px rgba(31, 45, 55, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.52);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--item-hover) 88%, transparent);
+  transform: none;
+}
+
+.tool-manager-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+
+.tool-manager-list,
+.tool-manager-form {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg-soft);
+  padding: 12px;
+  min-height: 0;
+}
+
+.tool-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tool-manager-list .ant-table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tool-manager-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tool-registry-name {
+  font-weight: 560;
+  line-height: 1.2;
+}
+
+.tool-manager-form .ant-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100%;
+}
+
+.tool-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+}
+
+.tool-form-row .ant-form-item {
+  margin-bottom: 0;
+}
+
+.tool-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+  max-height: 260px;
+  padding: 4px;
+  overflow: auto;
+}
+
+.tool-config-item {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) 130px 42px;
+  gap: 8px;
+}
+
+.tool-manager-actions {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .sync-modal .ant-modal-close-x {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 18px;
   line-height: 1;
 }
 
 .sync-modal .ant-modal-body {
   flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
   height: auto;
   min-height: 0;
-  padding: 16px 28px 12px;
+  padding: 12px 20px 12px;
   overflow: hidden;
 }
 
 .sync-modal .ant-modal-footer {
+  flex: 0 0 auto;
   margin: 0;
-  padding: 10px 28px 24px;
+  padding: 4px 20px 14px;
   border-top: 0;
   background: transparent;
 }
 
 .sync-modal__layout {
+  flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 12px;
   height: 100%;
-  max-height: 492px;
+  max-height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
+.sync-modal__card {
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg-soft);
+  min-height: 0;
+}
+
 .sync-modal__controls {
   display: flex;
+  align-self: stretch;
   min-height: 0;
   flex-direction: column;
-  gap: 16px;
-  padding: 4px 4px 4px 0;
+  gap: 14px;
+  padding: 12px;
   overflow: hidden;
 }
 
@@ -580,13 +720,14 @@
 }
 
 .sync-modal__skills {
-  display: grid;
-  grid-template-rows: auto auto 1fr;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  align-self: stretch;
   min-width: 0;
   min-height: 0;
-  height: 100%;
   gap: 10px;
-  padding: 0;
+  padding: 12px;
   overflow: hidden;
 }
 
@@ -597,10 +738,10 @@
 
 .sync-skill-scroll {
   display: flex;
-  flex: none;
+  flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
-  max-height: 390px;
+  height: 0;
+  max-height: none;
   flex-direction: column;
   gap: 8px;
   padding: 10px 8px 10px 10px;
@@ -697,10 +838,16 @@
 
   .header-actions {
     justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .header-meta-bar {
+    flex-wrap: wrap;
   }
 
   .app-grid {
     grid-template-columns: 1fr;
+    flex: none;
     height: auto;
     overflow: auto;
   }
