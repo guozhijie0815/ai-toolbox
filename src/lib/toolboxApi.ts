@@ -4,6 +4,7 @@ import type {
   BackupItem,
   ConfigFileItem,
   ConflictStrategy,
+  SkillInsightEntry,
   SkillItem,
   SyncMode,
   ToolRegistryConfigFile,
@@ -116,6 +117,22 @@ const readString = (...values: unknown[]) => {
 }
 
 const readArray = (value: unknown) => (Array.isArray(value) ? value : [])
+
+const readNumber = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      return value
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value)
+      if (!Number.isNaN(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return undefined
+}
 
 const uniqById = <T extends { id: string }>(items: T[]) => {
   const map = new Map<string, T>()
@@ -263,6 +280,7 @@ const normalizeTool = (value: unknown): ToolItem | null => {
     id: readString(record.id, record.tool_id, record.toolId, name) ?? name,
     name,
     path: readString(record.path, record.root, record.directory),
+    skillDir: readString(record.skillDir, record.skill_dir, record.skillsDir, record.skills_dir),
     description: readString(record.description, record.desc),
     badge: readString(record.badge, record.kind, record.type),
     configFiles: uniqById(configFiles),
@@ -327,6 +345,32 @@ const readMessageResponse = (value: unknown, fallback: string) => {
   )
 }
 
+const normalizeSkillInsightsResponse = (value: unknown): SkillInsightEntry[] => {
+  const list = Array.isArray(value) ? value : readArray(asRecord(value).data ?? asRecord(value).items)
+
+  return list.map((item) => {
+    const record = asRecord(item)
+    const laggingTools = readArray(record.laggingTools ?? record.lagging_tools)
+      .map((lag) => {
+        const lagRecord = asRecord(lag)
+        return {
+          toolId: readString(lagRecord.toolId, lagRecord.tool_id) ?? '',
+          toolName: readString(lagRecord.toolName, lagRecord.tool_name) ?? '',
+          behindSeconds: readNumber(lagRecord.behindSeconds, lagRecord.behind_seconds) ?? 0,
+        }
+      })
+      .filter((lag) => lag.toolId)
+
+    return {
+      skillName: readString(record.skillName, record.skill_name) ?? '',
+      leaderToolId: readString(record.leaderToolId, record.leader_tool_id) ?? '',
+      leaderToolName: readString(record.leaderToolName, record.leader_tool_name) ?? '',
+      leaderUpdatedAt: readNumber(record.leaderUpdatedAt, record.leader_updated_at) ?? 0,
+      laggingTools,
+    }
+  }).filter((insight) => insight.skillName && insight.leaderToolId)
+}
+
 export const listTools = async () => {
   if (!hasTauriRuntime()) {
     return mockTools
@@ -336,6 +380,15 @@ export const listTools = async () => {
   const tools = normalizeToolsResponse(response)
 
   return tools.length > 0 ? tools : mockTools
+}
+
+export const getSkillInsights = async () => {
+  if (!hasTauriRuntime()) {
+    return []
+  }
+
+  const response = await invoke<unknown>('get_skill_insights')
+  return normalizeSkillInsightsResponse(response)
 }
 
 export const readConfigFile = async (_tool: ToolItem, file: ConfigFileItem) => {
@@ -466,7 +519,7 @@ export const listToolRegistry = async () => {
         kind: item.language,
         exists: true,
       })),
-      skillDir: tool.path ? `${tool.path}/skills` : undefined,
+      skillDir: tool.id === 'codex' ? '~/.agents/skills' : tool.path ? `${tool.path}/skills` : undefined,
     }))
   }
 

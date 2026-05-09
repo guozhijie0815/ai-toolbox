@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import {
+  getSkillInsights,
   listTools,
   readConfigFile,
   saveConfigFile,
@@ -10,6 +11,7 @@ import type {
   ConfigFileItem,
   ConflictStrategy,
   OperationFeedback,
+  SkillInsightEntry,
   SyncMode,
   ToolItem,
 } from '../types/toolbox'
@@ -26,9 +28,12 @@ interface ToolboxStore {
   isConfigLoading: boolean
   isSaving: boolean
   isSyncing: boolean
+  skillInsights: SkillInsightEntry[]
+  isInsightsLoading: boolean
   feedback?: OperationFeedback
   initialize: () => Promise<void>
   refreshTools: () => Promise<void>
+  refreshInsights: () => Promise<void>
   selectTool: (toolId: string) => Promise<void>
   selectConfigFile: (configId: string) => Promise<void>
   setEditorContent: (content: string) => void
@@ -117,6 +122,8 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
   isConfigLoading: false,
   isSaving: false,
   isSyncing: false,
+  skillInsights: [],
+  isInsightsLoading: false,
   feedback: undefined,
 
   initialize: async () => {
@@ -125,6 +132,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
     }
 
     await get().refreshTools()
+    await get().refreshInsights()
   },
 
   refreshTools: async () => {
@@ -152,6 +160,18 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       })
     } finally {
       set({ isToolsLoading: false })
+    }
+  },
+
+  refreshInsights: async () => {
+    set({ isInsightsLoading: true })
+    try {
+      const insights = await getSkillInsights()
+      set({ skillInsights: insights })
+    } catch (error) {
+      console.error('刷新变动洞察失败:', error)
+    } finally {
+      set({ isInsightsLoading: false })
     }
   },
 
@@ -325,6 +345,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       })
 
       await get().refreshTools()
+      await get().refreshInsights()
     } catch (error) {
       set({
         feedback: buildFeedback(

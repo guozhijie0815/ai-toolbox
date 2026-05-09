@@ -59,6 +59,24 @@ struct BackupEntry {
     updated_at: Option<u64>,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LaggingToolInfo {
+    tool_id: String,
+    tool_name: String,
+    behind_seconds: u64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SkillInsightEntry {
+    skill_name: String,
+    leader_tool_id: String,
+    leader_tool_name: String,
+    leader_updated_at: u64,
+    lagging_tools: Vec<LaggingToolInfo>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SaveConfigRequest {
@@ -165,7 +183,7 @@ const TOOL_SPECS: &[ToolSpec] = &[
         id: "codex",
         name: "Codex",
         config_files: &[("config.toml", "/Users/smzdm/.codex/config.toml", "toml")],
-        skill_dir: Some("/Users/smzdm/.codex/skills"),
+        skill_dir: Some("/Users/smzdm/.agents/skills"),
     },
     ToolSpec {
         id: "claude",
@@ -271,6 +289,16 @@ fn load_tool_registry() -> Result<Vec<UserToolSpec>, String> {
     let content = fs::read_to_string(registry_file()).map_err(|err| err.to_string())?;
     let mut items = serde_json::from_str::<Vec<UserToolSpec>>(&content).map_err(|err| err.to_string())?;
     items.retain(|item| !item.id.trim().is_empty() && !item.name.trim().is_empty());
+    let mut changed = false;
+    for item in &mut items {
+        if item.id == "codex" && item.skill_dir.as_deref() == Some("/Users/smzdm/.codex/skills") {
+            item.skill_dir = Some("/Users/smzdm/.agents/skills".to_string());
+            changed = true;
+        }
+    }
+    if changed {
+        save_tool_registry(&items)?;
+    }
     Ok(items)
 }
 
@@ -477,7 +505,7 @@ fn detect_tool_paths_from_name(input: &str) -> DetectToolPathsResult {
     if key.contains("codex") {
         apply(
             &[("config.toml", "/Users/smzdm/.codex/config.toml", "toml")],
-            Some("/Users/smzdm/.codex/skills"),
+            Some("/Users/smzdm/.agents/skills"),
             &mut config_files,
             &mut skill_dir,
         );
@@ -694,6 +722,61 @@ fn list_tools() -> Result<Vec<ToolEntry>, String> {
         .filter(|item| item.enabled)
         .map(build_tool_entry_from_user)
         .collect())
+}
+
+#[tauri::command]
+fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
+    let items = load_tool_registry()?;
+    let enabled_tools: Vec<_> = items
+        .iter()
+        .filter(|item| item.enabled)
+        .map(build_tool_entry_from_user)
+        .collect();
+
+    let mut skill_map: std::collections::HashMap<String, Vec<(String, String, u64)>> =
+        std::collections::HashMap::new();
+
+    for tool in &enabled_tools {
+        for skill in &tool.skills {
+            if let Some(updated_at) = skill.updated_at {
+                skill_map
+                    .entry(skill.name.clone())
+                    .or_default()
+                    .push((tool.id.clone(), tool.name.clone(), updated_at));
+            }
+        }
+    }
+
+    let mut insights = Vec::new();
+    for (skill_name, mut tool_records) in skill_map {
+        if tool_records.len() < 2 {
+            continue;
+        }
+        tool_records.sort_by(|a, b| b.2.cmp(&a.2));
+        let leader = &tool_records[0];
+        let lagging: Vec<LaggingToolInfo> = tool_records
+            .iter()
+            .skip(1)
+            .filter(|record| record.2 < leader.2)
+            .map(|record| LaggingToolInfo {
+                tool_id: record.0.clone(),
+                tool_name: record.1.clone(),
+                behind_seconds: leader.2 - record.2,
+            })
+            .collect();
+        if !lagging.is_empty() {
+            insights.push(SkillInsightEntry {
+                skill_name,
+                leader_tool_id: leader.0.clone(),
+                leader_tool_name: leader.1.clone(),
+                leader_updated_at: leader.2,
+                lagging_tools: lagging,
+            });
+        }
+    }
+
+    insights.sort_by(|a, b| b.leader_updated_at.cmp(&a.leader_updated_at));
+    Ok(insights)
 }
 
 #[tauri::command]
@@ -1001,6 +1084,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             healthcheck,
             list_tools,
+            get_skill_insights,
             list_tool_registry,
             upsert_tool_registry_item,
             delete_tool_registry_item,

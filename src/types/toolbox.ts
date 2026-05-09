@@ -32,6 +32,7 @@ export interface ToolItem {
   id: string
   name: string
   path?: string
+  skillDir?: string
   description?: string
   badge?: string
   configFiles: ConfigFileItem[]
@@ -64,4 +65,18 @@ export interface ToolRegistryEntry {
   enabled: boolean
   configFiles: ToolRegistryConfigFile[]
   skillDir?: string
+}
+
+export interface LaggingToolInfo {
+  toolId: string
+  toolName: string
+  behindSeconds: number
+}
+
+export interface SkillInsightEntry {
+  skillName: string
+  leaderToolId: string
+  leaderToolName: string
+  leaderUpdatedAt: number
+  laggingTools: LaggingToolInfo[]
 }

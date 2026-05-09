@@ -178,7 +178,7 @@ const TOOLS: &[ToolDefinition] = &[
         id: "codex",
         label: "Codex",
         config_files: CODEX_CONFIGS,
-        skills_dir: Some("/Users/smzdm/.codex/skills"),
+        skills_dir: Some("/Users/smzdm/.agents/skills"),
     },
     ToolDefinition {
         id: "claude",

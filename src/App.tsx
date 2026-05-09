@@ -1,15 +1,16 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 
 import Editor from '@monaco-editor/react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import {
+  CloseOutlined,
   CopyOutlined,
   DeleteOutlined,
   EditOutlined,
   FileTextOutlined,
   FolderOpenOutlined,
-  PlusOutlined,
   LinkOutlined,
+  MoreOutlined,
   ReloadOutlined,
   SaveOutlined,
   SearchOutlined,
@@ -22,6 +23,7 @@ import {
   Button,
   Checkbox,
   ConfigProvider,
+  Dropdown,
   Empty,
   Input,
   Modal,
@@ -40,9 +42,9 @@ import {
 } from 'antd'
 
 import './App.css'
-import { deleteSkill, deleteToolRegistryItem, detectToolPaths, listConfigBackups, listToolRegistry, openPathInFinder, syncSkills, upsertToolRegistryItem } from './lib/toolboxApi'
+import { deleteSkill, deleteToolRegistryItem, detectToolPaths, listToolRegistry, openPathInFinder, syncSkills, upsertToolRegistryItem } from './lib/toolboxApi'
 import { useToolboxStore } from './store/useToolboxStore'
-import type { BackupItem, ConflictStrategy, SkillItem, SyncMode, ToolRegistryConfigFile, ToolRegistryEntry } from './types/toolbox'
+import type { ConflictStrategy, SkillItem, SyncMode, ToolRegistryConfigFile, ToolRegistryEntry } from './types/toolbox'
 
 const { Text, Title } = Typography
 
@@ -70,9 +72,9 @@ const modeOptions = [
 ]
 
 const conflictOptions = [
-  { label: 'skip', value: 'skip' },
-  { label: 'overwrite', value: 'overwrite' },
-  { label: 'rename', value: 'rename' },
+  { label: '跳过', value: 'skip' },
+  { label: '覆盖', value: 'overwrite' },
+  { label: '重命名', value: 'rename' },
 ]
 
 const themeOptions = [
@@ -81,9 +83,41 @@ const themeOptions = [
   { label: '深色', value: 'dark' },
 ]
 
+const SHARED_SKILL_DIR = '/Users/smzdm/.agents/skills'
+
+const normalizeFsPath = (value?: string) =>
+  value?.replace(/^~(?=\/)/, '/Users/smzdm').replace(/\/+$/, '')
+
+const isSharedSkillTool = (tool: { id: string; name?: string; configFiles: unknown[]; skillDir?: string }) => {
+  const id = tool.id.toLowerCase()
+  const name = tool.name?.toLowerCase()
+  return (
+    id === 'agent' ||
+    id === 'agents' ||
+    name === '.agent' ||
+    name === 'agents skills' ||
+    (tool.configFiles.length === 0 && normalizeFsPath(tool.skillDir) === SHARED_SKILL_DIR)
+  )
+}
+
+const isInteractiveDragTarget = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  Boolean(target.closest('button,input,textarea,select,[role="button"],[role="tab"],[role="radio"],[role="switch"],.ant-segmented,.ant-select,.monaco-editor'))
+
 const formatTime = (value?: number) => {
   if (!value) return '未知时间'
   return new Date(value * 1000).toLocaleString('zh-CN', { hour12: false })
+}
+
+const formatDuration = (seconds: number) => {
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+
+  if (days > 0) return `${days}天前`
+  if (hours > 0) return `${hours}小时前`
+  if (minutes > 0) return `${minutes}分钟前`
+  return '刚刚'
 }
 
 const hasTauriRuntime = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
@@ -91,7 +125,6 @@ const hasTauriRuntime = () => typeof window !== 'undefined' && '__TAURI_INTERNAL
 function App() {
   const [toolForm] = Form.useForm()
   const [messageApi, contextHolder] = message.useMessage()
-  const dragStartRef = useRef<{ x: number; y: number } | null>(null)
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === 'undefined') return 'system'
     const value = window.localStorage.getItem('ai-toolbox-theme')
@@ -105,8 +138,6 @@ function App() {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem('ai-toolbox-autosave') === '1'
   })
-  const [backups, setBackups] = useState<BackupItem[]>([])
-  const [isBackupsLoading, setIsBackupsLoading] = useState(false)
   const [skillKeyword, setSkillKeyword] = useState('')
   const [syncModalOpen, setSyncModalOpen] = useState(false)
   const [syncTargetToolIds, setSyncTargetToolIds] = useState<string[]>([])
@@ -121,6 +152,7 @@ function App() {
   const [registrySaving, setRegistrySaving] = useState(false)
   const [editingToolId, setEditingToolId] = useState<string>()
   const [editingConfigFiles, setEditingConfigFiles] = useState<ToolRegistryConfigFile[]>([])
+  const [editorMode, setEditorMode] = useState(false)
 
   const tools = useToolboxStore((state) => state.tools)
   const selectedToolId = useToolboxStore((state) => state.selectedToolId)
@@ -128,9 +160,12 @@ function App() {
   const isToolsLoading = useToolboxStore((state) => state.isToolsLoading)
   const isConfigLoading = useToolboxStore((state) => state.isConfigLoading)
   const isSaving = useToolboxStore((state) => state.isSaving)
+  const skillInsights = useToolboxStore((state) => state.skillInsights)
+  const isInsightsLoading = useToolboxStore((state) => state.isInsightsLoading)
   const feedback = useToolboxStore((state) => state.feedback)
   const initialize = useToolboxStore((state) => state.initialize)
   const refreshTools = useToolboxStore((state) => state.refreshTools)
+  const refreshInsights = useToolboxStore((state) => state.refreshInsights)
   const selectTool = useToolboxStore((state) => state.selectTool)
   const selectConfigFile = useToolboxStore((state) => state.selectConfigFile)
   const setEditorContent = useToolboxStore((state) => state.setEditorContent)
@@ -181,45 +216,76 @@ function App() {
     })
   }, [feedback, messageApi])
 
-  const visibleTools = useMemo(() => tools.filter((tool) => tool.id !== 'agents'), [tools])
+  const visibleTools = useMemo(() => tools.filter((tool) => !isSharedSkillTool(tool)), [tools])
 
   const selectedTool = visibleTools.find((tool) => tool.id === selectedToolId) ?? visibleTools[0]
   const selectedFile = selectedTool?.configFiles.find((file) => file.id === selectedConfigId)
   const currentSkills = selectedTool?.skills ?? []
+  const sortedSkills = useMemo(() => {
+    return [...currentSkills].sort((a, b) => {
+      const timeA = a.updatedAt ?? 0
+      const timeB = b.updatedAt ?? 0
+      return timeB - timeA
+    })
+  }, [currentSkills])
+
   const filteredCurrentSkills = useMemo(() => {
     const keyword = skillKeyword.trim().toLowerCase()
-    if (!keyword) return currentSkills
-    return currentSkills.filter((skill) => {
+    if (!keyword) return sortedSkills
+    return sortedSkills.filter((skill) => {
       return (
         skill.name.toLowerCase().includes(keyword) ||
         (skill.description ?? '').toLowerCase().includes(keyword) ||
         (skill.path ?? '').toLowerCase().includes(keyword)
       )
     })
-  }, [currentSkills, skillKeyword])
+  }, [sortedSkills, skillKeyword])
 
   const filteredSyncSkills = useMemo(() => {
     const keyword = syncKeyword.trim().toLowerCase()
-    if (!keyword) return currentSkills
-    return currentSkills.filter((skill) => {
+    if (!keyword) return sortedSkills
+    return sortedSkills.filter((skill) => {
       return (
         skill.name.toLowerCase().includes(keyword) ||
         (skill.description ?? '').toLowerCase().includes(keyword) ||
         (skill.path ?? '').toLowerCase().includes(keyword)
       )
     })
-  }, [currentSkills, syncKeyword])
+  }, [sortedSkills, syncKeyword])
 
   const syncTargetOptions = useMemo(
-    () =>
-      visibleTools
-        .filter((tool) => tool.id !== selectedTool?.id)
+    () => {
+      const selectedSkillDir = normalizeFsPath(selectedTool?.skillDir)
+      return visibleTools
+        .filter((tool) => {
+          if (tool.id === selectedTool?.id) return false
+          const targetSkillDir = normalizeFsPath(tool.skillDir)
+          if (selectedSkillDir && targetSkillDir && selectedSkillDir === targetSkillDir) return false
+          return true
+        })
         .map((tool) => ({
           label: tool.name,
           value: tool.id,
-        })),
-    [selectedTool?.id, visibleTools],
+        }))
+    },
+    [selectedTool?.id, selectedTool?.skillDir, visibleTools],
   )
+
+  const selectedSyncTargetNames = useMemo(
+    () =>
+      visibleTools
+        .filter((tool) => syncTargetToolIds.includes(tool.id))
+        .map((tool) => tool.name)
+        .join('、'),
+    [syncTargetToolIds, visibleTools],
+  )
+
+  const canSubmitSync = syncTargetToolIds.length > 0 && syncSelectedSkillIds.length > 0
+
+  useEffect(() => {
+    const validTargetIds = new Set(syncTargetOptions.map((option) => option.value))
+    setSyncTargetToolIds((current) => current.filter((toolId) => validTargetIds.has(toolId)))
+  }, [syncTargetOptions])
 
   const isPreview = typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)
 
@@ -234,39 +300,6 @@ function App() {
       setRegistryLoading(false)
     }
   }
-
-  useEffect(() => {
-    let cancelled = false
-
-    const loadBackups = async () => {
-      if (!selectedFile?.path || isPreview) {
-        setBackups([])
-        return
-      }
-
-      setIsBackupsLoading(true)
-      try {
-        const items = await listConfigBackups(selectedFile.path)
-        if (!cancelled) {
-          setBackups(items)
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setBackups([])
-          void messageApi.error(error instanceof Error ? error.message : String(error))
-        }
-      } finally {
-        if (!cancelled) {
-          setIsBackupsLoading(false)
-        }
-      }
-    }
-
-    void loadBackups()
-    return () => {
-      cancelled = true
-    }
-  }, [isPreview, messageApi, selectedFile?.path])
 
   useEffect(() => {
     if (!autoSave || !selectedFile?.dirty || isSaving) return
@@ -380,7 +413,9 @@ function App() {
       return
     }
 
-    const targetTools = visibleTools.filter((tool) => syncTargetToolIds.includes(tool.id))
+    const targetTools = visibleTools.filter((tool) =>
+      syncTargetToolIds.includes(tool.id) && syncTargetOptions.some((option) => option.value === tool.id),
+    )
     if (targetTools.length === 0) {
       void messageApi.warning('至少选择一个目标工具')
       return
@@ -415,7 +450,12 @@ function App() {
 
     Modal.confirm({
       title: '删除技能',
-      content: `确认删除 ${skill.name} 吗？`,
+      content: (
+        <div className="danger-confirm-content">
+          <Text>确认删除 {skill.name} 吗？</Text>
+          {skill.path ? <Text className="danger-confirm-path">{skill.path}</Text> : null}
+        </div>
+      ),
       okText: '删除',
       okButtonProps: { danger: true },
       cancelText: '取消',
@@ -433,9 +473,7 @@ function App() {
 
   const renderSkillMeta = (skill: SkillItem) => (
     <div className="skill-entry__meta">
-      {skill.hasSkillMd ? <Tag bordered={false}>SKILL.md</Tag> : null}
-      {skill.isSymlink ? <Tag bordered={false} color="gold">软链接</Tag> : null}
-      {skill.updatedAt ? <Tag bordered={false}>{formatTime(skill.updatedAt)}</Tag> : null}
+      {skill.isSymlink ? <Tag variant="filled" color="gold">软链接</Tag> : null}
     </div>
   )
 
@@ -444,38 +482,25 @@ function App() {
     return text ? <Text className="skill-entry__desc">{text}</Text> : null
   }
 
-  const handleDragbarMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!hasTauriRuntime() || event.button !== 0) return
-    // 跳过红绿灯区域 & 双击第二次按下
-    if (event.clientX < 80 || event.detail >= 2) return
-    dragStartRef.current = { x: event.clientX, y: event.clientY }
+  const handleWindowDragMouseDown = (event: React.MouseEvent<HTMLElement>) => {
+    if (!hasTauriRuntime() || event.button !== 0 || event.detail >= 2) return
+    if (event.clientX < 80 || isInteractiveDragTarget(event.target)) return
+    void getCurrentWindow().startDragging()
   }
 
-  const handleDragbarMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!dragStartRef.current || !hasTauriRuntime()) return
-    const dx = event.clientX - dragStartRef.current.x
-    const dy = event.clientY - dragStartRef.current.y
-    // 超过 4px 才认定为拖动意图
-    if (dx * dx + dy * dy > 16) {
-      dragStartRef.current = null
-      void getCurrentWindow().startDragging()
+  const handleWindowDragDoubleClick = async (event: React.MouseEvent<HTMLElement>) => {
+    if (!hasTauriRuntime() || event.clientX < 80 || isInteractiveDragTarget(event.target)) return
+    try {
+      const appWindow = getCurrentWindow()
+      const maximized = await appWindow.isMaximized()
+      if (maximized) {
+        await appWindow.unmaximize()
+      } else {
+        await appWindow.maximize()
+      }
+    } catch (err) {
+      console.error('Window maximize/unmaximize failed:', err)
     }
-  }
-
-  const handleDragbarMouseUp = () => {
-    dragStartRef.current = null
-  }
-
-  const handleDragbarDoubleClick = async () => {
-    if (!hasTauriRuntime()) return
-    dragStartRef.current = null
-    const appWindow = getCurrentWindow()
-    const maximized = await appWindow.isMaximized()
-    if (maximized) {
-      await appWindow.unmaximize()
-      return
-    }
-    await appWindow.maximize()
   }
 
 
@@ -483,18 +508,29 @@ function App() {
     <ConfigProvider
       theme={{
         algorithm,
-        token: {
-          colorPrimary: resolvedTheme === 'dark' ? '#ef7d3b' : '#c96a31',
-          colorInfo: resolvedTheme === 'dark' ? '#ef7d3b' : '#c96a31',
-          colorSuccess: '#55c27b',
-          colorWarning: '#ffbb52',
-          colorError: '#ff6b6b',
-          colorBgBase: resolvedTheme === 'dark' ? '#101416' : '#eef2f5',
-          colorTextBase: resolvedTheme === 'dark' ? '#f5efe7' : '#18222d',
-          borderRadius: 16,
-          fontFamily:
-            '"Avenir Next", "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif',
-        },
+        token: resolvedTheme === 'dark'
+          ? {
+              colorPrimary: '#22d3ee',
+              colorInfo: '#22d3ee',
+              colorSuccess: '#4ade80',
+              colorWarning: '#fbbf24',
+              colorError: '#f87171',
+              colorBgBase: '#060914',
+              colorTextBase: '#e2e8f0',
+              borderRadius: 10,
+              fontFamily: '"Plus Jakarta Sans", "PingFang SC", "Hiragino Sans GB", sans-serif',
+            }
+          : {
+              colorPrimary: '#d86933',
+              colorInfo: '#d86933',
+              colorSuccess: '#1f8a5b',
+              colorWarning: '#c28a1a',
+              colorError: '#d64545',
+              colorBgBase: '#f4f6f1',
+              colorTextBase: '#1f2d37',
+              borderRadius: 10,
+              fontFamily: '"Plus Jakarta Sans", "PingFang SC", "Hiragino Sans GB", sans-serif',
+            },
       }}
     >
       <AntdApp>
@@ -502,13 +538,16 @@ function App() {
         <div className="toolbox-shell" data-theme={resolvedTheme}>
           <div
             className="window-dragbar-hitbox"
-            onMouseDown={handleDragbarMouseDown}
-            onMouseMove={handleDragbarMouseMove}
-            onMouseUp={handleDragbarMouseUp}
-            onDoubleClick={() => void handleDragbarDoubleClick()}
+            onMouseDown={handleWindowDragMouseDown}
+            onDoubleClick={(event) => void handleWindowDragDoubleClick(event)}
           />
 
-          <header className="app-header">
+          <header
+            className="app-header"
+            data-tauri-drag-region
+            onMouseDown={handleWindowDragMouseDown}
+            onDoubleClick={(event) => void handleWindowDragDoubleClick(event)}
+          >
             <div>
               <Text className="eyebrow">Skill Sync Console</Text>
               <Title level={2}>工具配置台</Title>
@@ -521,264 +560,454 @@ function App() {
                   value={themeMode}
                   onChange={(value) => setThemeMode(value as ThemeMode)}
                 />
-                <Tag bordered={false} color={isPreview ? 'gold' : 'success'} className="runtime-mini-tag">
+                <Tag variant="filled" color={isPreview ? 'gold' : 'success'} className="runtime-mini-tag">
                   {isPreview ? 'Preview' : 'Tauri'} · {visibleTools.length} tools
                 </Tag>
               </div>
             </div>
             <div className="header-actions">
+              <div className="header-tool-info">
+                <Text className="header-tool-name">{selectedTool?.name ?? '未选择'}</Text>
+                {selectedFile?.dirty && (
+                  <span className="header-dirty-badge">未保存</span>
+                )}
+              </div>
               <Button icon={<SettingOutlined />} onClick={() => void openManager()}>
                 管理工具
               </Button>
               <Button icon={<ReloadOutlined />} loading={isToolsLoading} onClick={() => void refreshTools()}>
                 刷新
               </Button>
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                loading={isSaving}
-                disabled={!selectedFile || !selectedFile.dirty}
-                onClick={() => void saveCurrentFile()}
-              >
-                保存配置
-              </Button>
             </div>
           </header>
 
-          <div className="app-grid">
-            <aside className="panel panel--nav">
-              <div className="panel-header">
-                <div>
-                  <Text className="panel-kicker">Source</Text>
-                  <Title level={4}>工具列表</Title>
-                </div>
-                <Tag bordered={false} color="orange">
-                  {visibleTools.length}
-                </Tag>
-              </div>
-
-              <div className="tool-list">
-                {visibleTools.length === 0 && !isToolsLoading ? (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有可用工具" />
-                ) : null}
-
-                {visibleTools.map((tool) => {
-                  const active = tool.id === selectedTool?.id
-                  const dirtyCount = tool.configFiles.filter((item) => item.dirty).length
-
-                  return (
-                    <button
-                      key={tool.id}
-                      type="button"
-                      className={`tool-item${active ? ' is-active' : ''}`}
-                      onClick={() => void selectTool(tool.id)}
-                    >
-                      <div className="tool-item__title">
-                        <span className="tool-item__name">
-                          <ToolOutlined />
-                          {tool.name}
-                        </span>
-                      </div>
-                      {tool.description ? <Text className="tool-item__desc">{tool.description}</Text> : null}
-                      <div className="tool-item__meta">
-                        <span>{tool.configFiles.length} configs</span>
-                        <span>{tool.skills.length} skills</span>
-                        {dirtyCount > 0 ? <span>{dirtyCount} unsaved</span> : null}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </aside>
-
-            <main className="panel panel--workspace">
-              <div className="panel-header panel-header--workspace">
-                <div>
-                  <Text className="panel-kicker">Editor</Text>
-                  <Title level={4}>配置文件</Title>
-                </div>
-                {selectedTool?.path ? <Text className="path-chip">{selectedTool.path}</Text> : null}
-              </div>
-
-              <div className="config-strip">
-                {selectedTool?.configFiles.length ? (
-                  selectedTool.configFiles.map((file) => (
-                    <button
-                      key={file.id}
-                      type="button"
-                      className={`config-tab${file.id === selectedConfigId ? ' is-active' : ''}`}
-                      onClick={() => void selectConfigFile(file.id)}
-                    >
-                      <span className="config-tab__name">
-                        <FileTextOutlined />
-                        {file.name}
-                      </span>
-                      <span className="config-tab__meta">
-                        <span>{file.language}</span>
-                        {file.dirty ? <span className="dirty-dot" /> : null}
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前工具没有配置文件" />
-                )}
-              </div>
-
-              <div className="editor-toolbar">
-                <div className="editor-toolbar__meta">
-                  <Tag bordered={false} color="orange">
-                    {selectedFile?.language ?? 'plaintext'}
+          <div className="app-layout">
+            <div className={`app-grid${editorMode ? ' app-grid--edit' : ''}`}>
+              {/* 左侧：工具列表 */}
+              <aside className="panel panel--nav">
+                <div className="panel-header">
+                  <div>
+                    <Text className="panel-kicker">Source</Text>
+                    <Title level={4}>工具列表</Title>
+                  </div>
+                  <Tag variant="filled" color="orange">
+                    {visibleTools.length}
                   </Tag>
-                  {selectedFile?.dirty ? (
-                    <Tag bordered={false} color="error">
-                      未保存
-                    </Tag>
-                  ) : (
-                    <Tag bordered={false} color="success">
-                      已保存
-                    </Tag>
-                  )}
-                  <Switch
-                    checked={autoSave}
-                    onChange={setAutoSave}
-                    checkedChildren="自动保存"
-                    unCheckedChildren="手动"
-                  />
                 </div>
 
-                <Space className="editor-toolbar__path" wrap={false}>
-                  <Button
-                    icon={<FolderOpenOutlined />}
-                    disabled={!selectedFile}
-                    onClick={() => selectedFile && void openPathInFinder(selectedFile.path)}
-                  >
-                    打开所在目录
-                  </Button>
-                  <Text className="path-chip">{selectedFile?.path ?? '请选择配置文件'}</Text>
-                </Space>
-              </div>
+                <div className="tool-list">
+                  {visibleTools.length === 0 && !isToolsLoading ? (
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有可用工具" />
+                  ) : null}
 
-              <div className="backup-strip">
-                <div className="backup-strip__title">
-                  <Text className="field-label">最近备份</Text>
-                  <Space size={8}>
-                    {isBackupsLoading ? <Spin size="small" /> : null}
-                    <Tag bordered={false}>{backups.length}</Tag>
-                  </Space>
-                </div>
-                {backups.length > 0 ? (
-                  <div className="backup-list">
-                    {backups.slice(0, 5).map((backup) => (
+                  {visibleTools.map((tool) => {
+                    const active = tool.id === selectedTool?.id
+                    const dirtyCount = tool.configFiles.filter((item) => item.dirty).length
+                    const hasConfig = tool.configFiles.length > 0
+
+                    return (
                       <button
-                        key={backup.path}
+                        key={tool.id}
                         type="button"
-                        className="backup-item"
-                        onClick={() => void openPathInFinder(backup.path)}
+                        className={`tool-item${active ? ' is-active' : ''}`}
+                        data-tool={tool.id}
+                        onClick={() => void selectTool(tool.id)}
                       >
-                        <span className="backup-item__name">{backup.name}</span>
-                        <span className="backup-item__time">{formatTime(backup.updatedAt)}</span>
+                        <div className="tool-item__title">
+                          <span className="tool-item__name">
+                            {tool.name}
+                          </span>
+                          {hasConfig && (
+                            <span
+                              className="tool-item__edit"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                if (editorMode) {
+                                  // 如果已经在编辑模式，点击则关闭
+                                  setEditorMode(false)
+                                } else if (active) {
+                                  setEditorMode(true)
+                                  if (!selectedConfigId && tool.configFiles[0]) {
+                                    void selectConfigFile(tool.configFiles[0].id)
+                                  }
+                                } else {
+                                  void selectTool(tool.id)
+                                  setTimeout(() => {
+                                    setEditorMode(true)
+                                    if (tool.configFiles[0]) {
+                                      void selectConfigFile(tool.configFiles[0].id)
+                                    }
+                                  }, 50)
+                                }
+                              }}
+                              title="编辑配置"
+                            >
+                              <FileTextOutlined />
+                            </span>
+                          )}
+                        </div>
+                        {tool.description ? <Text className="tool-item__desc">{tool.description}</Text> : null}
+                        <div className="tool-item__meta">
+                          <span>{tool.configFiles.length} configs</span>
+                          <span>{tool.skills.length} skills</span>
+                          {dirtyCount > 0 ? <span>{dirtyCount} unsaved</span> : null}
+                        </div>
                       </button>
-                    ))}
-                  </div>
-                ) : (
-                  <Text className="backup-empty">当前文件还没有备份，保存后会显示在这里。</Text>
-                )}
-              </div>
-
-              <div className="editor-wrap">
-                {selectedFile ? (
-                  <>
-                    <Editor
-                      height="100%"
-                      defaultLanguage={selectedFile.language}
-                      language={selectedFile.language}
-                      theme={monacoTheme}
-                      loading={<Spin />}
-                      options={{
-                        automaticLayout: true,
-                        fontSize: 14,
-                        minimap: { enabled: false },
-                        padding: { top: 18, bottom: 18 },
-                        roundedSelection: true,
-                        scrollBeyondLastLine: false,
-                        wordWrap: 'on',
-                        smoothScrolling: true,
-                        cursorSmoothCaretAnimation: 'on',
-                      }}
-                      value={selectedFile.content ?? ''}
-                      onChange={(value) => setEditorContent(value ?? '')}
-                    />
-                    {isConfigLoading ? (
-                      <div className="editor-mask">
-                        <Spin size="large" />
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <div className="editor-empty">
-                    <Empty description="左侧选择工具后，在这里查看和编辑配置" />
-                  </div>
-                )}
-              </div>
-            </main>
-
-            <aside className="panel panel--skills">
-              <div className="panel-header">
-                <div>
-                  <Text className="panel-kicker">Skills</Text>
-                  <Title level={4}>当前技能</Title>
+                    )
+                  })}
                 </div>
-                <Space>
-                  <Tag bordered={false} color="cyan">
-                    {filteredCurrentSkills.length}/{currentSkills.length}
-                  </Tag>
-                  <Button type="primary" icon={<SyncOutlined />} onClick={openSyncModal}>
-                    同步技能
-                  </Button>
-                </Space>
-              </div>
+              </aside>
 
-              <Input
-                allowClear
-                size="large"
-                prefix={<SearchOutlined />}
-                placeholder="筛选当前工具已有技能"
-                value={skillKeyword}
-                onChange={(event) => setSkillKeyword(event.target.value)}
-              />
+              {/* 中间：技能列表 / 编辑器（push 滑动） */}
+              <main className="panel panel--skills">
+                <div className="panel-push-wrapper">
+                  {/* 第一屏：技能列表 */}
+                  <div className="panel-slide">
+                    <div className="panel-header">
+                      <div>
+                        <Text className="panel-kicker">Skills</Text>
+                        <Title level={4}>当前技能</Title>
+                      </div>
+                      <Space>
+                        <Tag variant="filled" color="cyan">
+                          {filteredCurrentSkills.length}/{currentSkills.length}
+                        </Tag>
+                        <Button icon={<SyncOutlined />} onClick={openSyncModal}>
+                          同步技能
+                        </Button>
+                      </Space>
+                    </div>
 
-              <div className="skill-view-list">
-                {filteredCurrentSkills.length > 0 ? (
-                  filteredCurrentSkills.map((skill) => (
-                    <Tooltip key={skill.id} title={skill.fullDescription ?? skill.description ?? skill.path}>
-                      <div className="skill-entry">
-                        <div className="skill-entry__top">
-                          <span className="skill-entry__name">{skill.name}</span>
-                          <div className="skill-entry__actions">
-                            {renderSkillMeta(skill)}
-                            <Button
-                              type="text"
-                              danger
-                              size="small"
-                              icon={<DeleteOutlined />}
-                              aria-label={`删除 ${skill.name}`}
-                              onClick={() => handleDeleteSkill(skill)}
+                    <Input
+                      allowClear
+                      size="large"
+                      prefix={<SearchOutlined />}
+                      placeholder="筛选当前工具已有技能"
+                      value={skillKeyword}
+                      onChange={(event) => setSkillKeyword(event.target.value)}
+                    />
+
+                    <div className="skill-view-list">
+                      {filteredCurrentSkills.length > 0 ? (
+                        filteredCurrentSkills.map((skill) => (
+                          <Tooltip key={skill.id} title={skill.fullDescription ?? skill.description ?? skill.path}>
+                            <div className="skill-entry">
+                              <div className="skill-entry__top">
+                                <span className="skill-entry__name" title={skill.name}>{skill.name}</span>
+                                <div className="skill-entry__actions">
+                                  {skill.updatedAt ? <span className="skill-entry__time">{formatTime(skill.updatedAt)}</span> : null}
+                                  {renderSkillMeta(skill)}
+                                  <Dropdown
+                                    trigger={['click']}
+                                    menu={{
+                                      items: [
+                                        {
+                                          key: 'delete',
+                                          danger: true,
+                                          icon: <DeleteOutlined />,
+                                          label: '删除',
+                                          onClick: () => handleDeleteSkill(skill),
+                                        },
+                                      ],
+                                    }}
+                                  >
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      icon={<MoreOutlined />}
+                                      aria-label={`${skill.name} 操作`}
+                                    />
+                                  </Dropdown>
+                                </div>
+                              </div>
+                              {renderSkillDescription(skill)}
+                              {skill.path ? <Text className="skill-entry__path">{skill.path}</Text> : null}
+                            </div>
+                          </Tooltip>
+                        ))
+                      ) : (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={currentSkills.length > 0 ? '没有匹配的技能' : '当前工具没有技能'}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 第二屏：编辑器 */}
+                  <div className="panel-slide">
+                    <div className="editor-content__header">
+                      <div className="config-strip" style={{ flex: 1, marginBottom: 0 }}>
+                        {selectedTool?.configFiles.length ? (
+                          selectedTool.configFiles.map((file) => (
+                            <button
+                              key={file.id}
+                              type="button"
+                              className={`config-tab${file.id === selectedConfigId ? ' is-active' : ''}`}
+                              onClick={() => void selectConfigFile(file.id)}
+                            >
+                              <span className="config-tab__name">
+                                <FileTextOutlined />
+                                {file.name}
+                              </span>
+                              <span className="config-tab__meta">
+                                <span>{file.language}</span>
+                                {file.dirty ? <span className="dirty-dot" /> : null}
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前工具没有配置文件" />
+                        )}
+                      </div>
+                      <Space>
+                        <Switch
+                          checked={autoSave}
+                          onChange={setAutoSave}
+                          checkedChildren="自动保存开"
+                          unCheckedChildren="自动保存关"
+                        />
+                        <Button
+                          icon={<FolderOpenOutlined />}
+                          disabled={!selectedFile}
+                          onClick={() => selectedFile && void openPathInFinder(selectedFile.path)}
+                        >
+                          打开所在目录
+                        </Button>
+                        <Button
+                          type="primary"
+                          icon={<SaveOutlined />}
+                          loading={isSaving}
+                          disabled={!selectedFile || !selectedFile.dirty}
+                          onClick={async () => {
+                            try {
+                              await saveCurrentFile()
+                              void messageApi.success('保存成功')
+                            } catch (error) {
+                              void messageApi.error('保存失败')
+                            }
+                          }}
+                        >
+                          保存配置
+                        </Button>
+                        <Button
+                          type="text"
+                          icon={<CloseOutlined />}
+                          onClick={() => setEditorMode(false)}
+                          title="关闭编辑"
+                          style={{ fontSize: 16 }}
+                        />
+                      </Space>
+                    </div>
+
+                    <div className="editor-content__body">
+                      <div className="editor-content__editor">
+                        {selectedFile ? (
+                          <>
+                            <Editor
+                              height="100%"
+                              defaultLanguage={selectedFile.language}
+                              language={selectedFile.language}
+                              theme={monacoTheme}
+                              loading={<Spin />}
+                              options={{
+                                automaticLayout: true,
+                                fontSize: 14,
+                                minimap: { enabled: false },
+                                padding: { top: 18, bottom: 18 },
+                                roundedSelection: true,
+                                scrollBeyondLastLine: false,
+                                wordWrap: 'on',
+                                smoothScrolling: true,
+                                cursorSmoothCaretAnimation: 'on',
+                              }}
+                              value={selectedFile.content ?? ''}
+                              onChange={(value) => setEditorContent(value ?? '')}
                             />
+                            {isConfigLoading ? (
+                              <div className="editor-mask">
+                                <Spin size="large" />
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <div className="editor-empty">
+                            <Empty description="请选择要编辑的配置文件" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </main>
+
+              {/* 右侧：变动洞察（普通）/ 技能列表+洞察（编辑） */}
+              <aside className="panel panel--insights">
+                <div className="insights-content">
+                  <div className="panel-header">
+                    <div>
+                      <Text className="panel-kicker">Insights</Text>
+                      <Title level={4}>变动洞察</Title>
+                    </div>
+                    <Button type="link" size="small" onClick={() => void refreshInsights()} loading={isInsightsLoading}>
+                      刷新
+                    </Button>
+                  </div>
+
+                  {skillInsights.length > 0 ? (
+                    <div className="skill-insights__list" style={{ overflow: 'auto', flex: 1 }}>
+                      {skillInsights.map((insight) => (
+                        <div key={insight.skillName} className="skill-insight-card">
+                          <div className="skill-insight-card__top">
+                            <div className="skill-insight-card__skill">
+                              <span className="skill-insight-card__name">{insight.skillName}</span>
+                              <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
+                                {insight.leaderToolName}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="skill-insight-card__laggers">
+                            {insight.laggingTools.slice(0, 2).map((lagger) => (
+                              <span key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
+                                {lagger.toolName}
+                                <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
+                              </span>
+                            ))}
+                            {insight.laggingTools.length > 2 && (
+                              <span className="skill-insight-card__more">+{insight.laggingTools.length - 2}</span>
+                            )}
                           </div>
                         </div>
-                        {renderSkillDescription(skill)}
-                        {skill.path ? <Text className="skill-entry__path">{skill.path}</Text> : null}
+                      ))}
+                    </div>
+                  ) : (
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无变动洞察" style={{ marginTop: 40 }} />
+                  )}
+
+                  {/* 工具统计信息 */}
+                  <div className="tool-info-section">
+                    <Text className="field-label">工具统计</Text>
+                    <div className="tool-info-grid">
+                      <div className="tool-info-item">
+                        <span className="tool-info-value">{selectedTool?.configFiles.length ?? 0}</span>
+                        <span className="tool-info-label">配置文件</span>
                       </div>
-                    </Tooltip>
-                  ))
-                ) : (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={currentSkills.length > 0 ? '没有匹配的技能' : '当前工具没有技能'}
-                  />
-                )}
-              </div>
-            </aside>
+                      <div className="tool-info-item">
+                        <span className="tool-info-value">{selectedTool?.skills.length ?? 0}</span>
+                        <span className="tool-info-label">技能</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 编辑模式：技能列表 + 洞察 */}
+                <div className="skills-overlay">
+                  <div className="insights-split-view">
+                    {/* 上方：技能列表 */}
+                    <div className="insights-block">
+                      <div className="insights-block__header">
+                        <div>
+                          <Text className="panel-kicker">Skills</Text>
+                          <Title level={4} style={{ marginTop: 4 }}>当前技能</Title>
+                        </div>
+                        <Space>
+                          <Tag variant="filled" color="cyan">
+                            {filteredCurrentSkills.length}/{currentSkills.length}
+                          </Tag>
+                          <Button size="small" icon={<SyncOutlined />} onClick={openSyncModal}>
+                            同步
+                          </Button>
+                        </Space>
+                      </div>
+                      <div className="insights-block__content">
+                        {filteredCurrentSkills.length > 0 ? (
+                          filteredCurrentSkills.map((skill) => (
+                            <Tooltip key={skill.id} title={skill.fullDescription ?? skill.description ?? skill.path}>
+                              <div className="skill-entry">
+                                <div className="skill-entry__top">
+                                  <span className="skill-entry__name" title={skill.name}>{skill.name}</span>
+                                  <div className="skill-entry__actions">
+                                    {skill.updatedAt ? <span className="skill-entry__time">{formatTime(skill.updatedAt)}</span> : null}
+                                    {renderSkillMeta(skill)}
+                                    <Dropdown
+                                      trigger={['click']}
+                                      menu={{
+                                        items: [
+                                          {
+                                            key: 'delete',
+                                            danger: true,
+                                            icon: <DeleteOutlined />,
+                                            label: '删除',
+                                            onClick: () => handleDeleteSkill(skill),
+                                          },
+                                        ],
+                                      }}
+                                    >
+                                      <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<MoreOutlined />}
+                                        aria-label={`${skill.name} 操作`}
+                                      />
+                                    </Dropdown>
+                                  </div>
+                                </div>
+                                {renderSkillDescription(skill)}
+                              </div>
+                            </Tooltip>
+                          ))
+                        ) : (
+                          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前工具没有技能" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 下方：变动洞察 */}
+                    <div className="insights-block">
+                      <div className="insights-block__header">
+                        <div>
+                          <Text className="panel-kicker">Insights</Text>
+                          <Title level={4} style={{ marginTop: 4 }}>变动洞察</Title>
+                        </div>
+                        <Button type="link" size="small" onClick={() => void refreshInsights()} loading={isInsightsLoading}>
+                          刷新
+                        </Button>
+                      </div>
+                      <div className="insights-block__content">
+                        {skillInsights.length > 0 ? (
+                          skillInsights.map((insight) => (
+                            <div key={insight.skillName} className="skill-insight-card">
+                              <div className="skill-insight-card__top">
+                                <div className="skill-insight-card__skill">
+                                  <span className="skill-insight-card__name">{insight.skillName}</span>
+                                  <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
+                                    {insight.leaderToolName}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="skill-insight-card__laggers">
+                                {insight.laggingTools.slice(0, 2).map((lagger) => (
+                                  <span key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
+                                    {lagger.toolName}
+                                    <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
+                                  </span>
+                                ))}
+                                {insight.laggingTools.length > 2 && (
+                                  <span className="skill-insight-card__more">+{insight.laggingTools.length - 2}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无变动洞察" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+
           </div>
 
           <Modal
@@ -794,9 +1023,6 @@ function App() {
               <div className="tool-manager-list">
                 <div className="tool-manager-toolbar">
                   <Text className="field-label">已登记工具</Text>
-                  <Button size="small" icon={<PlusOutlined />} onClick={resetToolForm}>
-                    新增
-                  </Button>
                 </div>
                 <Table<ToolRegistryEntry>
                   size="small"
@@ -839,6 +1065,10 @@ function App() {
               </div>
 
               <div className="tool-manager-form">
+                <div className="tool-manager-form__header">
+                  <Text className="field-label">{editingToolId ? '编辑工具' : '新增工具'}</Text>
+                  {editingToolId ? <Tag variant="filled" color="blue">{editingToolId}</Tag> : null}
+                </div>
                 <Form form={toolForm} layout="vertical" initialValues={{ enabled: true }}>
                   <div className="tool-form-row">
                     <Form.Item label="工具 ID" name="id" rules={[{ required: true, message: '必填' }]}>
@@ -853,7 +1083,7 @@ function App() {
                   </div>
 
                   <Form.Item label="技能目录" name="skillDir">
-                    <Input placeholder="例如 /Users/you/.codex/skills" />
+                    <Input placeholder="例如 /Users/you/.agents/skills" />
                   </Form.Item>
 
                   <div className="tool-manager-toolbar">
@@ -916,9 +1146,9 @@ function App() {
                   </div>
 
                   <div className="tool-manager-actions">
-                    <Button onClick={resetToolForm}>重置</Button>
+                    <Button onClick={resetToolForm}>{editingToolId ? '取消' : '重置'}</Button>
                     <Button type="primary" loading={registrySaving} onClick={() => void onSaveTool()}>
-                      保存工具
+                      {editingToolId ? '保存修改' : '保存工具'}
                     </Button>
                   </div>
                 </Form>
@@ -936,6 +1166,7 @@ function App() {
             width={950}
             centered
             confirmLoading={isSyncSubmitting}
+            okButtonProps={{ disabled: !canSubmitSync }}
             className="sync-modal"
             wrapClassName="sync-modal-wrap"
           >
@@ -975,6 +1206,7 @@ function App() {
                 <div className="sync-control-group">
                   <Text className="field-label">冲突策略</Text>
                   <Segmented
+                    className="conflict-segmented"
                     block
                     size="large"
                     options={conflictOptions}
@@ -982,13 +1214,19 @@ function App() {
                     onChange={(value) => setConflictStrategyState(value as ConflictStrategy)}
                   />
                 </div>
+
+                <div className="sync-summary">
+                  {canSubmitSync
+                    ? `将 ${syncSelectedSkillIds.length} 个技能同步到 ${selectedSyncTargetNames}`
+                    : '请选择目标工具和技能后执行同步'}
+                </div>
               </div>
 
               <div className="sync-modal__skills sync-modal__card">
                 <div className="sync-modal__skills-header">
                   <Text className="field-label">技能选择</Text>
                   <Space>
-                    <Tag bordered={false} color="cyan">
+                    <Tag variant="filled" color="cyan">
                       {syncSelectedSkillIds.length}/{currentSkills.length}
                     </Tag>
                     <Button size="small" onClick={() => setSyncSelectedSkillIds(filteredSyncSkills.map((skill) => skill.id))}>
@@ -1025,10 +1263,10 @@ function App() {
                         />
                         <div className="skill-item__body">
                           <div className="skill-item__top">
-                            <span className="skill-item__name">{skill.name}</span>
+                            <span className="skill-item__name" title={skill.name}>{skill.name}</span>
                             <div className="skill-item__tags">
-                              {skill.hasSkillMd ? <Tag bordered={false}>SKILL.md</Tag> : null}
-                              {skill.isSymlink ? <Tag bordered={false} color="gold">软链接</Tag> : null}
+                              {skill.isSymlink ? <Tag variant="filled" color="gold">软链接</Tag> : null}
+                              {skill.updatedAt ? <span className="skill-item__time">{formatTime(skill.updatedAt)}</span> : null}
                             </div>
                           </div>
                           {skill.summary ?? skill.description ? (
