@@ -1,73 +1,87 @@
-# React + TypeScript + Vite
+# AI Toolbox
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+AI 工具箱 —— 一个基于 Tauri + React 的桌面端 Agent 技能管理工具。
 
-Currently, two official plugins are available:
+## 功能特性
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### 工具管理
+- 多工具注册与管理（Claude Code、Cline、Cursor、Windsurf 等）
+- 自动扫描工具目录，识别配置文件和技能目录
+- 工具启用/禁用切换
 
-## React Compiler
+### 技能同步
+- 一键同步技能到多个目标工具
+- 支持软链接和物理复制两种模式
+- 冲突策略：跳过/覆盖/保留最新
+- 实时显示技能在各工具间的同步状态
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 配置编辑
+- 内置 Monaco Editor 代码编辑器
+- 支持 JSON/YAML/TOML 等配置格式
+- 自动保存与手动保存
+- 配置文件备份与恢复
 
-## Expanding the ESLint configuration
+### 变动洞察
+- 实时监控各工具技能差异
+- 识别领先工具与滞后工具
+- 显示技能更新时间对比
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 技术架构
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+├── src/                          # 前端 (React + TypeScript)
+│   ├── App.tsx                   # 主界面
+│   ├── App.css                   # 样式
+│   ├── lib/
+│   │   └── toolboxApi.ts         # Tauri 命令封装
+│   ├── store/
+│   │   └── useToolboxStore.ts    # 状态管理 (Zustand)
+│   └── types/
+│       └── toolbox.ts            # 类型定义
+│
+├── src-tauri/                    # 后端 (Rust)
+│   ├── src/
+│   │   ├── lib.rs               # Tauri 命令实现
+│   │   └── toolbox.rs           # 工具箱核心逻辑
+│   └── Cargo.toml               # Rust 依赖
+│
+├── package.json                  # 前端版本 0.1.0
+└── src-tauri/Cargo.toml          # 后端版本 0.2.0
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 开发环境
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **前端**: React 19 + TypeScript + Vite + Ant Design 6
+- **后端**: Rust + Tauri 2
+- **编辑器**: Monaco Editor
+- **状态管理**: Zustand
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 快速开始
+
+```bash
+# 安装依赖
+npm install
+
+# 开发模式
+npm run tauri:dev
+
+# 构建
+npm run tauri:build
 ```
+
+## 版本记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v0.2.0 | 2025-05 | 新增变动洞察、UI 重构、技能目录配置 |
+| v0.1.0 | 2025-04 | 初始版本，工具管理与技能同步 |
+
+## 分支说明
+
+- `main` — 主分支，稳定版本
+- `codex/tool-registry-management` — 功能开发分支
+- 版本标签：`v0.1.0`、`v0.2.0`
+
+## License
+
+MIT
