@@ -1109,8 +1109,8 @@
 
 .skill-open-location {
   padding: 4px 10px;
-  background: rgba(31, 45, 55, 0.06);
-  border: none;
+  background: rgba(31, 45, 55, 0.08);
+  border: 1px solid rgba(31, 45, 55, 0.15);
   border-radius: 6px;
   font-size: 11px;
   color: #5f6c73;
@@ -1121,6 +1121,8 @@
   transition: all 0.2s;
   flex-shrink: 0;
   white-space: nowrap;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .skill-open-location:hover {
