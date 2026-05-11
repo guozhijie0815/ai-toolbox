@@ -707,30 +707,32 @@ function App() {
                           <span>{tool.skills.length} skills</span>
                           {dirtyCount > 0 ? <span>{dirtyCount} unsaved</span> : null}
                         </div>
-                        {hasConfig && (
+                        {hasConfig && tool.configFiles.length > 0 && (
                           <div className="tool-configs">
-                            <div className="tool-configs__label">配置文件</div>
+                            <div className="tool-configs__label">配置文件 ({tool.configFiles.length})</div>
                             <div className="tool-configs__list">
-                              {tool.configFiles.map((file) => (
+                              {tool.configFiles.map((file, index) => (
                                 <div
-                                  key={file.id}
+                                  key={file.id || `config-${index}`}
                                   className="tool-config-file"
                                   role="button"
                                   tabIndex={0}
                                   onClick={(event) => {
                                     event.stopPropagation()
-                                    void selectConfigFile(file.id)
+                                    if (file.id) {
+                                      void selectConfigFile(file.id)
+                                    }
                                   }}
                                   onKeyDown={(event) => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
+                                    if ((event.key === 'Enter' || event.key === ' ') && file.id) {
                                       event.stopPropagation()
                                       void selectConfigFile(file.id)
                                     }
                                   }}
                                 >
                                   <FileTextOutlined className="config-icon" />
-                                  <span className="config-name">{file.name}</span>
-                                  <span className="config-type">{file.language}</span>
+                                  <span className="config-name">{file.name || '未命名'}</span>
+                                  <span className="config-type">{file.language || 'txt'}</span>
                                   {file.dirty ? <span className="dirty-indicator" /> : null}
                                 </div>
                               ))}
