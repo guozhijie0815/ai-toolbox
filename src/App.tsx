@@ -812,7 +812,7 @@ function App() {
                                   <button
                                     type="button"
                                     className="skill-open-location"
-                                    onClick={() => void openPathInFinder(skill.path)}
+                                    onClick={() => void openPathInFinder(skill.path!)}
                                   >
                                     <FolderOpenOutlined />
                                     打开位置
