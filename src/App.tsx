@@ -574,30 +574,30 @@ function App() {
             onMouseDown={handleWindowDragMouseDown}
             onDoubleClick={(event) => void handleWindowDragDoubleClick(event)}
           >
-            {/* 交通灯 */}
-            <div className="traffic-lights">
-              <button
-                type="button"
-                className="traffic-light traffic-light--red"
-                onClick={() => void handleWindowClose()}
-                aria-label="关闭"
-              />
-              <button
-                type="button"
-                className="traffic-light traffic-light--yellow"
-                onClick={() => void handleWindowMinimize()}
-                aria-label="最小化"
-              />
-              <button
-                type="button"
-                className="traffic-light traffic-light--green"
-                onClick={() => void handleWindowMaximize()}
-                aria-label="最大化"
-              />
+            {/* 交通灯 + 标题 */}
+            <div className="title-bar">
+              <div className="traffic-lights">
+                <button
+                  type="button"
+                  className="traffic-light traffic-light--red"
+                  onClick={() => void handleWindowClose()}
+                  aria-label="关闭"
+                />
+                <button
+                  type="button"
+                  className="traffic-light traffic-light--yellow"
+                  onClick={() => void handleWindowMinimize()}
+                  aria-label="最小化"
+                />
+                <button
+                  type="button"
+                  className="traffic-light traffic-light--green"
+                  onClick={() => void handleWindowMaximize()}
+                  aria-label="最大化"
+                />
+              </div>
+              <span className="app-title">AI Toolbox</span>
             </div>
-
-            {/* 应用标题 */}
-            <div className="app-title">AI Toolbox</div>
 
             {/* 标题行：左侧标题 + 右侧操作 */}
             <div className="header-top">
@@ -710,29 +710,6 @@ function App() {
                           <span>{tool.skills.length} skills</span>
                           {dirtyCount > 0 ? <span>{dirtyCount} unsaved</span> : null}
                         </div>
-                        {hasConfig && tool.configFiles.length > 0 && (
-                          <div className="tool-configs" onClick={(event) => event.stopPropagation()}>
-                            <div className="tool-configs__label">配置文件 ({tool.configFiles.length})</div>
-                            <div className="tool-configs__list">
-                              {tool.configFiles.map((file, index) => (
-                                <div
-                                  key={file.id || `config-${index}`}
-                                  className="tool-config-file"
-                                  onClick={() => {
-                                    if (file.id) {
-                                      void selectConfigFile(file.id)
-                                    }
-                                  }}
-                                >
-                                  <FileTextOutlined className="config-icon" />
-                                  <span className="config-name">{file.name || '未命名'}</span>
-                                  <span className="config-type">{file.language || 'txt'}</span>
-                                  {file.dirty ? <span className="dirty-indicator" /> : null}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </button>
                     )
                   })}

@@ -166,6 +166,21 @@
   -webkit-app-region: no-drag;
 }
 
+/* ---- 标题栏 ---- */
+.title-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.app-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted-text);
+  letter-spacing: 1px;
+}
+
 /* ---- 交通灯 ---- */
 .traffic-lights {
   display: flex;
@@ -232,16 +247,6 @@
 
 .traffic-light--green::before {
   content: '+';
-}
-
-/* ---- 应用标题 ---- */
-.app-title {
-  text-align: center;
-  font-size: 14px;
-  color: var(--muted-text);
-  letter-spacing: 2px;
-  margin-bottom: 8px;
-  font-weight: 500;
 }
 
 /* ---- 头部标题行 ---- */
