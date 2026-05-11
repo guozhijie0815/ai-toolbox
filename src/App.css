@@ -1904,33 +1904,42 @@
 
 .skill-insight-card__laggers {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
 }
 
 .skill-insight-card__lagger {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--chip-bg);
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-bg-soft);
   color: var(--secondary-text);
-  font-size: 11px;
+  font-size: 12px;
+}
+
+.skill-insight-card__lagger-name {
+  font-weight: 600;
+  color: var(--primary-text);
 }
 
 .skill-insight-card__behind {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted-text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(216, 105, 51, 0.1);
+  color: #d86933;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .skill-insight-card__more {
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: var(--chip-bg);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-bg-soft);
   color: var(--muted-text);
-  font-size: 10px;
+  font-size: 11px;
+  text-align: center;
 }
 
 /* ---- 工具信息 ---- */

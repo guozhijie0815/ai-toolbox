@@ -964,15 +964,12 @@ function App() {
                             </div>
                           </div>
                           <div className="skill-insight-card__laggers">
-                            {insight.laggingTools.slice(0, 2).map((lagger) => (
-                              <span key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
-                                {lagger.toolName}
+                            {insight.laggingTools.map((lagger) => (
+                              <div key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
+                                <span className="skill-insight-card__lagger-name">{lagger.toolName}</span>
                                 <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
-                              </span>
+                              </div>
                             ))}
-                            {insight.laggingTools.length > 2 && (
-                              <span className="skill-insight-card__more">+{insight.laggingTools.length - 2}</span>
-                            )}
                           </div>
                         </div>
                       ))}
@@ -1083,15 +1080,12 @@ function App() {
                                 </div>
                               </div>
                               <div className="skill-insight-card__laggers">
-                                {insight.laggingTools.slice(0, 2).map((lagger) => (
-                                  <span key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
-                                    {lagger.toolName}
+                                {insight.laggingTools.map((lagger) => (
+                                  <div key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
+                                    <span className="skill-insight-card__lagger-name">{lagger.toolName}</span>
                                     <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
-                                  </span>
+                                  </div>
                                 ))}
-                                {insight.laggingTools.length > 2 && (
-                                  <span className="skill-insight-card__more">+{insight.laggingTools.length - 2}</span>
-                                )}
                               </div>
                             </div>
                           ))
