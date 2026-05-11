@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Toolbox - Skill Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#d86933',
+                        'primary-dark': '#22d3ee',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .skill-item { transition: all 0.15s ease; }
+        .skill-item:hover { background-color: rgba(0,0,0,0.02); }
+        .skill-item.active { background-color: rgba(216,105,51,0.08); border-left-color: #d86933; }
+        .dark .skill-item.active { background-color: rgba(34,211,238,0.08); border-left-color: #22d3ee; }
+        
+        .tool-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .tool-status-dot.synced { background-color: #22c55e; }
+        .tool-status-dot.pending { background-color: #eab308; }
+        .tool-status-dot.missing { background-color: #cbd5e1; }
+        .dark .tool-status-dot.missing { background-color: #475569; }
+        
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .orphan-badge { animation: pulse-ring 2s infinite; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-screen overflow-hidden">
+    <!-- Header -->
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-14 flex items-center justify-between px-4 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-primary dark:bg-primary-dark rounded-lg flex items-center justify-center text-white">
+                <i class="fa-solid fa-toolbox"></i>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h1 class="font-bold text-base">AI Toolbox</h1>
+                <span class="text-xs text-gray-400 dark:text-gray-500">Skill Center</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">
+                ~/.ai-toolbox/skills/
+            </span>
+            <button onclick="toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <i class="fa-solid fa-moon dark:hidden text-sm"></i>
+                <i class="fa-solid fa-sun hidden dark:inline text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex h-[calc(100vh-3.5rem)]">
+        <!-- Left Sidebar: Skill List -->
+        <aside class="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0">
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-200 dark:border-gray-700">
+                <button onclick="switchTab('center')" id="tab-center" class="flex-1 py-3 text-sm font-medium border-b-2 border-primary dark:border-primary-dark text-primary dark:text-primary-dark bg-primary/5 dark:bg-primary-dark/5">
+                    技能中心
+                    <span class="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-primary/10 dark:bg-primary-dark/10" id="centerCount">6</span>
+                </button>
+                <button onclick="switchTab('orphan')" id="tab-orphan" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                    游离技能
+                    <span class="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300" id="orphanBadge">2</span>
+                </button>
+            </div>
+
+            <!-- Search -->
+            <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    <input type="text" id="searchInput" placeholder="搜索技能..." 
+                           class="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary-dark/20"
+                           oninput="filterSkills()">
+                </div>
+            </div>
+
+            <!-- Skill List -->
+            <div id="skillList" class="flex-1 overflow-y-auto">
+                <!-- Skills rendered here -->
+            </div>
+        </aside>
+
+        <!-- Right Content: Detail Panel -->
+        <main id="detailPanel" class="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+            <!-- Empty State -->
+            <div id="emptyState" class="flex-1 flex flex-col items-center justify-center text-gray-400">
+                <i class="fa-solid fa-arrow-left text-3xl mb-4 opacity-50"></i>
+                <p class="text-sm">选择左侧技能查看详情</p>
+            </div>
+
+            <!-- Detail Content -->
+            <div id="detailContent" class="hidden flex-1 flex flex-col">
+                <!-- Detail Header -->
+                <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="flex items-center gap-3 mb-2">
+                                <h2 class="text-2xl font-bold" id="detailName">Skill Name</h2>
+                                <span id="detailStatus" class="px-2 py-0.5 text-xs rounded-full"></span>
+                            </div>
+                            <p class="text-gray-500 dark:text-gray-400 text-sm" id="detailDesc">Description</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="editCurrentSkill()" class="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                <i class="fa-solid fa-pen mr-1"></i>编辑
+                            </button>
+                            <button onclick="openSyncModal()" class="px-3 py-2 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm hover:opacity-90 transition-opacity">
+                                <i class="fa-solid fa-arrows-rotate mr-1"></i>同步
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 mt-4 text-xs text-gray-400 dark:text-gray-500">
+                        <span><i class="fa-regular fa-clock mr-1"></i>更新于 <span id="detailTime"></span></span>
+                        <span><i class="fa-solid fa-folder-open mr-1"></i><span id="detailPath"></span></span>
+                    </div>
+                </div>
+
+                <!-- Sync Status -->
+                <div class="p-6">
+                    <h3 class="text-sm font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-nodes text-gray-400"></i>
+                        同步状态
+                    </h3>
+                    <div id="toolStatusList" class="space-y-2">
+                        <!-- Tool statuses rendered here -->
+                    </div>
+                </div>
+
+                <!-- Skill Preview -->
+                <div class="flex-1 p-6 pt-0 overflow-auto">
+                    <h3 class="text-sm font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-file-lines text-gray-400"></i>
+                        SKILL.md 预览
+                    </h3>
+                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 font-mono text-sm">
+                        <pre class="text-gray-600 dark:text-gray-300 whitespace-pre-wrap"><span id="skillPreview"></span></pre>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Sync Modal -->
+    <div id="syncModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full">
+            <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="font-bold">同步技能</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" id="syncSkillName"></p>
+            </div>
+            <div class="p-5">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">选择目标工具：</p>
+                <div id="syncTargets" class="space-y-2"></div>
+            </div>
+            <div class="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+                <button onclick="closeSyncModal()" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">取消</button>
+                <button onclick="confirmSync()" class="px-4 py-2 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm hover:opacity-90">同步</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adopt Modal -->
+    <div id="adoptModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full">
+            <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="font-bold">纳入技能中心</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" id="adoptSkillName"></p>
+            </div>
+            <div class="p-5">
+                <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-yellow-800 dark:text-yellow-200"><i class="fa-solid fa-triangle-exclamation mr-2"></i>将此技能复制到中心仓库统一管理</p>
+                </div>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked id="adoptCopy" class="rounded">
+                        <span class="text-sm">复制到 ~/.ai-toolbox/skills/</span>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked id="adoptKeep" class="rounded">
+                        <span class="text-sm">保留原位置副本</span>
+                    </label>
+                </div>
+            </div>
+            <div class="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+                <button onclick="closeAdoptModal()" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700">取消</button>
+                <button onclick="confirmAdopt()" class="px-4 py-2 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm hover:opacity-90">确认纳入</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tools = [
+            { id: 'claude', name: 'Claude', icon: 'fa-robot', color: 'text-orange-500' },
+            { id: 'cursor', name: 'Cursor', icon: 'fa-i-cursor', color: 'text-blue-500' },
+            { id: 'opencode', name: 'OpenCode', icon: 'fa-code', color: 'text-purple-500' },
+            { id: 'codex', name: 'Codex', icon: 'fa-terminal', color: 'text-green-500' },
+        ];
+
+        const centerSkills = [
+            {
+                id: 'git-commit-push',
+                name: 'Git Commit Push',
+                description: '自动分析改动并提交推送',
+                updatedAt: '2025-05-11 10:30',
+                path: '~/.ai-toolbox/skills/git-commit-push',
+                tools: { claude: 'synced', cursor: 'synced', opencode: 'pending', codex: 'missing' },
+                preview: '# Git Commit Push\n\n自动分析 Git 改动内容，生成合适的 commit message 并推送到远程。\n\n## 使用方式\n\n1. 在项目中完成代码修改\n2. 运行 /git-commit-push\n3. 确认提交信息\n4. 自动推送到当前分支'
+            },
+            {
+                id: 'code-review',
+                name: 'Code Review',
+                description: '以风险优先方式进行代码审查',
+                updatedAt: '2025-05-10 16:45',
+                path: '~/.ai-toolbox/skills/code-review',
+                tools: { claude: 'synced', cursor: 'synced', opencode: 'synced', codex: 'synced' },
+                preview: '# Code Review - Risk First\n\n以风险优先方式进行代码审查，重点关注功能缺陷、回归风险、安全问题、数据一致性和性能风险。'
+            },
+            {
+                id: 'archery-sql',
+                name: 'Archery SQL',
+                description: '在 Archery SQL 平台执行在线查询',
+                updatedAt: '2025-05-09 09:20',
+                path: '~/.ai-toolbox/skills/archery-sql',
+                tools: { claude: 'pending', cursor: 'missing', opencode: 'synced', codex: 'missing' },
+                preview: '# Archery SQL\n\n在 Archery SQL 平台执行在线查询。支持测试环境（158）和生产环境（230）。'
+            },
+            {
+                id: 'zdm-loki',
+                name: 'ZDM Loki',
+                description: '查询应用 Loki 日志',
+                updatedAt: '2025-05-08 14:15',
+                path: '~/.ai-toolbox/skills/zdm-loki',
+                tools: { claude: 'synced', cursor: 'pending', opencode: 'pending', codex: 'missing' },
+                preview: '# ZDM Loki\n\n查询应用 Loki 日志：按 appKey 与时间窗检索、关键词过滤、traceId 过滤。'
+            },
+            {
+                id: 'php-to-java',
+                name: 'PHP to Java',
+                description: '将 PHP 接口迁移到 Java 项目',
+                updatedAt: '2025-05-07 11:00',
+                path: '~/.ai-toolbox/skills/php-to-java',
+                tools: { claude: 'synced', cursor: 'synced', opencode: 'synced', codex: 'synced' },
+                preview: '# PHP to Java Migration\n\n将 crm（PHP）项目的接口迁移到 crm2025（Java/Spring Boot）项目中。'
+            },
+            {
+                id: 'preflight',
+                name: 'Preflight',
+                description: '扫描 Git 改动生成上线清单',
+                updatedAt: '2025-05-06 08:30',
+                path: '~/.ai-toolbox/skills/preflight',
+                tools: { claude: 'missing', cursor: 'missing', opencode: 'synced', codex: 'pending' },
+                preview: '# Preflight\n\n扫描工作项目 Git 改动生成上线清单。当用户说"要上线"、"上线步骤"时触发。'
+            }
+        ];
+
+        const orphanSkills = [
+            {
+                id: 'custom-tool-1',
+                name: 'My Custom Skill',
+                description: '在 Cursor 中创建的自定义技能',
+                sourceTool: 'cursor',
+                updatedAt: '2025-05-11 09:00',
+                path: '~/.cursor/skills/my-custom-skill'
+            },
+            {
+                id: 'custom-tool-2',
+                name: 'Legacy Helper',
+                description: '旧的辅助工具技能',
+                sourceTool: 'claude',
+                updatedAt: '2025-05-05 14:20',
+                path: '~/.claude/skills/legacy-helper'
+            }
+        ];
+
+        let currentTab = 'center';
+        let selectedSkill = null;
+
+        function init() {
+            renderSkillList();
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('centerCount').textContent = centerSkills.length;
+            document.getElementById('orphanBadge').textContent = orphanSkills.length;
+        }
+
+        function getSyncSummary(skill) {
+            const synced = Object.values(skill.tools).filter(s => s === 'synced').length;
+            const total = tools.length;
+            return `${synced}/${total}`;
+        }
+
+        function renderSkillList() {
+            const list = document.getElementById('skillList');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            let skills = currentTab === 'center' ? centerSkills : orphanSkills;
+            
+            if (searchTerm) {
+                skills = skills.filter(s => 
+                    s.name.toLowerCase().includes(searchTerm) || 
+                    s.description.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (skills.length === 0) {
+                list.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <i class="fa-solid fa-search text-2xl mb-2"></i>
+                        <p class="text-sm">未找到技能</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = skills.map(skill => {
+                const isActive = selectedSkill?.id === skill.id;
+                const isOrphan = currentTab === 'orphan';
+                
+                if (isOrphan) {
+                    const sourceTool = tools.find(t => t.id === skill.sourceTool);
+                    return `
+                        <div onclick="selectSkill('${skill.id}')" 
+                             class="skill-item px-4 py-3 border-b border-gray-100 dark:border-gray-700 cursor-pointer border-l-4 ${isActive ? 'active' : 'border-l-transparent'}">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-medium text-sm truncate">${skill.name}</span>
+                                <span class="orphan-badge w-2 h-2 rounded-full bg-orange-500"></span>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mb-1">${skill.description}</p>
+                            <div class="flex items-center gap-2 text-xs text-gray-400">
+                                <span><i class="fa-solid ${sourceTool?.icon} mr-1"></i>${sourceTool?.name || skill.sourceTool}</span>
+                                <span>${skill.updatedAt.split(' ')[0]}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const summary = getSyncSummary(skill);
+                const allSynced = summary === `${tools.length}/${tools.length}`;
+                
+                return `
+                    <div onclick="selectSkill('${skill.id}')" 
+                         class="skill-item px-4 py-3 border-b border-gray-100 dark:border-gray-700 cursor-pointer border-l-4 ${isActive ? 'active' : 'border-l-transparent'}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-medium text-sm truncate">${skill.name}</span>
+                            ${allSynced 
+                                ? '<span class="text-xs px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"><i class="fa-solid fa-check mr-1"></i>全部同步</span>'
+                                : `<span class="text-xs px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300">${summary}</span>`
+                            }
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mb-1">${skill.description}</p>
+                        <div class="flex items-center gap-2 text-xs text-gray-400">
+                            <span><i class="fa-regular fa-clock mr-1"></i>${skill.updatedAt}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectSkill(skillId) {
+            let skill;
+            if (currentTab === 'center') {
+                skill = centerSkills.find(s => s.id === skillId);
+            } else {
+                skill = orphanSkills.find(s => s.id === skillId);
+            }
+            
+            if (!skill) return;
+            selectedSkill = skill;
+            
+            renderSkillList(); // Re-render to update active state
+            
+            if (currentTab === 'orphan') {
+                openAdoptModal(skillId);
+                return;
+            }
+
+            // Show detail panel
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('detailContent').classList.remove('hidden');
+            
+            document.getElementById('detailName').textContent = skill.name;
+            document.getElementById('detailDesc').textContent = skill.description;
+            document.getElementById('detailTime').textContent = skill.updatedAt;
+            document.getElementById('detailPath').textContent = skill.path;
+            document.getElementById('skillPreview').textContent = skill.preview;
+            
+            const allSynced = Object.values(skill.tools).every(s => s === 'synced');
+            const statusEl = document.getElementById('detailStatus');
+            if (allSynced) {
+                statusEl.className = 'px-2 py-0.5 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300';
+                statusEl.innerHTML = '<i class="fa-solid fa-check mr-1"></i>全部同步';
+            } else {
+                statusEl.className = 'px-2 py-0.5 text-xs rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300';
+                statusEl.innerHTML = '<i class="fa-solid fa-clock mr-1"></i>待同步';
+            }
+            
+            // Render tool status list
+            const toolStatusList = document.getElementById('toolStatusList');
+            toolStatusList.innerHTML = tools.map(tool => {
+                const status = skill.tools[tool.id];
+                const statusClass = status === 'synced' ? 'synced' : status === 'pending' ? 'pending' : 'missing';
+                const statusText = status === 'synced' ? '已同步' : status === 'pending' ? '待同步' : '未安装';
+                const isSynced = status === 'synced';
+                
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 ${isSynced ? 'bg-green-50/50 dark:bg-green-900/10' : ''}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                <i class="fa-solid ${tool.icon} ${tool.color}"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium">${tool.name}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">${statusText}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="tool-status-dot ${statusClass}"></span>
+                            ${!isSynced ? `
+                                <button onclick="syncToTool('${tool.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-primary/10 dark:bg-primary-dark/10 text-primary dark:text-primary-dark hover:bg-primary/20 dark:hover:bg-primary-dark/20 transition-colors">
+                                    同步
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            selectedSkill = null;
+            
+            // Update tab styles
+            const centerTab = document.getElementById('tab-center');
+            const orphanTab = document.getElementById('tab-orphan');
+            
+            if (tab === 'center') {
+                centerTab.className = 'flex-1 py-3 text-sm font-medium border-b-2 border-primary dark:border-primary-dark text-primary dark:text-primary-dark bg-primary/5 dark:bg-primary-dark/5';
+                orphanTab.className = 'flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200';
+            } else {
+                centerTab.className = 'flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200';
+                orphanTab.className = 'flex-1 py-3 text-sm font-medium border-b-2 border-orange-500 text-orange-600 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-900/10';
+            }
+            
+            // Hide detail panel when switching tabs
+            document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('detailContent').classList.add('hidden');
+            
+            renderSkillList();
+        }
+
+        function filterSkills() {
+            renderSkillList();
+        }
+
+        function openSyncModal() {
+            if (!selectedSkill || currentTab === 'orphan') return;
+            
+            document.getElementById('syncSkillName').textContent = selectedSkill.name;
+            
+            const targetsDiv = document.getElementById('syncTargets');
+            targetsDiv.innerHTML = tools.map(tool => {
+                const status = selectedSkill.tools[tool.id];
+                const isSynced = status === 'synced';
+                return `
+                    <label class="flex items-center gap-3 p-3 rounded-lg border ${isSynced ? 'border-gray-200 dark:border-gray-700 opacity-50' : 'border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors"
+                    >
+                        <input type="checkbox" ${isSynced ? 'disabled checked' : ''} value="${tool.id}" class="sync-target-check rounded" ${isSynced ? 'disabled' : ''}>
+                        <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                            <i class="fa-solid ${tool.icon} ${tool.color}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium">${tool.name}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">${isSynced ? '已同步' : status === 'pending' ? '待同步' : '未安装'}</p>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+            
+            document.getElementById('syncModal').classList.remove('hidden');
+        }
+
+        function closeSyncModal() {
+            document.getElementById('syncModal').classList.add('hidden');
+        }
+
+        function confirmSync() {
+            if (!selectedSkill) return;
+            
+            const checkedTargets = document.querySelectorAll('.sync-target-check:checked:not(:disabled)');
+            const targetIds = Array.from(checkedTargets).map(cb => cb.value);
+            
+            if (targetIds.length === 0) {
+                alert('请至少选择一个目标工具');
+                return;
+            }
+            
+            targetIds.forEach(toolId => {
+                selectedSkill.tools[toolId] = 'synced';
+            });
+            
+            renderSkillList();
+            selectSkill(selectedSkill.id); // Refresh detail panel
+            closeSyncModal();
+            showToast(`已同步到 ${targetIds.length} 个工具`);
+        }
+
+        function syncToTool(toolId) {
+            if (!selectedSkill) return;
+            selectedSkill.tools[toolId] = 'synced';
+            renderSkillList();
+            selectSkill(selectedSkill.id);
+            showToast(`已同步到 ${tools.find(t => t.id === toolId)?.name}`);
+        }
+
+        function openAdoptModal(skillId) {
+            const skill = orphanSkills.find(s => s.id === skillId);
+            if (!skill) return;
+            
+            selectedSkill = skill;
+            document.getElementById('adoptSkillName').textContent = skill.name;
+            document.getElementById('adoptModal').classList.remove('hidden');
+        }
+
+        function closeAdoptModal() {
+            document.getElementById('adoptModal').classList.add('hidden');
+            if (currentTab === 'orphan') {
+                selectedSkill = null;
+                renderSkillList();
+            }
+        }
+
+        function confirmAdopt() {
+            if (!selectedSkill) return;
+            
+            const newCenterSkill = {
+                id: selectedSkill.id,
+                name: selectedSkill.name,
+                description: selectedSkill.description,
+                updatedAt: selectedSkill.updatedAt,
+                path: `~/.ai-toolbox/skills/${selectedSkill.id}`,
+                tools: { claude: 'pending', cursor: 'pending', opencode: 'pending', codex: 'pending' },
+                preview: '# ' + selectedSkill.name + '\n\n' + selectedSkill.description
+            };
+            
+            newCenterSkill.tools[selectedSkill.sourceTool] = 'synced';
+            centerSkills.push(newCenterSkill);
+            
+            const index = orphanSkills.findIndex(s => s.id === selectedSkill.id);
+            if (index > -1) orphanSkills.splice(index, 1);
+            
+            updateStats();
+            closeAdoptModal();
+            
+            // Switch to center tab and select the new skill
+            switchTab('center');
+            selectSkill(newCenterSkill.id);
+            
+            showToast(`已将「${newCenterSkill.name}」纳入技能中心`);
+        }
+
+        function editCurrentSkill() {
+            if (!selectedSkill) return;
+            showToast(`编辑技能：${selectedSkill.name}`);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-gray-800 dark:bg-gray-700 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 text-sm';
+            toast.innerHTML = `<i class="fa-solid fa-check-circle text-green-400"></i><span>${message}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+        }
+
+        // Initialize
+        init();
+        
+        // Select first skill by default
+        if (centerSkills.length > 0) {
+            selectSkill(centerSkills[0].id);
+        }
+    </script>
+</body>
+</html>

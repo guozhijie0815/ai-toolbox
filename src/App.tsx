@@ -927,24 +927,65 @@ function App() {
                   {skillInsights.length > 0 ? (
                     <div className="skill-insights__list" style={{ overflow: 'auto', flex: 1 }}>
                       {skillInsights.map((insight) => (
-                        <div key={insight.skillName} className="skill-insight-card">
-                          <div className="skill-insight-card__top">
-                            <div className="skill-insight-card__skill">
-                              <span className="skill-insight-card__name">{insight.skillName}</span>
-                              <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
-                                {insight.leaderToolName}
-                              </span>
+                          <div key={insight.skillName} className="skill-insight-card">
+                            <div className="skill-insight-card__top">
+                              <div className="skill-insight-card__skill">
+                                <span className="skill-insight-card__name">{insight.skillName}</span>
+                                <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
+                                  {insight.leaderToolName}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* 差异详情 */}
+                            {insight.laggingTools.some(lag => lag.diffs.length > 0) && (
+                              <div className="insight-diff">
+                                {insight.laggingTools.flatMap(lag => 
+                                  lag.diffs.map((diff, idx) => (
+                                    <div key={`${lag.toolId}-${idx}`} className="diff-row">
+                                      <span className={`diff-icon ${diff.diffType}`}>
+                                        {diff.diffType === 'added' ? '+' : diff.diffType === 'deleted' ? '−' : 'M'}
+                                      </span>
+                                      <span className="diff-text">{diff.fileName}</span>
+                                      <span className="diff-tool">{lag.toolName}</span>
+                                    </div>
+                                  ))
+                                ).slice(0, 3)}
+                                {insight.laggingTools.reduce((sum, lag) => sum + lag.diffs.length, 0) > 3 && (
+                                  <div className="diff-more">
+                                    +{insight.laggingTools.reduce((sum, lag) => sum + lag.diffs.length, 0) - 3} 更多文件
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            <div className="skill-insight-card__laggers">
+                              {insight.laggingTools.map((lagger) => (
+                                <div key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
+                                  <span className="skill-insight-card__lagger-name">{lagger.toolName}</span>
+                                  <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {/* 一键补齐按钮 */}
+                            <div className="insight-actions">
+                              <Button 
+                                size="small" 
+                                icon={<SyncOutlined />}
+                                onClick={() => {
+                                  // 设置同步目标为所有落后工具
+                                  setSyncTargetToolIds(insight.laggingTools.map(lag => lag.toolId))
+                                  // 设置同步技能
+                                  setSyncSelectedSkillIds([insight.skillName])
+                                  // 打开同步弹窗
+                                  setSyncModalOpen(true)
+                                }}
+                              >
+                                一键补齐
+                              </Button>
                             </div>
                           </div>
-                          <div className="skill-insight-card__laggers">
-                            {insight.laggingTools.map((lagger) => (
-                              <div key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
-                                <span className="skill-insight-card__lagger-name">{lagger.toolName}</span>
-                                <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
                       ))}
                     </div>
                   ) : (
@@ -1052,6 +1093,29 @@ function App() {
                                   </span>
                                 </div>
                               </div>
+                              
+                              {/* 差异详情 */}
+                              {insight.laggingTools.some(lag => lag.diffs.length > 0) && (
+                                <div className="insight-diff">
+                                  {insight.laggingTools.flatMap(lag => 
+                                    lag.diffs.map((diff, idx) => (
+                                      <div key={`${lag.toolId}-${idx}`} className="diff-row">
+                                        <span className={`diff-icon ${diff.diffType}`}>
+                                          {diff.diffType === 'added' ? '+' : diff.diffType === 'deleted' ? '−' : 'M'}
+                                        </span>
+                                        <span className="diff-text">{diff.fileName}</span>
+                                        <span className="diff-tool">{lag.toolName}</span>
+                                      </div>
+                                    ))
+                                  ).slice(0, 3)}
+                                  {insight.laggingTools.reduce((sum, lag) => sum + lag.diffs.length, 0) > 3 && (
+                                    <div className="diff-more">
+                                      +{insight.laggingTools.reduce((sum, lag) => sum + lag.diffs.length, 0) - 3} 更多文件
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              
                               <div className="skill-insight-card__laggers">
                                 {insight.laggingTools.map((lagger) => (
                                   <div key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
@@ -1059,6 +1123,21 @@ function App() {
                                     <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
                                   </div>
                                 ))}
+                              </div>
+                              
+                              {/* 一键补齐按钮 */}
+                              <div className="insight-actions">
+                                <Button 
+                                  size="small" 
+                                  icon={<SyncOutlined />}
+                                  onClick={() => {
+                                    setSyncTargetToolIds(insight.laggingTools.map(lag => lag.toolId))
+                                    setSyncSelectedSkillIds([insight.skillName])
+                                    setSyncModalOpen(true)
+                                  }}
+                                >
+                                  一键补齐
+                                </Button>
                               </div>
                             </div>
                           ))

@@ -353,10 +353,21 @@ const normalizeSkillInsightsResponse = (value: unknown): SkillInsightEntry[] => 
     const laggingTools = readArray(record.laggingTools ?? record.lagging_tools)
       .map((lag) => {
         const lagRecord = asRecord(lag)
+        const diffs = readArray(lagRecord.diffs ?? lagRecord.diff)
+          .map((diffItem) => {
+            const diffRecord = asRecord(diffItem)
+            return {
+              fileName: readString(diffRecord.fileName, diffRecord.file_name) ?? '',
+              diffType: (readString(diffRecord.diffType, diffRecord.diff_type) ?? 'modified') as 'added' | 'modified' | 'deleted',
+            }
+          })
+          .filter((diff) => diff.fileName)
+
         return {
           toolId: readString(lagRecord.toolId, lagRecord.tool_id) ?? '',
           toolName: readString(lagRecord.toolName, lagRecord.tool_name) ?? '',
           behindSeconds: readNumber(lagRecord.behindSeconds, lagRecord.behind_seconds) ?? 0,
+          diffs,
         }
       })
       .filter((lag) => lag.toolId)

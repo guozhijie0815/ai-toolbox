@@ -61,10 +61,18 @@ struct BackupEntry {
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct SkillDiff {
+    file_name: String,
+    diff_type: String, // "added", "modified", "deleted"
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct LaggingToolInfo {
     tool_id: String,
     tool_name: String,
     behind_seconds: u64,
+    diffs: Vec<SkillDiff>,
 }
 
 #[derive(Clone, Serialize)]
@@ -724,6 +732,60 @@ fn list_tools() -> Result<Vec<ToolEntry>, String> {
         .collect())
 }
 
+fn get_skill_files(skill_path: &Path) -> Vec<(String, u64)> {
+    let mut files = Vec::new();
+    if let Ok(entries) = fs::read_dir(skill_path) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                let size = metadata.len();
+                files.push((name, size));
+            }
+        }
+    }
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+    files
+}
+
+fn compare_skill_folders(leader_path: &Path, lagging_path: &Path) -> Vec<SkillDiff> {
+    let leader_files = get_skill_files(leader_path);
+    let lagging_files = get_skill_files(lagging_path);
+    
+    let mut diffs = Vec::new();
+    let leader_map: std::collections::HashMap<String, u64> = leader_files.into_iter().collect();
+    let lagging_map: std::collections::HashMap<String, u64> = lagging_files.into_iter().collect();
+    
+    // 检查新增和修改的文件
+    for (name, leader_size) in &leader_map {
+        if let Some(lagging_size) = lagging_map.get(name) {
+            if leader_size != lagging_size {
+                diffs.push(SkillDiff {
+                    file_name: name.clone(),
+                    diff_type: "modified".to_string(),
+                });
+            }
+        } else {
+            diffs.push(SkillDiff {
+                file_name: name.clone(),
+                diff_type: "added".to_string(),
+            });
+        }
+    }
+    
+    // 检查删除的文件
+    for (name, _) in &lagging_map {
+        if !leader_map.contains_key(name) {
+            diffs.push(SkillDiff {
+                file_name: name.clone(),
+                diff_type: "deleted".to_string(),
+            });
+        }
+    }
+    
+    diffs.sort_by(|a, b| a.file_name.cmp(&b.file_name));
+    diffs
+}
+
 #[tauri::command]
 fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
     let items = load_tool_registry()?;
@@ -733,7 +795,7 @@ fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
         .map(build_tool_entry_from_user)
         .collect();
 
-    let mut skill_map: std::collections::HashMap<String, Vec<(String, String, u64)>> =
+    let mut skill_map: std::collections::HashMap<String, Vec<(String, String, u64, String)>> =
         std::collections::HashMap::new();
 
     for tool in &enabled_tools {
@@ -742,7 +804,12 @@ fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
                 skill_map
                     .entry(skill.name.clone())
                     .or_default()
-                    .push((tool.id.clone(), tool.name.clone(), updated_at));
+                    .push((
+                        tool.id.clone(),
+                        tool.name.clone(),
+                        updated_at,
+                        skill.path.clone(),
+                    ));
             }
         }
     }
@@ -754,16 +821,29 @@ fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
         }
         tool_records.sort_by(|a, b| b.2.cmp(&a.2));
         let leader = &tool_records[0];
+        let leader_path = Path::new(&leader.3);
+        
         let lagging: Vec<LaggingToolInfo> = tool_records
             .iter()
             .skip(1)
             .filter(|record| record.2 < leader.2)
-            .map(|record| LaggingToolInfo {
-                tool_id: record.0.clone(),
-                tool_name: record.1.clone(),
-                behind_seconds: leader.2 - record.2,
+            .map(|record| {
+                let lagging_path = Path::new(&record.3);
+                let diffs = if leader_path.exists() && lagging_path.exists() {
+                    compare_skill_folders(leader_path, lagging_path)
+                } else {
+                    Vec::new()
+                };
+                
+                LaggingToolInfo {
+                    tool_id: record.0.clone(),
+                    tool_name: record.1.clone(),
+                    behind_seconds: leader.2 - record.2,
+                    diffs,
+                }
             })
             .collect();
+            
         if !lagging.is_empty() {
             insights.push(SkillInsightEntry {
                 skill_name,

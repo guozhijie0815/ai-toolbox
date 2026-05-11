@@ -67,10 +67,16 @@ export interface ToolRegistryEntry {
   skillDir?: string
 }
 
+export interface SkillDiff {
+  fileName: string
+  diffType: 'added' | 'modified' | 'deleted'
+}
+
 export interface LaggingToolInfo {
   toolId: string
   toolName: string
   behindSeconds: number
+  diffs: SkillDiff[]
 }
 
 export interface SkillInsightEntry {
