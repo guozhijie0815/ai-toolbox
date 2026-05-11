@@ -708,24 +708,15 @@ function App() {
                           {dirtyCount > 0 ? <span>{dirtyCount} unsaved</span> : null}
                         </div>
                         {hasConfig && tool.configFiles.length > 0 && (
-                          <div className="tool-configs">
+                          <div className="tool-configs" onClick={(event) => event.stopPropagation()}>
                             <div className="tool-configs__label">配置文件 ({tool.configFiles.length})</div>
                             <div className="tool-configs__list">
                               {tool.configFiles.map((file, index) => (
                                 <div
                                   key={file.id || `config-${index}`}
                                   className="tool-config-file"
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={(event) => {
-                                    event.stopPropagation()
+                                  onClick={() => {
                                     if (file.id) {
-                                      void selectConfigFile(file.id)
-                                    }
-                                  }}
-                                  onKeyDown={(event) => {
-                                    if ((event.key === 'Enter' || event.key === ' ') && file.id) {
-                                      event.stopPropagation()
                                       void selectConfigFile(file.id)
                                     }
                                   }}
