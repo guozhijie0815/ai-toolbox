@@ -596,6 +596,9 @@ function App() {
               />
             </div>
 
+            {/* 应用标题 */}
+            <div className="app-title">AI Toolbox</div>
+
             {/* 标题行：左侧标题 + 右侧操作 */}
             <div className="header-top">
               <div className="header-brand">
