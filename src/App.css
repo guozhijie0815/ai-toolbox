@@ -139,21 +139,11 @@
   background-size: 200px 200px, 24px 24px, auto, auto, auto;
 }
 
-/* ---- 拖动区域 ---- */
-.window-dragbar-hitbox {
-  flex: 0 0 28px;
-  height: 28px;
-  margin: -16px -20px 0;
-  position: relative;
-  background: transparent;
-}
-
 /* ---- 头部 ---- */
 .app-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   margin-top: 4px;
   margin-bottom: 16px;
   padding: 20px 24px;
@@ -176,6 +166,62 @@
   -webkit-app-region: no-drag;
 }
 
+/* ---- 交通灯 ---- */
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: transform 0.15s ease;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.2);
+}
+
+.traffic-light:hover {
+  transform: scale(1.15);
+}
+
+.traffic-light--red {
+  background: #ff5f57;
+}
+
+.traffic-light--yellow {
+  background: #febc2e;
+}
+
+.traffic-light--green {
+  background: #28c840;
+}
+
+/* ---- 头部标题行 ---- */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.header-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ---- 头部底栏 ---- */
+.header-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .eyebrow,
 .panel-kicker,
 .field-label {
@@ -192,7 +238,7 @@
 .app-header .ant-typography h2,
 .app-header h2.ant-typography,
 .panel-header h4.ant-typography {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--primary-text);
   letter-spacing: -0.02em;
   font-family: var(--font-display);
@@ -211,7 +257,7 @@
 .header-copy {
   display: block;
   max-width: 600px;
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--secondary-text);
   font-size: 14px;
 }
@@ -220,7 +266,6 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 16px;
 }
 
 .header-actions {
@@ -231,13 +276,18 @@
   align-items: center;
 }
 
-.header-tool-info {
+/* ---- 工具指示器（带红点） ---- */
+.tool-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-right: 12px;
-  padding-right: 12px;
-  border-right: 1px solid var(--panel-border);
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--chip-bg);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-text);
+  border: 1px solid var(--chip-border);
 }
 
 .header-tool-name {
@@ -247,13 +297,12 @@
   color: var(--primary-text);
 }
 
-.header-dirty-badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--error-glow);
-  color: var(--error);
-  font-size: 11px;
-  font-weight: 600;
+.unsaved-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--error);
+  display: inline-block;
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -745,6 +794,80 @@
   color: var(--muted-text);
 }
 
+/* ---- 工具配置文件列表 ---- */
+.tool-configs {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--panel-border);
+}
+
+.tool-configs__label {
+  font-size: 11px;
+  color: var(--muted-text);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tool-configs__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tool-config-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--item-bg);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--secondary-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tool-config-file:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tool-config-file .config-icon {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.tool-config-file .config-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-config-file .config-type {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--chip-bg);
+  border-radius: var(--radius-sm);
+  color: var(--muted-text);
+  flex-shrink: 0;
+}
+
+.tool-config-file:hover .config-type {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tool-config-file .dirty-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--error);
+  flex-shrink: 0;
+}
+
 /* ---- 配置标签 ---- */
 .config-strip {
   display: grid;
@@ -938,6 +1061,38 @@
   font-size: 10px;
   line-height: 1.4;
   word-break: break-all;
+}
+
+.skill-entry__path-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.skill-entry__path--no-margin {
+  margin-top: 0 !important;
+}
+
+.skill-open-location {
+  padding: 4px 10px;
+  background: rgba(31, 45, 55, 0.06);
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #5f6c73;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.skill-open-location:hover {
+  background: rgba(216, 105, 51, 0.1);
+  color: #d86933;
 }
 
 /* ---- 弹窗通用 ---- */

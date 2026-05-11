@@ -16,7 +16,6 @@ import {
   SearchOutlined,
   SettingOutlined,
   SyncOutlined,
-  ToolOutlined,
 } from '@ant-design/icons'
 import {
   App as AntdApp,
@@ -503,6 +502,39 @@ function App() {
     }
   }
 
+  const handleWindowClose = async () => {
+    if (!hasTauriRuntime()) return
+    try {
+      await getCurrentWindow().close()
+    } catch (err) {
+      console.error('Window close failed:', err)
+    }
+  }
+
+  const handleWindowMinimize = async () => {
+    if (!hasTauriRuntime()) return
+    try {
+      await getCurrentWindow().minimize()
+    } catch (err) {
+      console.error('Window minimize failed:', err)
+    }
+  }
+
+  const handleWindowMaximize = async () => {
+    if (!hasTauriRuntime()) return
+    try {
+      const appWindow = getCurrentWindow()
+      const maximized = await appWindow.isMaximized()
+      if (maximized) {
+        await appWindow.unmaximize()
+      } else {
+        await appWindow.maximize()
+      }
+    } catch (err) {
+      console.error('Window maximize failed:', err)
+    }
+  }
+
 
   return (
     <ConfigProvider
@@ -536,24 +568,61 @@ function App() {
       <AntdApp>
         {contextHolder}
         <div className="toolbox-shell" data-theme={resolvedTheme}>
-          <div
-            className="window-dragbar-hitbox"
-            onMouseDown={handleWindowDragMouseDown}
-            onDoubleClick={(event) => void handleWindowDragDoubleClick(event)}
-          />
-
           <header
             className="app-header"
             data-tauri-drag-region
             onMouseDown={handleWindowDragMouseDown}
             onDoubleClick={(event) => void handleWindowDragDoubleClick(event)}
           >
-            <div>
-              <Text className="eyebrow">Skill Sync Console</Text>
-              <Title level={2}>工具配置台</Title>
-              <Text className="header-copy">
-                管理本机 AI 开发工具的配置文件、技能目录和跨工具同步。
-              </Text>
+            {/* 交通灯 */}
+            <div className="traffic-lights">
+              <button
+                type="button"
+                className="traffic-light traffic-light--red"
+                onClick={() => void handleWindowClose()}
+                aria-label="关闭"
+              />
+              <button
+                type="button"
+                className="traffic-light traffic-light--yellow"
+                onClick={() => void handleWindowMinimize()}
+                aria-label="最小化"
+              />
+              <button
+                type="button"
+                className="traffic-light traffic-light--green"
+                onClick={() => void handleWindowMaximize()}
+                aria-label="最大化"
+              />
+            </div>
+
+            {/* 标题行：左侧标题 + 右侧操作 */}
+            <div className="header-top">
+              <div className="header-brand">
+                <Text className="eyebrow">Skill Sync Console</Text>
+                <Title level={2}>工具配置台</Title>
+                <Text className="header-copy">
+                  管理本机 AI 开发工具的配置文件、技能目录和跨工具同步。
+                </Text>
+              </div>
+              <div className="header-actions">
+                <div className="tool-indicator">
+                  <Text className="header-tool-name">{selectedTool?.name ?? '未选择'}</Text>
+                  {selectedFile?.dirty && (
+                    <span className="unsaved-dot" aria-label="未保存" />
+                  )}
+                </div>
+                <Button icon={<SettingOutlined />} onClick={() => void openManager()}>
+                  管理工具
+                </Button>
+                <Button icon={<ReloadOutlined />} loading={isToolsLoading} onClick={() => void refreshTools()}>
+                  刷新
+                </Button>
+              </div>
+            </div>
+
+            {/* 底栏：左侧主题/运行时 + 右侧空（或保留扩展） */}
+            <div className="header-bottom">
               <div className="header-meta-bar">
                 <Segmented
                   options={themeOptions}
@@ -564,20 +633,6 @@ function App() {
                   {isPreview ? 'Preview' : 'Tauri'} · {visibleTools.length} tools
                 </Tag>
               </div>
-            </div>
-            <div className="header-actions">
-              <div className="header-tool-info">
-                <Text className="header-tool-name">{selectedTool?.name ?? '未选择'}</Text>
-                {selectedFile?.dirty && (
-                  <span className="header-dirty-badge">未保存</span>
-                )}
-              </div>
-              <Button icon={<SettingOutlined />} onClick={() => void openManager()}>
-                管理工具
-              </Button>
-              <Button icon={<ReloadOutlined />} loading={isToolsLoading} onClick={() => void refreshTools()}>
-                刷新
-              </Button>
             </div>
           </header>
 
@@ -652,6 +707,36 @@ function App() {
                           <span>{tool.skills.length} skills</span>
                           {dirtyCount > 0 ? <span>{dirtyCount} unsaved</span> : null}
                         </div>
+                        {hasConfig && (
+                          <div className="tool-configs">
+                            <div className="tool-configs__label">配置文件</div>
+                            <div className="tool-configs__list">
+                              {tool.configFiles.map((file) => (
+                                <div
+                                  key={file.id}
+                                  className="tool-config-file"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    void selectConfigFile(file.id)
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                      event.stopPropagation()
+                                      void selectConfigFile(file.id)
+                                    }
+                                  }}
+                                >
+                                  <FileTextOutlined className="config-icon" />
+                                  <span className="config-name">{file.name}</span>
+                                  <span className="config-type">{file.language}</span>
+                                  {file.dirty ? <span className="dirty-indicator" /> : null}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </button>
                     )
                   })}
@@ -721,7 +806,19 @@ function App() {
                                 </div>
                               </div>
                               {renderSkillDescription(skill)}
-                              {skill.path ? <Text className="skill-entry__path">{skill.path}</Text> : null}
+                              {skill.path ? (
+                                <div className="skill-entry__path-row">
+                                  <Text className="skill-entry__path skill-entry__path--no-margin" style={{ flex: 1, minWidth: 0 }}>{skill.path}</Text>
+                                  <button
+                                    type="button"
+                                    className="skill-open-location"
+                                    onClick={() => void openPathInFinder(skill.path)}
+                                  >
+                                    <FolderOpenOutlined />
+                                    打开位置
+                                  </button>
+                                </div>
+                              ) : null}
                             </div>
                           </Tooltip>
                         ))
