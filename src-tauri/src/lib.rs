@@ -1,124 +1,18 @@
+mod types;
+mod db;
+mod store;
+mod central_repo;
+mod file_watcher;
+mod claude_config;
+
+use types::*;
+use db::get_db;
+use db::init_db_pool;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ConfigFile {
-    label: String,
-    path: String,
-    kind: String,
-    exists: bool,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SkillEntry {
-    name: String,
-    description: Option<String>,
-    full_description: Option<String>,
-    summary: Option<String>,
-    path: String,
-    has_skill_md: bool,
-    is_symlink: bool,
-    link_target: Option<String>,
-    updated_at: Option<u64>,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ToolEntry {
-    id: String,
-    name: String,
-    config_files: Vec<ConfigFile>,
-    skill_dir: Option<String>,
-    skills: Vec<SkillEntry>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ConfigPayload {
-    path: String,
-    content: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SaveConfigResult {
-    path: String,
-    backup_path: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct BackupEntry {
-    path: String,
-    name: String,
-    updated_at: Option<u64>,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SkillDiff {
-    file_name: String,
-    diff_type: String, // "added", "modified", "deleted"
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LaggingToolInfo {
-    tool_id: String,
-    tool_name: String,
-    behind_seconds: u64,
-    diffs: Vec<SkillDiff>,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SkillInsightEntry {
-    skill_name: String,
-    leader_tool_id: String,
-    leader_tool_name: String,
-    leader_updated_at: u64,
-    lagging_tools: Vec<LaggingToolInfo>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SaveConfigRequest {
-    path: String,
-    content: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SyncSkillsRequest {
-    source_tool_id: String,
-    skill_names: Vec<String>,
-    target_tool_ids: Vec<String>,
-    mode: String,
-    conflict_policy: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DeleteSkillRequest {
-    tool_id: String,
-    skill_name: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SyncSkillOutcome {
-    source_tool_id: String,
-    source_skill: String,
-    target_tool_id: String,
-    target_path: String,
-    status: String,
-    message: String,
-}
+use std::sync::Arc;
 
 #[derive(Clone)]
 struct ToolSpec {
@@ -126,64 +20,7 @@ struct ToolSpec {
     name: &'static str,
     config_files: &'static [(&'static str, &'static str, &'static str)],
     skill_dir: Option<&'static str>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct UserToolConfigFile {
-    label: String,
-    path: String,
-    kind: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct UserToolSpec {
-    id: String,
-    name: String,
-    enabled: bool,
-    config_files: Vec<UserToolConfigFile>,
-    skill_dir: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct UpsertToolRequest {
-    id: String,
-    name: String,
-    enabled: bool,
-    config_files: Vec<UserToolConfigFile>,
-    skill_dir: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DeleteToolRequest {
-    id: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DetectToolPathsRequest {
-    id: Option<String>,
-    name: Option<String>,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ToolRegistryEntry {
-    id: String,
-    name: String,
-    enabled: bool,
-    config_files: Vec<ConfigFile>,
-    skill_dir: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct DetectToolPathsResult {
-    config_files: Vec<ConfigFile>,
-    skill_dir: Option<String>,
+    is_system: bool,
 }
 
 const TOOL_SPECS: &[ToolSpec] = &[
@@ -192,12 +29,14 @@ const TOOL_SPECS: &[ToolSpec] = &[
         name: "Codex",
         config_files: &[("config.toml", "/Users/smzdm/.codex/config.toml", "toml")],
         skill_dir: Some("/Users/smzdm/.agents/skills"),
+        is_system: false,
     },
     ToolSpec {
         id: "claude",
         name: "Claude Code",
         config_files: &[("settings.json", "/Users/smzdm/.claude/settings.json", "json")],
         skill_dir: Some("/Users/smzdm/.claude/skills"),
+        is_system: false,
     },
     ToolSpec {
         id: "cursor",
@@ -212,6 +51,7 @@ const TOOL_SPECS: &[ToolSpec] = &[
             ("hooks.json", "/Users/smzdm/.cursor/hooks.json", "json"),
         ],
         skill_dir: Some("/Users/smzdm/.cursor/skills-cursor"),
+        is_system: false,
     },
     ToolSpec {
         id: "qoder",
@@ -222,6 +62,7 @@ const TOOL_SPECS: &[ToolSpec] = &[
             "json",
         )],
         skill_dir: Some("/Users/smzdm/.qoder/skills"),
+        is_system: false,
     },
     ToolSpec {
         id: "trae",
@@ -235,6 +76,7 @@ const TOOL_SPECS: &[ToolSpec] = &[
             ("skill-config.json", "/Users/smzdm/.trae-cn/skill-config.json", "json"),
         ],
         skill_dir: Some("/Users/smzdm/.trae-cn/skills"),
+        is_system: false,
     },
     ToolSpec {
         id: "opencode",
@@ -244,14 +86,27 @@ const TOOL_SPECS: &[ToolSpec] = &[
             ("config.json", "/Users/smzdm/.config/opencode/config.json", "json"),
         ],
         skill_dir: Some("/Users/smzdm/.config/opencode/skills"),
+        is_system: false,
     },
     ToolSpec {
         id: "agents",
         name: "Agents Skills",
         config_files: &[],
         skill_dir: Some("/Users/smzdm/.agents/skills"),
+        is_system: false,
     },
 ];
+
+/// 清理早期版本注入的伪系统工具（如 claude-code-config），
+/// 现在该功能已挪到 Claude Code 工具内部的 tab 中。
+fn cleanup_legacy_system_tools() -> Result<(), String> {
+    let db = get_db()?;
+    db.with_conn(|conn| {
+        conn.execute("DELETE FROM tools WHERE is_system = 1", [])
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    })
+}
 
 fn registry_dir() -> PathBuf {
     PathBuf::from("/Users/smzdm/.ai-toolbox")
@@ -278,6 +133,7 @@ fn default_user_tools() -> Vec<UserToolSpec> {
                 })
                 .collect(),
             skill_dir: spec.skill_dir.map(|value| value.to_string()),
+            is_system: spec.is_system,
         })
         .collect()
 }
@@ -316,105 +172,6 @@ fn save_tool_registry(items: &[UserToolSpec]) -> Result<(), String> {
     fs::write(registry_file(), data).map_err(|err| err.to_string())
 }
 
-fn current_timestamp() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-}
-
-fn path_to_string(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
-}
-
-fn metadata_mtime(path: &Path) -> Option<u64> {
-    fs::metadata(path)
-        .ok()
-        .and_then(|meta| meta.modified().ok())
-        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| duration.as_secs())
-}
-
-fn read_skill_descriptions(skill_md: &Path) -> (Option<String>, Option<String>, Option<String>) {
-    let Ok(content) = fs::read_to_string(skill_md) else {
-        return (None, None, None);
-    };
-
-    let mut lines = content.lines().peekable();
-    let mut description = None;
-    let mut full_description = None;
-
-    if matches!(lines.peek(), Some(line) if line.trim() == "---") {
-        lines.next();
-        for line in lines.by_ref() {
-            let trimmed = line.trim();
-            if trimmed == "---" {
-                break;
-            }
-            if let Some(rest) = trimmed.strip_prefix("description:") {
-                let value = rest.trim().trim_matches('"').trim_matches('\'').to_string();
-                if !value.is_empty() {
-                    description = Some(value.clone());
-                    full_description = Some(value);
-                }
-            }
-        }
-    }
-
-    if description.is_some() {
-        return (description.clone(), full_description, description);
-    }
-
-    let mut paragraph = Vec::new();
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            if !paragraph.is_empty() {
-                break;
-            }
-            continue;
-        }
-        if trimmed.starts_with('#') {
-            continue;
-        }
-        paragraph.push(trimmed.to_string());
-        if paragraph.len() >= 3 {
-            break;
-        }
-    }
-
-    if paragraph.is_empty() {
-        return (None, None, None);
-    }
-
-    let joined = paragraph.join(" ");
-    let summary = joined.chars().take(96).collect::<String>();
-    let summary = if joined.chars().count() > 96 {
-        format!("{summary}...")
-    } else {
-        summary
-    };
-
-    (Some(summary.clone()), Some(joined), Some(summary))
-}
-
-fn sanitize_skill_name(value: &str) -> Result<String, String> {
-    if value.is_empty() || value == "." || value == ".." || value.contains('/') {
-        return Err(format!("invalid skill name: {value}"));
-    }
-
-    Ok(value.to_string())
-}
-
-fn normalize_tool_id(id: &str) -> String {
-    id.trim()
-        .to_lowercase()
-        .replace([' ', '/', '\\', ':'], "-")
-        .chars()
-        .filter(|ch| ch.is_ascii_alphanumeric() || *ch == '-' || *ch == '_')
-        .collect::<String>()
-}
-
 fn registry_tool_by_id<'a>(items: &'a [UserToolSpec], id: &str) -> Option<&'a UserToolSpec> {
     items.iter().find(|item| item.id == id)
 }
@@ -435,7 +192,7 @@ fn build_tool_entry_from_user(spec: &UserToolSpec) -> ToolEntry {
     let skills = spec
         .skill_dir
         .as_ref()
-        .map(|path| scan_skill_dir(Path::new(path)))
+        .map(|path| scan_skill_dir(Path::new(path), &spec.id))
         .unwrap_or_default();
 
     ToolEntry {
@@ -444,6 +201,7 @@ fn build_tool_entry_from_user(spec: &UserToolSpec) -> ToolEntry {
         config_files,
         skill_dir,
         skills,
+        is_system: spec.is_system,
     }
 }
 
@@ -484,6 +242,7 @@ fn sanitize_upsert_request(request: UpsertToolRequest) -> Result<UserToolSpec, S
         skill_dir: request
             .skill_dir
             .and_then(|value| if value.trim().is_empty() { None } else { Some(value.trim().to_string()) }),
+        is_system: false,
     })
 }
 
@@ -569,12 +328,35 @@ fn detect_tool_paths_from_name(input: &str) -> DetectToolPathsResult {
     DetectToolPathsResult { config_files, skill_dir }
 }
 
-fn scan_skill_dir(skill_dir: &Path) -> Vec<SkillEntry> {
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SkillTagsRequest {
+    skill_name: String,
+    tags: Vec<String>,
+}
+
+fn get_skill_tags(skill_name: &str) -> Result<Vec<String>, String> {
+    let db = get_db()?;
+    store::tag_store::get_skill_tags(db, skill_name)
+}
+
+fn set_skill_tags(skill_name: &str, tags: Vec<String>) -> Result<(), String> {
+    let db = get_db()?;
+    store::tag_store::set_skill_tags(db, skill_name, tags)
+}
+
+fn scan_skill_dir(skill_dir: &Path, tool_id: &str) -> Vec<SkillEntry> {
     let mut items = Vec::new();
 
     let Ok(entries) = fs::read_dir(skill_dir) else {
         return items;
     };
+
+    let disabled = match get_db() {
+        Ok(db) => db.list_disabled_skills(tool_id).unwrap_or_default(),
+        Err(_) => Vec::new(),
+    };
+    let disabled_set: std::collections::HashSet<String> = disabled.into_iter().collect();
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -588,6 +370,8 @@ fn scan_skill_dir(skill_dir: &Path) -> Vec<SkillEntry> {
         }
 
         let name = entry.file_name().to_string_lossy().into_owned();
+        let enabled = !disabled_set.contains(&name);
+
         let skill_md = path.join("SKILL.md");
         let (description, full_description, summary) = if skill_md.exists() {
             read_skill_descriptions(&skill_md)
@@ -609,6 +393,8 @@ fn scan_skill_dir(skill_dir: &Path) -> Vec<SkillEntry> {
             None
         };
 
+        let tags = get_skill_tags(&name).unwrap_or_default();
+
         items.push(SkillEntry {
             name,
             description,
@@ -619,6 +405,8 @@ fn scan_skill_dir(skill_dir: &Path) -> Vec<SkillEntry> {
             is_symlink: file_type.is_symlink(),
             link_target,
             updated_at: metadata_mtime(&path),
+            tags,
+            enabled,
         });
     }
 
@@ -879,6 +667,7 @@ fn list_tool_registry() -> Result<Vec<ToolRegistryEntry>, String> {
                 })
                 .collect(),
             skill_dir: item.skill_dir.clone(),
+            is_system: item.is_system,
         })
         .collect())
 }
@@ -888,7 +677,13 @@ fn upsert_tool_registry_item(request: UpsertToolRequest) -> Result<ToolRegistryE
     let next = sanitize_upsert_request(request)?;
     let mut items = load_tool_registry()?;
     if let Some(index) = items.iter().position(|item| item.id == next.id) {
-        items[index] = next.clone();
+        if items[index].is_system {
+            return Err("系统工具不能修改".to_string());
+        }
+        items[index] = UserToolSpec {
+            is_system: items[index].is_system,
+            ..next.clone()
+        };
     } else {
         items.push(next.clone());
     }
@@ -908,12 +703,18 @@ fn upsert_tool_registry_item(request: UpsertToolRequest) -> Result<ToolRegistryE
             })
             .collect(),
         skill_dir: next.skill_dir,
+        is_system: false,
     })
 }
 
 #[tauri::command]
 fn delete_tool_registry_item(request: DeleteToolRequest) -> Result<String, String> {
     let mut items = load_tool_registry()?;
+    if let Some(item) = items.iter().find(|item| item.id == request.id) {
+        if item.is_system {
+            return Err("系统工具不能删除".to_string());
+        }
+    }
     let before = items.len();
     items.retain(|item| item.id != request.id);
     if items.len() == before {
@@ -1099,14 +900,20 @@ fn sync_skills(request: SyncSkillsRequest) -> Result<Vec<SyncSkillOutcome>, Stri
             };
 
             match sync_result {
-                Ok(_) => outcomes.push(SyncSkillOutcome {
-                    source_tool_id: source_tool.id.to_string(),
-                    source_skill: skill_name.clone(),
-                    target_tool_id: target_tool.id.to_string(),
-                    target_path: path_to_string(&target_path),
-                    status: "success".to_string(),
-                    message: conflict_message,
-                }),
+                Ok(_) => {
+                    // 同步成功后清除目标工具的停用标记
+                    if let Ok(db) = get_db() {
+                        let _ = db.clear_disabled_skills(&target_tool.id, skill_name);
+                    }
+                    outcomes.push(SyncSkillOutcome {
+                        source_tool_id: source_tool.id.to_string(),
+                        source_skill: skill_name.clone(),
+                        target_tool_id: target_tool.id.to_string(),
+                        target_path: path_to_string(&target_path),
+                        status: "success".to_string(),
+                        message: conflict_message,
+                    })
+                }
                 Err(message) => outcomes.push(SyncSkillOutcome {
                     source_tool_id: source_tool.id.to_string(),
                     source_skill: skill_name.clone(),
@@ -1144,14 +951,271 @@ fn delete_skill(request: DeleteSkillRequest) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn get_skill_tags_command(skill_name: String) -> Result<Vec<String>, String> {
+    get_skill_tags(&skill_name)
+}
+
+#[tauri::command]
+fn set_skill_tags_command(request: SkillTagsRequest) -> Result<(), String> {
+    set_skill_tags(&request.skill_name, request.tags)
+}
+
+#[tauri::command]
+fn get_skill_detail(tool_id: String, skill_name: String) -> Result<SkillDetailPayload, String> {
+    let registry = load_tool_registry()?;
+    let tool = registry
+        .iter()
+        .find(|t| t.id == tool_id)
+        .ok_or_else(|| format!("工具 {} 不存在", tool_id))?;
+    let skill_dir = tool
+        .skill_dir
+        .as_ref()
+        .ok_or_else(|| format!("工具 {} 没有技能目录", tool_id))?;
+    let skill_path = Path::new(skill_dir).join(&skill_name);
+    if !skill_path.exists() {
+        return Err(format!("技能 {} 不存在", skill_name));
+    }
+
+    let skill_md_path = skill_path.join("SKILL.md");
+    let readme_path = skill_path.join("README.md");
+
+    let skill_md_content = if skill_md_path.exists() {
+        fs::read_to_string(&skill_md_path).ok()
+    } else {
+        None
+    };
+
+    let readme_content = if readme_path.exists() {
+        fs::read_to_string(&readme_path).ok()
+    } else {
+        None
+    };
+
+    Ok(SkillDetailPayload {
+        skill_name,
+        skill_md_content,
+        readme_content,
+    })
+}
+
+#[tauri::command]
+fn list_presets_command() -> Result<Vec<types::PresetEntry>, String> {
+    let db = get_db()?;
+    store::preset_store::list_presets(db)
+}
+
+#[tauri::command]
+fn save_preset_command(request: types::UpsertPresetRequest) -> Result<types::PresetEntry, String> {
+    let db = get_db()?;
+    store::preset_store::upsert_preset(
+        db,
+        request.id.as_deref(),
+        &request.name,
+        request.icon.as_deref(),
+        request.skills,
+    )
+}
+
+#[tauri::command]
+fn delete_preset_command(request: types::DeletePresetRequest) -> Result<(), String> {
+    let db = get_db()?;
+    store::preset_store::delete_preset(db, &request.id)
+}
+
+#[tauri::command]
+fn list_center_skills() -> Result<Vec<central_repo::CenterSkillInfo>, String> {
+    let mut skills = central_repo::scan_center_skills()?;
+    let db = get_db()?;
+    let registry = load_tool_registry()?;
+    let tools: Vec<(String, String, String)> = registry
+        .iter()
+        .filter(|t| t.enabled)
+        .filter_map(|t| {
+            t.skill_dir
+                .as_ref()
+                .map(|dir| (t.id.clone(), t.name.clone(), dir.clone()))
+        })
+        .collect();
+
+    for skill in &mut skills {
+        let db_source_type = store::center_skill_store::get_center_skill_by_name(db, &skill.name)
+            .ok()
+            .flatten()
+            .map(|s| s.source_type);
+
+        let has_git = Path::new(&skill.path).join(".git").exists();
+
+        skill.source_type = match db_source_type.as_deref() {
+            Some("git") => "git".to_string(),
+            Some("imported") => {
+                let exists_in_tools = tools
+                    .iter()
+                    .filter(|(_, _, dir)| Path::new(dir).join(&skill.name).exists())
+                    .count();
+                if exists_in_tools >= 2 {
+                    "system".to_string()
+                } else {
+                    "custom".to_string()
+                }
+            }
+            _ => {
+                if has_git {
+                    "git".to_string()
+                } else {
+                    "custom".to_string()
+                }
+            }
+        };
+
+        skill.sync_statuses = central_repo::check_sync_status(&skill.name, &tools)?;
+    }
+    Ok(skills)
+}
+
+#[tauri::command]
+fn set_skill_category(skill_name: String, category: String) -> Result<(), String> {
+    let db = get_db()?;
+    store::center_skill_store::set_skill_source_type(db, &skill_name, &category)
+}
+
+#[tauri::command]
+fn batch_sync_from_center(
+    skill_names: Vec<String>,
+    target_tool_id: String,
+    mode: String,
+    conflict_policy: String,
+) -> Result<Vec<central_repo::SyncOutcome>, String> {
+    let registry = load_tool_registry()?;
+    let tool = registry_tool_by_id(&registry, &target_tool_id)
+        .ok_or_else(|| format!("未知工具: {}", target_tool_id))?;
+    let skill_dir = tool
+        .skill_dir
+        .as_deref()
+        .ok_or_else(|| format!("工具 {} 没有技能目录", target_tool_id))?;
+
+    let mut outcomes = Vec::new();
+    for skill_name in skill_names {
+        match central_repo::sync_skill_to_tool(&skill_name, skill_dir, &mode, &conflict_policy) {
+            Ok(outcome) => outcomes.push(outcome),
+            Err(e) => outcomes.push(central_repo::SyncOutcome {
+                skill_name,
+                target_tool_id: target_tool_id.clone(),
+                target_path: skill_dir.to_string(),
+                status: "error".to_string(),
+                message: e,
+            }),
+        }
+    }
+    Ok(outcomes)
+}
+
+#[tauri::command]
+fn delete_center_skill_command(skill_name: String) -> Result<String, String> {
+    central_repo::delete_center_skill(&skill_name)
+}
+
+#[tauri::command]
+fn discover_center_skills() -> Result<Vec<central_repo::DiscoveredSkill>, String> {
+    let registry = load_tool_registry()?;
+    central_repo::discover_skills_from_tools(registry.as_slice())
+}
+
+#[tauri::command]
+fn batch_import_to_center(
+    request: Vec<central_repo::ImportSkillRequest>,
+) -> Result<Vec<central_repo::ImportOutcome>, String> {
+    let db = get_db()?;
+    let registry = load_tool_registry()?;
+    central_repo::batch_import_skills_to_center(db, registry.as_slice(), request.as_slice())
+}
+
+// ============================================================================
+// Claude Code Config Sync commands
+// ============================================================================
+
+#[tauri::command]
+fn get_claude_config_diff(
+    baseline: Option<claude_config::BaselineKind>,
+) -> Result<claude_config::ClaudeConfigDiffResult, String> {
+    let kind = baseline.unwrap_or_default();
+    claude_config::get_claude_config_diff(kind)
+}
+
+#[tauri::command]
+fn apply_claude_config_full_sync(
+    baseline: Option<claude_config::BaselineKind>,
+) -> Result<claude_config::ClaudeConfigSyncResult, String> {
+    let kind = baseline.unwrap_or_default();
+    claude_config::apply_claude_config_full_sync(kind)
+}
+
+#[tauri::command]
+fn list_claude_settings_snapshots() -> Result<Vec<claude_config::SnapshotMeta>, String> {
+    claude_config::list_snapshots()
+}
+
+#[tauri::command]
+fn restore_cswitch_db_from_backup(backup_path: String) -> Result<(), String> {
+    claude_config::restore_cswitch_db_from_backup(backup_path)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ToggleSkillEnabledRequest {
+    tool_id: String,
+    skill_name: String,
+    enabled: bool,
+}
+
+#[tauri::command]
+fn toggle_skill_enabled(request: ToggleSkillEnabledRequest) -> Result<(), String> {
+    let db = get_db()?;
+    let registry = load_tool_registry()?;
+    let tool = registry_tool_by_id(&registry, &request.tool_id)
+        .ok_or_else(|| format!("unknown tool: {}", request.tool_id))?;
+    let skill_root = Path::new(
+        tool
+            .skill_dir
+            .as_deref()
+            .ok_or_else(|| format!("tool {} has no skill directory", tool.id))?,
+    );
+    let skill_name = sanitize_skill_name(&request.skill_name)?;
+    let skill_path = skill_root.join(&skill_name);
+
+    if request.enabled {
+        // 启用：从数据库删除停用标记
+        db.enable_skill(&request.tool_id, &skill_name)?;
+    } else {
+        // 停用：文件不动，数据库打标记
+        if !skill_path.exists() && fs::symlink_metadata(&skill_path).is_err() {
+            return Err(format!("skill {} does not exist", skill_name));
+        }
+        db.disable_skill(&request.tool_id, &skill_name)?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn healthcheck() -> &'static str {
     "ok"
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 初始化数据库
+    if let Err(e) = init_db_pool() {
+        eprintln!("数据库初始化失败: {}", e);
+    }
+
+    // 清理旧版本注入的伪系统工具（一次性迁移）
+    if let Err(e) = cleanup_legacy_system_tools() {
+        eprintln!("清理旧系统工具失败: {}", e);
+    }
+
+    let watcher_handle = Arc::new(file_watcher::FileWatcherHandle::new());
+
     tauri::Builder::default()
-        .setup(|app| {
+        .setup(move |app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -1159,6 +1223,42 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            // 启动文件监控
+            if let Ok(tools) = load_tool_registry() {
+                let mut watch_paths: Vec<PathBuf> = tools
+                    .into_iter()
+                    .filter(|t| t.enabled)
+                    .filter_map(|t| t.skill_dir.map(PathBuf::from))
+                    .filter(|p| p.exists())
+                    .collect();
+
+                // 追加 Claude Code Config Sync 监听的两个路径
+                for extra in [
+                    "/Users/smzdm/.claude/settings.json",
+                    "/Users/smzdm/.cc-switch/cc-switch.db",
+                ] {
+                    let p = PathBuf::from(extra);
+                    if p.exists() {
+                        watch_paths.push(p);
+                    }
+                }
+
+                // 启动期做一次种子快照
+                let _ = claude_config::snapshot_settings_if_changed();
+
+                if !watch_paths.is_empty() {
+                    let app_handle = app.handle().clone();
+                    if let Err(e) = file_watcher::start_file_watcher(
+                        app_handle,
+                        watcher_handle.clone(),
+                        watch_paths,
+                    ) {
+                        log::warn!("启动文件监控失败: {}", e);
+                    }
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -1174,7 +1274,25 @@ pub fn run() {
             list_config_backups,
             open_path_in_finder,
             sync_skills,
-            delete_skill
+            delete_skill,
+            toggle_skill_enabled,
+            get_skill_tags_command,
+            set_skill_tags_command,
+            get_skill_detail,
+            list_presets_command,
+            save_preset_command,
+            delete_preset_command,
+            list_center_skills,
+            delete_center_skill_command,
+            discover_center_skills,
+            batch_import_to_center,
+            batch_sync_from_center,
+            set_skill_category,
+            // Claude Code Config Sync
+            get_claude_config_diff,
+            apply_claude_config_full_sync,
+            list_claude_settings_snapshots,
+            restore_cswitch_db_from_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

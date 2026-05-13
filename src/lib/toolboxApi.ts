@@ -2,10 +2,16 @@ import { invoke } from '@tauri-apps/api/core'
 
 import type {
   BackupItem,
+  BaselineKind,
+  ClaudeConfigDiffResult,
+  ClaudeConfigSyncResult,
   ConfigFileItem,
   ConflictStrategy,
+  PresetEntry,
+  SkillDetailPayload,
   SkillInsightEntry,
   SkillItem,
+  SnapshotMeta,
   SyncMode,
   ToolRegistryConfigFile,
   ToolRegistryEntry,
@@ -598,4 +604,156 @@ export const detectToolPaths = async (params: { id?: string; name?: string }) =>
     configFiles,
     skillDir: readString(record.skillDir, record.skill_dir),
   }
+}
+
+export async function toggleSkillEnabled(request: { toolId: string; skillName: string; enabled: boolean }): Promise<void> {
+  return invoke('toggle_skill_enabled', { request })
+}
+
+// ============================================================================
+// Center skill types and commands
+// ============================================================================
+
+export interface DiscoveredSource {
+  toolId: string
+  toolName: string
+  path: string
+}
+
+export interface DiscoveredSkill {
+  name: string
+  description?: string
+  sources: DiscoveredSource[]
+}
+
+export interface ImportOutcome {
+  skillName: string
+  status: string
+  message: string
+}
+
+export async function discoverCenterSkills(): Promise<DiscoveredSkill[]> {
+  return invoke('discover_center_skills')
+}
+
+export async function batchImportToCenter(
+  skills: { skillName: string; sourceToolId: string }[],
+): Promise<ImportOutcome[]> {
+  return invoke('batch_import_to_center', { request: skills })
+}
+
+export async function setSkillCategory(skillName: string, category: string): Promise<void> {
+  return invoke('set_skill_category', { skillName, category })
+}
+
+export interface ToolSyncStatus {
+  toolId: string
+  toolName: string
+  synced: boolean
+  path?: string
+  lastSyncedAt?: number
+}
+
+export interface CenterSkillInfo {
+  name: string
+  path: string
+  description?: string
+  sourceType: string
+  updatedAt?: number
+  hasSkillMd: boolean
+  syncStatuses: ToolSyncStatus[]
+}
+
+export interface SyncOutcome {
+  skillName: string
+  targetToolId: string
+  targetPath: string
+  status: string
+  message: string
+}
+
+export async function batchSyncFromCenter(
+  skillNames: string[],
+  targetToolId: string,
+  mode: string,
+  conflictPolicy: string,
+): Promise<SyncOutcome[]> {
+  return invoke('batch_sync_from_center', { skillNames, targetToolId, mode, conflictPolicy })
+}
+
+export async function listCenterSkills(): Promise<CenterSkillInfo[]> {
+  return invoke('list_center_skills')
+}
+
+export async function deleteCenterSkill(skillName: string): Promise<void> {
+  return invoke('delete_center_skill_command', { skillName })
+}
+
+export async function syncFromCenter(
+  skillName: string,
+  targetToolId: string,
+  mode: string,
+  conflictPolicy: string,
+): Promise<SyncOutcome> {
+  return invoke('sync_from_center', { skillName, targetToolId, mode, conflictPolicy })
+}
+
+export async function importToCenter(skillName: string, sourceToolId: string): Promise<string> {
+  return invoke('import_to_center', { skillName, sourceToolId })
+}
+
+export async function installSkillFromGitToCenter(gitUrl: string, skillName?: string): Promise<string> {
+  return invoke('install_skill_from_git_to_git', { gitUrl, skillName })
+}
+
+export async function getSkillDetail(toolId: string, skillName: string): Promise<SkillDetailPayload> {
+  return invoke('get_skill_detail', { toolId, skillName })
+}
+
+// ============================================================================
+// Preset
+// ============================================================================
+
+export async function listPresets(): Promise<PresetEntry[]> {
+  return invoke('list_presets_command')
+}
+
+export async function savePreset(
+  name: string,
+  skills: string[],
+  id?: string,
+): Promise<PresetEntry> {
+  return invoke('save_preset_command', {
+    request: { id: id || null, name, skills },
+  })
+}
+
+export async function deletePreset(id: string): Promise<void> {
+  return invoke('delete_preset_command', { request: { id } })
+}
+
+// ============================================================================
+// Claude Code Config Sync
+// ============================================================================
+
+export async function getClaudeConfigDiff(
+  baseline?: BaselineKind,
+): Promise<ClaudeConfigDiffResult> {
+  return invoke('get_claude_config_diff', { baseline: baseline ?? { kind: 'live' } })
+}
+
+export async function applyClaudeConfigFullSync(
+  baseline?: BaselineKind,
+): Promise<ClaudeConfigSyncResult> {
+  return invoke('apply_claude_config_full_sync', {
+    baseline: baseline ?? { kind: 'live' },
+  })
+}
+
+export async function listClaudeSettingsSnapshots(): Promise<SnapshotMeta[]> {
+  return invoke('list_claude_settings_snapshots')
+}
+
+export async function restoreCswitchDbFromBackup(backupPath: string): Promise<void> {
+  return invoke('restore_cswitch_db_from_backup', { backupPath })
 }
