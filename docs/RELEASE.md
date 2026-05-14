@@ -1,5 +1,16 @@
 # 发布说明
 
+## 自动发布
+
+项目通过 GitHub Actions 自动构建安装包。推送 `v*` 格式的 tag 后，会触发 `.github/workflows/release.yml`，并创建草稿 Release。
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+构建完成后，进入 GitHub Releases 检查安装包，确认无误后发布草稿。
+
 ## 构建安装包
 
 ```bash
@@ -12,7 +23,7 @@ macOS 安装包输出目录：
 src-tauri/target/release/bundle/dmg/
 ```
 
-## 发布到 GitHub Releases
+## 手动发布到 GitHub Releases
 
 1. 确认版本号一致：
 
