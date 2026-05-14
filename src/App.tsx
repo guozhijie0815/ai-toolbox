@@ -2,14 +2,22 @@ import { startTransition, useEffect, useMemo, useState } from 'react'
 
 import Editor from '@monaco-editor/react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+
+import CenterRepoPanel from './components/CenterRepoPanel'
+import ClaudeConfigSyncPanel from './components/ClaudeConfigSyncPanel'
+import CommandPalette from './components/CommandPalette'
+import PresetManager from './components/PresetManager'
+import SkillDetailDrawer from './components/SkillDetailDrawer'
 import {
   CloseOutlined,
+  CloudOutlined,
   CopyOutlined,
   DeleteOutlined,
   EditOutlined,
   FileTextOutlined,
   FolderOpenOutlined,
   LinkOutlined,
+  LockOutlined,
   MoreOutlined,
   ReloadOutlined,
   SaveOutlined,
@@ -108,17 +116,6 @@ const formatTime = (value?: number) => {
   return new Date(value * 1000).toLocaleString('zh-CN', { hour12: false })
 }
 
-const formatDuration = (seconds: number) => {
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-
-  if (days > 0) return `${days}天前`
-  if (hours > 0) return `${hours}小时前`
-  if (minutes > 0) return `${minutes}分钟前`
-  return '刚刚'
-}
-
 const hasTauriRuntime = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 function App() {
@@ -152,6 +149,8 @@ function App() {
   const [editingToolId, setEditingToolId] = useState<string>()
   const [editingConfigFiles, setEditingConfigFiles] = useState<ToolRegistryConfigFile[]>([])
   const [editorMode, setEditorMode] = useState(false)
+  const [centerRepoOpen, setCenterRepoOpen] = useState(false)
+  const [middleTab, setMiddleTab] = useState<'skills' | 'editor' | 'sync'>('skills')
 
   const tools = useToolboxStore((state) => state.tools)
   const selectedToolId = useToolboxStore((state) => state.selectedToolId)
@@ -169,6 +168,20 @@ function App() {
   const selectConfigFile = useToolboxStore((state) => state.selectConfigFile)
   const setEditorContent = useToolboxStore((state) => state.setEditorContent)
   const saveCurrentFile = useToolboxStore((state) => state.saveCurrentFile)
+  const loadSkillDetail = useToolboxStore((state) => state.loadSkillDetail)
+  const skillDetailOpen = useToolboxStore((state) => state.skillDetailOpen)
+  const selectedSkillDetail = useToolboxStore((state) => state.selectedSkillDetail)
+  const isSkillDetailLoading = useToolboxStore((state) => state.isSkillDetailLoading)
+  const setSkillDetailOpen = useToolboxStore((state) => state.setSkillDetailOpen)
+  const commandPaletteOpen = useToolboxStore((state) => state.commandPaletteOpen)
+  const setCommandPaletteOpen = useToolboxStore((state) => state.setCommandPaletteOpen)
+  const presets = useToolboxStore((state) => state.presets)
+  const isPresetsLoading = useToolboxStore((state) => state.isPresetsLoading)
+  const refreshPresets = useToolboxStore((state) => state.refreshPresets)
+  const createPreset = useToolboxStore((state) => state.createPreset)
+  const removePreset = useToolboxStore((state) => state.removePreset)
+  const applyPreset = useToolboxStore((state) => state.applyPreset)
+  const toggleSkillEnabled = useToolboxStore((state) => state.toggleSkillEnabled)
 
   useEffect(() => {
     startTransition(() => {
@@ -279,12 +292,31 @@ function App() {
     [syncTargetToolIds, visibleTools],
   )
 
+  const allSkills = useMemo(() => {
+    const names = new Set<string>()
+    tools.forEach((tool) => {
+      tool.skills.forEach((skill) => names.add(skill.name))
+    })
+    return Array.from(names).sort()
+  }, [tools])
+
+  useEffect(() => {
+    void refreshPresets()
+  }, [refreshPresets])
+
   const canSubmitSync = syncTargetToolIds.length > 0 && syncSelectedSkillIds.length > 0
 
   useEffect(() => {
     const validTargetIds = new Set(syncTargetOptions.map((option) => option.value))
     setSyncTargetToolIds((current) => current.filter((toolId) => validTargetIds.has(toolId)))
   }, [syncTargetOptions])
+
+  // 切到非 Claude Code 工具时，若停在「配置同步」tab，自动回退到「技能」
+  useEffect(() => {
+    if (selectedTool?.id !== 'claude' && middleTab === 'sync') {
+      setMiddleTab('skills')
+    }
+  }, [selectedTool?.id, middleTab])
 
   const isPreview = typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)
 
@@ -570,7 +602,6 @@ function App() {
         <div className="toolbox-shell" data-theme={resolvedTheme}>
           <header
             className="app-header"
-            data-tauri-drag-region
             onMouseDown={handleWindowDragMouseDown}
             onDoubleClick={(event) => void handleWindowDragDoubleClick(event)}
           >
@@ -602,39 +633,53 @@ function App() {
             {/* 标题行：左侧标题 + 右侧操作 */}
             <div className="header-top">
               <div className="header-brand">
-                <Text className="eyebrow">Skill Sync Console</Text>
-                <Title level={2}>工具配置台</Title>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <Title level={2} style={{ margin: 0, fontSize: 20 }}>工具配置台</Title>
+                  <Tag variant="filled" color={isPreview ? 'gold' : 'success'} className="runtime-mini-tag">
+                    {isPreview ? 'Preview' : 'Tauri'} · {visibleTools.length} tools
+                  </Tag>
+                </div>
                 <Text className="header-copy">
                   管理本机 AI 开发工具的配置文件、技能目录和跨工具同步。
                 </Text>
               </div>
-              <div className="header-actions">
-                <div className="tool-indicator">
-                  <Text className="header-tool-name">{selectedTool?.name ?? '未选择'}</Text>
-                  {selectedFile?.dirty && (
-                    <span className="unsaved-dot" aria-label="未保存" />
-                  )}
-                </div>
-                <Button icon={<SettingOutlined />} onClick={() => void openManager()}>
-                  管理工具
-                </Button>
-                <Button icon={<ReloadOutlined />} loading={isToolsLoading} onClick={() => void refreshTools()}>
-                  刷新
-                </Button>
+              <div className="header-search">
+                <Input
+                  prefix={<SearchOutlined />}
+                  placeholder="搜索技能、工具、配置..."
+                  readOnly
+                  onClick={() => setCommandPaletteOpen(true)}
+                  style={{
+                    width: '100%',
+                    maxWidth: 480,
+                    borderRadius: 10,
+                    background: 'var(--chip-bg)',
+                    borderColor: 'transparent',
+                    padding: '10px 14px',
+                  }}
+                />
               </div>
-            </div>
-
-            {/* 底栏：左侧主题/运行时 + 右侧空（或保留扩展） */}
-            <div className="header-bottom">
-              <div className="header-meta-bar">
+              <div className="header-actions">
                 <Segmented
+                  size="small"
                   options={themeOptions}
                   value={themeMode}
                   onChange={(value) => setThemeMode(value as ThemeMode)}
                 />
-                <Tag variant="filled" color={isPreview ? 'gold' : 'success'} className="runtime-mini-tag">
-                  {isPreview ? 'Preview' : 'Tauri'} · {visibleTools.length} tools
-                </Tag>
+                <Button icon={<SettingOutlined />} onClick={() => void openManager()}>
+                  管理工具
+                </Button>
+                <Button icon={<CloudOutlined />} onClick={() => setCenterRepoOpen(true)}>
+                  中央仓库
+                </Button>
+                <Button
+                  icon={<ReloadOutlined />}
+                  loading={isToolsLoading}
+                  onClick={() => void refreshTools()}
+                  type="text"
+                  size="small"
+                  title="刷新工具列表"
+                />
               </div>
             </div>
           </header>
@@ -674,8 +719,13 @@ function App() {
                         <div className="tool-item__title">
                           <span className="tool-item__name">
                             {tool.name}
+                            {tool.isSystem ? (
+                              <LockOutlined
+                                style={{ marginLeft: 6, fontSize: 11, color: 'var(--ant-color-text-tertiary)' }}
+                              />
+                            ) : null}
                           </span>
-                          {hasConfig && (
+                          {hasConfig && !tool.isSystem && (
                             <span
                               className="tool-item__edit"
                               onClick={(event) => {
@@ -683,8 +733,10 @@ function App() {
                                 if (editorMode) {
                                   // 如果已经在编辑模式，点击则关闭
                                   setEditorMode(false)
+                                  setMiddleTab('skills')
                                 } else if (active) {
                                   setEditorMode(true)
+                                  setMiddleTab('editor')
                                   if (!selectedConfigId && tool.configFiles[0]) {
                                     void selectConfigFile(tool.configFiles[0].id)
                                   }
@@ -692,6 +744,7 @@ function App() {
                                   void selectTool(tool.id)
                                   setTimeout(() => {
                                     setEditorMode(true)
+                                    setMiddleTab('editor')
                                     if (tool.configFiles[0]) {
                                       void selectConfigFile(tool.configFiles[0].id)
                                     }
@@ -716,8 +769,34 @@ function App() {
                 </div>
               </aside>
 
-              {/* 中间：技能列表 / 编辑器（push 滑动） */}
+              {/* 中间：技能列表 / 编辑器（push 滑动）/ Claude Code 配置同步 */}
               <main className="panel panel--skills">
+                {selectedTool ? (
+                  <div style={{ padding: '12px 16px 0 16px', flexShrink: 0 }}>
+                    <Segmented
+                      block
+                      options={[
+                        { label: '技能', value: 'skills' },
+                        { label: '配置编辑', value: 'editor' },
+                        ...(selectedTool.id === 'claude'
+                          ? [{ label: '配置同步', value: 'sync' }]
+                          : []),
+                      ]}
+                      value={middleTab}
+                      onChange={(value) => {
+                        const next = value as 'skills' | 'editor' | 'sync'
+                        setMiddleTab(next)
+                        setEditorMode(next === 'editor')
+                      }}
+                    />
+                  </div>
+                ) : null}
+                {selectedTool?.id === 'claude' && middleTab === 'sync' ? (
+                  <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 16 }}>
+                    <ClaudeConfigSyncPanel monacoTheme={monacoTheme} />
+                  </div>
+                ) : (
+                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 <div className="panel-push-wrapper">
                   {/* 第一屏：技能列表 */}
                   <div className="panel-slide">
@@ -736,6 +815,22 @@ function App() {
                       </Space>
                     </div>
 
+                    <PresetManager
+                      presets={presets}
+                      tools={tools.map((t) => ({ id: t.id, name: t.name }))}
+                      allSkills={allSkills}
+                      onApply={(presetId, targetToolIds) => {
+                        void applyPreset(presetId, targetToolIds)
+                      }}
+                      onCreate={(name, skills) => {
+                        void createPreset(name, skills)
+                      }}
+                      onDelete={(presetId) => {
+                        void removePreset(presetId)
+                      }}
+                      isLoading={isPresetsLoading}
+                    />
+
                     <Input
                       allowClear
                       size="large"
@@ -748,17 +843,49 @@ function App() {
                     <div className="skill-view-list">
                       {filteredCurrentSkills.length > 0 ? (
                         filteredCurrentSkills.map((skill) => (
-                          <Tooltip key={skill.id} title={skill.fullDescription ?? skill.description ?? skill.path}>
-                            <div className="skill-entry">
+                          <div key={skill.id} className={`skill-entry${skill.enabled === false ? ' is-disabled' : ''}`}>
                               <div className="skill-entry__top">
-                                <span className="skill-entry__name" title={skill.name}>{skill.name}</span>
+                                <span
+                                  className="skill-entry__name"
+                                  title={skill.name}
+                                  onClick={() => {
+                                    if (selectedTool) {
+                                      loadSkillDetail(selectedTool.id, skill.name)
+                                    }
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {skill.name}
+                                </span>
                                 <div className="skill-entry__actions">
+                                  {(skill.tags?.length ?? 0) > 0 && skill.tags!.map((tag) => (
+                                    <Tag key={tag}>{tag}</Tag>
+                                  ))}
                                   {skill.updatedAt ? <span className="skill-entry__time">{formatTime(skill.updatedAt)}</span> : null}
                                   {renderSkillMeta(skill)}
+                                  <Switch
+                                    size="small"
+                                    checked={skill.enabled !== false}
+                                    onChange={(checked) => {
+                                      if (selectedTool) {
+                                        toggleSkillEnabled(selectedTool.id, skill.name, checked)
+                                      }
+                                    }}
+                                  />
                                   <Dropdown
                                     trigger={['click']}
                                     menu={{
                                       items: [
+                                        {
+                                          key: 'detail',
+                                          icon: <FileTextOutlined />,
+                                          label: '查看详情',
+                                          onClick: () => {
+                                            if (selectedTool) {
+                                              loadSkillDetail(selectedTool.id, skill.name)
+                                            }
+                                          },
+                                        },
                                         {
                                           key: 'delete',
                                           danger: true,
@@ -793,7 +920,6 @@ function App() {
                                 </div>
                               ) : null}
                             </div>
-                          </Tooltip>
                         ))
                       ) : (
                         <Empty
@@ -834,15 +960,15 @@ function App() {
                         <Switch
                           checked={autoSave}
                           onChange={setAutoSave}
-                          checkedChildren="自动保存开"
-                          unCheckedChildren="自动保存关"
+                          checkedChildren="自动保存"
+                          unCheckedChildren="自动保存"
                         />
                         <Button
                           icon={<FolderOpenOutlined />}
                           disabled={!selectedFile}
                           onClick={() => selectedFile && void openPathInFinder(selectedFile.path)}
                         >
-                          打开所在目录
+                          打开目录
                         </Button>
                         <Button
                           type="primary"
@@ -858,12 +984,15 @@ function App() {
                             }
                           }}
                         >
-                          保存配置
+                          保存
                         </Button>
                         <Button
                           type="text"
                           icon={<CloseOutlined />}
-                          onClick={() => setEditorMode(false)}
+                          onClick={() => {
+                            setEditorMode(false)
+                            setMiddleTab('skills')
+                          }}
                           title="关闭编辑"
                           style={{ fontSize: 16 }}
                         />
@@ -909,6 +1038,8 @@ function App() {
                     </div>
                   </div>
                 </div>
+                </div>
+                )}
               </main>
 
               {/* 右侧：变动洞察（普通）/ 技能列表+洞察（编辑） */}
@@ -927,65 +1058,37 @@ function App() {
                   {skillInsights.length > 0 ? (
                     <div className="skill-insights__list" style={{ overflow: 'auto', flex: 1 }}>
                       {skillInsights.map((insight) => (
-                          <div key={insight.skillName} className="skill-insight-card">
-                            <div className="skill-insight-card__top">
-                              <div className="skill-insight-card__skill">
+                        <div key={insight.skillName} className="skill-insight-card">
+                          <div className="skill-insight-card__row">
+                            <div className="skill-insight-card__info">
+                              <div className="skill-insight-card__info-top">
                                 <span className="skill-insight-card__name">{insight.skillName}</span>
+                                <Tag variant="filled" color="warning" style={{ fontSize: 11 }}>
+                                  {insight.laggingTools.length} 个工具未同步
+                                </Tag>
+                              </div>
+                              <div className="skill-insight-card__info-bottom">
                                 <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
                                   {insight.leaderToolName}
                                 </span>
+                                <span style={{ fontSize: 11, color: 'var(--muted-text)' }}>
+                                  {formatTime(insight.leaderUpdatedAt)}
+                                </span>
                               </div>
                             </div>
-                            
-                            {/* 差异详情 */}
-                            {insight.laggingTools.some(lag => lag.diffs.length > 0) && (
-                              <div className="insight-diff">
-                                {insight.laggingTools.flatMap(lag => 
-                                  lag.diffs.map((diff, idx) => (
-                                    <div key={`${lag.toolId}-${idx}`} className="diff-row">
-                                      <span className={`diff-icon ${diff.diffType}`}>
-                                        {diff.diffType === 'added' ? '+' : diff.diffType === 'deleted' ? '−' : 'M'}
-                                      </span>
-                                      <span className="diff-text">{diff.fileName}</span>
-                                      <span className="diff-tool">{lag.toolName}</span>
-                                    </div>
-                                  ))
-                                ).slice(0, 3)}
-                                {insight.laggingTools.reduce((sum, lag) => sum + lag.diffs.length, 0) > 3 && (
-                                  <div className="diff-more">
-                                    +{insight.laggingTools.reduce((sum, lag) => sum + lag.diffs.length, 0) - 3} 更多文件
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            
-                            <div className="skill-insight-card__laggers">
-                              {insight.laggingTools.map((lagger) => (
-                                <div key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
-                                  <span className="skill-insight-card__lagger-name">{lagger.toolName}</span>
-                                  <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
-                                </div>
-                              ))}
-                            </div>
-                            
-                            {/* 一键补齐按钮 */}
-                            <div className="insight-actions">
-                              <Button 
-                                size="small" 
-                                icon={<SyncOutlined />}
-                                onClick={() => {
-                                  // 设置同步目标为所有落后工具
-                                  setSyncTargetToolIds(insight.laggingTools.map(lag => lag.toolId))
-                                  // 设置同步技能
-                                  setSyncSelectedSkillIds([insight.skillName])
-                                  // 打开同步弹窗
-                                  setSyncModalOpen(true)
-                                }}
-                              >
-                                一键补齐
-                              </Button>
-                            </div>
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={<SyncOutlined />}
+                              style={{ borderRadius: 999 }}
+                              onClick={() => {
+                                setSyncTargetToolIds(insight.laggingTools.map(lag => lag.toolId))
+                                setSyncSelectedSkillIds([insight.skillName])
+                                setSyncModalOpen(true)
+                              }}
+                            />
                           </div>
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -1030,39 +1133,37 @@ function App() {
                       <div className="insights-block__content">
                         {filteredCurrentSkills.length > 0 ? (
                           filteredCurrentSkills.map((skill) => (
-                            <Tooltip key={skill.id} title={skill.fullDescription ?? skill.description ?? skill.path}>
-                              <div className="skill-entry">
-                                <div className="skill-entry__top">
-                                  <span className="skill-entry__name" title={skill.name}>{skill.name}</span>
-                                  <div className="skill-entry__actions">
-                                    {skill.updatedAt ? <span className="skill-entry__time">{formatTime(skill.updatedAt)}</span> : null}
-                                    {renderSkillMeta(skill)}
-                                    <Dropdown
-                                      trigger={['click']}
-                                      menu={{
-                                        items: [
-                                          {
-                                            key: 'delete',
-                                            danger: true,
-                                            icon: <DeleteOutlined />,
-                                            label: '删除',
-                                            onClick: () => handleDeleteSkill(skill),
-                                          },
-                                        ],
-                                      }}
-                                    >
-                                      <Button
-                                        type="text"
-                                        size="small"
-                                        icon={<MoreOutlined />}
-                                        aria-label={`${skill.name} 操作`}
-                                      />
-                                    </Dropdown>
-                                  </div>
+                            <div key={skill.id} className="skill-entry">
+                              <div className="skill-entry__top">
+                                <span className="skill-entry__name" title={skill.name}>{skill.name}</span>
+                                <div className="skill-entry__actions">
+                                  {skill.updatedAt ? <span className="skill-entry__time">{formatTime(skill.updatedAt)}</span> : null}
+                                  {renderSkillMeta(skill)}
+                                  <Dropdown
+                                    trigger={['click']}
+                                    menu={{
+                                      items: [
+                                        {
+                                          key: 'delete',
+                                          danger: true,
+                                          icon: <DeleteOutlined />,
+                                          label: '删除',
+                                          onClick: () => handleDeleteSkill(skill),
+                                        },
+                                      ],
+                                    }}
+                                  >
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      icon={<MoreOutlined />}
+                                      aria-label={`${skill.name} 操作`}
+                                    />
+                                  </Dropdown>
                                 </div>
-                                {renderSkillDescription(skill)}
                               </div>
-                            </Tooltip>
+                              {renderSkillDescription(skill)}
+                            </div>
                           ))
                         ) : (
                           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前工具没有技能" />
@@ -1085,59 +1186,34 @@ function App() {
                         {skillInsights.length > 0 ? (
                           skillInsights.map((insight) => (
                             <div key={insight.skillName} className="skill-insight-card">
-                              <div className="skill-insight-card__top">
-                                <div className="skill-insight-card__skill">
-                                  <span className="skill-insight-card__name">{insight.skillName}</span>
-                                  <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
-                                    {insight.leaderToolName}
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              {/* 差异详情 */}
-                              {insight.laggingTools.some(lag => lag.diffs.length > 0) && (
-                                <div className="insight-diff">
-                                  {insight.laggingTools.flatMap(lag => 
-                                    lag.diffs.map((diff, idx) => (
-                                      <div key={`${lag.toolId}-${idx}`} className="diff-row">
-                                        <span className={`diff-icon ${diff.diffType}`}>
-                                          {diff.diffType === 'added' ? '+' : diff.diffType === 'deleted' ? '−' : 'M'}
-                                        </span>
-                                        <span className="diff-text">{diff.fileName}</span>
-                                        <span className="diff-tool">{lag.toolName}</span>
-                                      </div>
-                                    ))
-                                  ).slice(0, 3)}
-                                  {insight.laggingTools.reduce((sum, lag) => sum + lag.diffs.length, 0) > 3 && (
-                                    <div className="diff-more">
-                                      +{insight.laggingTools.reduce((sum, lag) => sum + lag.diffs.length, 0) - 3} 更多文件
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              <div className="skill-insight-card__laggers">
-                                {insight.laggingTools.map((lagger) => (
-                                  <div key={lagger.toolId} className="skill-insight-card__lagger" data-tool={lagger.toolId}>
-                                    <span className="skill-insight-card__lagger-name">{lagger.toolName}</span>
-                                    <span className="skill-insight-card__behind">{formatDuration(lagger.behindSeconds)}</span>
+                              <div className="skill-insight-card__row">
+                                <div className="skill-insight-card__info">
+                                  <div className="skill-insight-card__info-top">
+                                    <span className="skill-insight-card__name">{insight.skillName}</span>
+                                    <Tag variant="filled" color="warning" style={{ fontSize: 11 }}>
+                                      {insight.laggingTools.length} 个工具未同步
+                                    </Tag>
                                   </div>
-                                ))}
-                              </div>
-                              
-                              {/* 一键补齐按钮 */}
-                              <div className="insight-actions">
-                                <Button 
-                                  size="small" 
+                                  <div className="skill-insight-card__info-bottom">
+                                    <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
+                                      {insight.leaderToolName}
+                                    </span>
+                                    <span style={{ fontSize: 11, color: 'var(--muted-text)' }}>
+                                      {formatTime(insight.leaderUpdatedAt)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <Button
+                                  type="primary"
+                                  size="small"
                                   icon={<SyncOutlined />}
+                                  style={{ borderRadius: 999 }}
                                   onClick={() => {
                                     setSyncTargetToolIds(insight.laggingTools.map(lag => lag.toolId))
                                     setSyncSelectedSkillIds([insight.skillName])
                                     setSyncModalOpen(true)
                                   }}
-                                >
-                                  一键补齐
-                                </Button>
+                                />
                               </div>
                             </div>
                           ))
@@ -1180,7 +1256,14 @@ function App() {
                       key: 'name',
                       render: (_, row) => (
                         <div>
-                          <div className="tool-registry-name">{row.name}</div>
+                          <div className="tool-registry-name">
+                            {row.name}
+                            {row.isSystem ? (
+                              <Tooltip title="系统内置工具，不可编辑或删除">
+                                <LockOutlined style={{ marginLeft: 6, color: 'var(--ant-color-text-tertiary)' }} />
+                              </Tooltip>
+                            ) : null}
+                          </div>
                           <Text type="secondary">{row.id}</Text>
                         </div>
                       ),
@@ -1196,12 +1279,15 @@ function App() {
                       title: '操作',
                       key: 'actions',
                       width: 130,
-                      render: (_, row) => (
-                        <Space size={4}>
-                          <Button size="small" icon={<EditOutlined />} onClick={() => openEditTool(row)} />
-                          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => onDeleteTool(row)} />
-                        </Space>
-                      ),
+                      render: (_, row) =>
+                        row.isSystem ? (
+                          <Tag color="default">系统</Tag>
+                        ) : (
+                          <Space size={4}>
+                            <Button size="small" icon={<EditOutlined />} onClick={() => openEditTool(row)} />
+                            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => onDeleteTool(row)} />
+                          </Space>
+                        ),
                     },
                   ]}
                 />
@@ -1392,40 +1478,76 @@ function App() {
 
                 <div className="sync-skill-scroll">
                   {filteredSyncSkills.map((skill) => (
-                    <Tooltip key={skill.id} title={skill.fullDescription ?? skill.description ?? skill.path}>
-                      <label className="skill-item">
-                        <Checkbox
-                          checked={syncSelectedSkillIds.includes(skill.id)}
-                          onChange={(event) => {
-                            setSyncSelectedSkillIds((current) =>
-                              event.target.checked
-                                ? [...new Set([...current, skill.id])]
-                                : current.filter((skillId) => skillId !== skill.id),
-                            )
-                          }}
-                        />
-                        <div className="skill-item__body">
-                          <div className="skill-item__top">
-                            <span className="skill-item__name" title={skill.name}>{skill.name}</span>
-                            <div className="skill-item__tags">
-                              {skill.isSymlink ? <Tag variant="filled" color="gold">软链接</Tag> : null}
-                              {skill.updatedAt ? <span className="skill-item__time">{formatTime(skill.updatedAt)}</span> : null}
-                            </div>
+                    <label key={skill.id} className="skill-item">
+                      <Checkbox
+                        checked={syncSelectedSkillIds.includes(skill.id)}
+                        onChange={(event) => {
+                          setSyncSelectedSkillIds((current) =>
+                            event.target.checked
+                              ? [...new Set([...current, skill.id])]
+                              : current.filter((skillId) => skillId !== skill.id),
+                          )
+                        }}
+                      />
+                      <div className="skill-item__body">
+                        <div className="skill-item__top">
+                          <span className="skill-item__name" title={skill.name}>{skill.name}</span>
+                          <div className="skill-item__tags">
+                            {skill.isSymlink ? <Tag variant="filled" color="gold">软链接</Tag> : null}
+                            {skill.updatedAt ? <span className="skill-item__time">{formatTime(skill.updatedAt)}</span> : null}
                           </div>
-                          {skill.summary ?? skill.description ? (
-                            <Text className="skill-item__desc">{skill.summary ?? skill.description}</Text>
-                          ) : null}
-                          {skill.path ? <Text className="skill-item__path">{skill.path}</Text> : null}
                         </div>
-                      </label>
-                    </Tooltip>
+                        {skill.summary ?? skill.description ? (
+                          <Text className="skill-item__desc">{skill.summary ?? skill.description}</Text>
+                        ) : null}
+                        {skill.path ? <Text className="skill-item__path">{skill.path}</Text> : null}
+                      </div>
+                    </label>
                   ))}
                 </div>
               </div>
             </div>
           </Modal>
         </div>
+
+        {/* 命令面板 */}
+        <CommandPalette
+          open={commandPaletteOpen}
+          tools={tools.map((t) => ({ id: t.id, name: t.name }))}
+          skills={tools.flatMap((t) =>
+            t.skills.map((s) => ({
+              id: s.id,
+              name: s.name,
+              description: s.description,
+              toolId: t.id,
+              toolName: t.name,
+            })),
+          )}
+          onSelectTool={(toolId) => {
+            void selectTool(toolId)
+          }}
+          onSelectSkill={(toolId) => {
+            void selectTool(toolId)
+          }}
+          onClose={() => setCommandPaletteOpen(false)}
+          onOpen={() => setCommandPaletteOpen(true)}
+        />
+
+        <SkillDetailDrawer
+          open={skillDetailOpen}
+          detail={selectedSkillDetail ?? null}
+          isLoading={isSkillDetailLoading}
+          onClose={() => setSkillDetailOpen(false)}
+        />
       </AntdApp>
+      <CenterRepoPanel
+        open={centerRepoOpen}
+        tools={tools}
+        syncMode={syncMode}
+        conflictStrategy={conflictStrategy}
+        onClose={() => setCenterRepoOpen(false)}
+        onSyncComplete={() => { void refreshTools() }}
+      />
     </ConfigProvider>
   )
 }

@@ -3,6 +3,22 @@
    Light & Dark Theme System
    ============================================ */
 
+/* macOS 无边框窗口圆角 */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+html, body {
+  background: transparent !important;
+}
+
+#root {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
 /* ---- 浅色主题变量（默认） ---- */
 :root,
 [data-theme='light'] {
@@ -113,7 +129,7 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  padding: 16px 20px 20px;
+  padding: 10px;
   color: var(--primary-text);
   font-family: var(--font-body);
 }
@@ -143,10 +159,10 @@
 .app-header {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: 4px;
-  margin-bottom: 16px;
-  padding: 20px 24px;
+  gap: 10px;
+  margin-top: 0;
+  margin-bottom: 12px;
+  padding: 14px 20px;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-lg);
   background: var(--panel-bg);
@@ -171,7 +187,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
 }
 
 .app-title {
@@ -253,7 +269,7 @@
 .header-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 20px;
 }
 
@@ -261,6 +277,27 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex-shrink: 0;
+}
+
+.header-search {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.header-search .ant-input {
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.header-search .ant-input:hover,
+.header-search .ant-input:focus,
+.header-search .ant-input-focused {
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 
 /* ---- 头部底栏 ---- */
@@ -318,10 +355,22 @@
 
 .header-actions {
   display: flex;
-  flex-wrap: nowrap;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
+}
+
+.current-tool-label {
+  display: flex;
   align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--secondary-text);
+  margin-right: 8px;
 }
 
 /* ---- 工具指示器（带红点） ---- */
@@ -715,6 +764,15 @@
   box-shadow: 0 4px 20px var(--accent-glow);
 }
 
+.skill-entry.is-disabled {
+  opacity: 0.5;
+  background: var(--panel-bg-soft);
+}
+
+.skill-entry.is-disabled .skill-entry__name {
+  color: var(--muted-text);
+}
+
 .tool-item:hover,
 .config-tab:hover,
 .backup-item:hover {
@@ -858,8 +916,8 @@
 
 /* ---- 配置标签 ---- */
 .config-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -869,6 +927,8 @@
   gap: 14px;
   min-width: 0;
   padding: 12px 14px;
+  max-width: 220px;
+  flex: 0 1 auto;
 }
 
 .config-tab__name {
@@ -1018,6 +1078,43 @@
   gap: 8px;
   min-width: 0;
   flex-shrink: 0;
+  height: 24px;
+  line-height: 1;
+}
+
+/* 消除所有直接子元素的默认 margin，避免影响 flex 对齐 */
+.skill-entry__actions > * {
+  flex-shrink: 0;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.skill-entry__actions .ant-switch {
+  margin: 0 !important;
+}
+
+.skill-entry__actions .skill-entry__time {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  line-height: 1;
+}
+
+.skill-entry__actions .ant-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  line-height: 1;
+  margin: 0 !important;
+}
+
+.skill-entry__actions .ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 4px;
+  line-height: 1;
 }
 
 .skill-entry__time {
@@ -1824,6 +1921,33 @@
   background: var(--item-hover);
 }
 
+.skill-insight-card__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skill-insight-card__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-insight-card__info-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skill-insight-card__info-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
 .skill-insight-card__top {
   display: flex;
   align-items: center;
@@ -2122,4 +2246,132 @@
     max-height: 260px;
     overflow: auto;
   }
+}
+
+/* 命令面板 */
+.command-palette-modal .ant-modal-content {
+  padding: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.command-palette {
+  display: flex;
+  flex-direction: column;
+}
+
+.command-palette__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.command-palette__search-icon {
+  font-size: 16px;
+  color: var(--muted-text);
+  flex-shrink: 0;
+}
+
+.command-palette__input {
+  flex: 1;
+  font-size: 15px;
+}
+
+.command-palette__input input {
+  background: transparent !important;
+}
+
+.command-palette__shortcut {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--chip-bg);
+  border: 1px solid var(--chip-border);
+  font-size: 11px;
+  color: var(--muted-text);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.command-palette__results {
+  max-height: 360px;
+  overflow: auto;
+  padding: 4px;
+}
+
+.command-palette__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.command-palette__item:hover,
+.command-palette__item.is-active {
+  background: var(--item-hover);
+}
+
+.command-palette__item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.command-palette__item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-text);
+}
+
+.command-palette__item-meta {
+  font-size: 11px;
+  color: var(--muted-text);
+}
+
+.command-palette__item-desc {
+  font-size: 12px;
+  color: var(--secondary-text);
+  line-height: 1.4;
+}
+
+.command-palette__empty {
+  padding: 24px 0;
+}
+
+.command-palette__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-top: 1px solid var(--panel-border);
+  font-size: 12px;
+}
+
+.command-palette__hints {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.command-palette__hints kbd {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--chip-bg);
+  border: 1px solid var(--chip-border);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.command-palette__count {
+  font-size: 11px;
+  color: var(--muted-text);
 }

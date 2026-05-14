@@ -1,16 +1,28 @@
 import { create } from 'zustand'
 
 import {
+  applyClaudeConfigFullSync,
+  getClaudeConfigDiff,
+  getSkillDetail,
   getSkillInsights,
+  batchSyncFromCenter,
+  deletePreset,
+  listPresets,
   listTools,
   readConfigFile,
   saveConfigFile,
+  savePreset,
   syncSkills,
+  toggleSkillEnabled as toggleSkillEnabledApi,
 } from '../lib/toolboxApi'
 import type {
+  BaselineKind,
+  ClaudeConfigDiffResult,
   ConfigFileItem,
   ConflictStrategy,
   OperationFeedback,
+  PresetEntry,
+  SkillDetailPayload,
   SkillInsightEntry,
   SyncMode,
   ToolItem,
@@ -31,6 +43,16 @@ interface ToolboxStore {
   skillInsights: SkillInsightEntry[]
   isInsightsLoading: boolean
   feedback?: OperationFeedback
+  claudeConfigDiff: ClaudeConfigDiffResult | null
+  claudeConfigBaseline: BaselineKind
+  isClaudeConfigLoading: boolean
+  isClaudeConfigApplying: boolean
+
+  commandPaletteOpen: boolean
+  skillDetailOpen: boolean
+  selectedSkillDetail?: SkillDetailPayload
+  isSkillDetailLoading: boolean
+
   initialize: () => Promise<void>
   refreshTools: () => Promise<void>
   refreshInsights: () => Promise<void>
@@ -43,7 +65,21 @@ interface ToolboxStore {
   setConflictStrategy: (strategy: ConflictStrategy) => void
   saveCurrentFile: (options?: { silent?: boolean }) => Promise<void>
   runSync: () => Promise<void>
+  toggleSkillEnabled: (toolId: string, skillName: string, enabled: boolean) => Promise<void>
+  loadClaudeConfigDiff: () => Promise<void>
+  setClaudeConfigBaseline: (baseline: BaselineKind) => Promise<void>
+  applyClaudeConfigSync: () => Promise<void>
   clearFeedback: () => void
+  setCommandPaletteOpen: (open: boolean) => void
+  setSkillDetailOpen: (open: boolean) => void
+  loadSkillDetail: (toolId: string, skillName: string) => Promise<void>
+
+  presets: PresetEntry[]
+  isPresetsLoading: boolean
+  refreshPresets: () => Promise<void>
+  createPreset: (name: string, skills: string[]) => Promise<void>
+  removePreset: (id: string) => Promise<void>
+  applyPreset: (presetId: string, targetToolIds: string[]) => Promise<void>
 }
 
 const buildFeedback = (
@@ -125,6 +161,19 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
   skillInsights: [],
   isInsightsLoading: false,
   feedback: undefined,
+
+  claudeConfigDiff: null,
+  claudeConfigBaseline: { kind: 'live' },
+  isClaudeConfigLoading: false,
+  isClaudeConfigApplying: false,
+
+  commandPaletteOpen: false,
+  skillDetailOpen: false,
+  selectedSkillDetail: undefined,
+  isSkillDetailLoading: false,
+
+  presets: [],
+  isPresetsLoading: false,
 
   initialize: async () => {
     if (get().tools.length > 0) {
@@ -359,5 +408,201 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
     }
   },
 
+  toggleSkillEnabled: async (toolId, skillName, enabled) => {
+    try {
+      await toggleSkillEnabledApi({ toolId, skillName, enabled })
+      set((state) => ({
+        tools: state.tools.map((tool) =>
+          tool.id !== toolId
+            ? tool
+            : {
+                ...tool,
+                skills: tool.skills.map((skill) =>
+                  skill.name !== skillName ? skill : { ...skill, enabled },
+                ),
+              },
+        ),
+      }))
+    } catch (error) {
+      set({
+        feedback: buildFeedback(
+          'error',
+          enabled ? '启用技能失败' : '停用技能失败',
+          error instanceof Error ? error.message : String(error),
+        ),
+      })
+    }
+  },
+
+  loadClaudeConfigDiff: async () => {
+    set({ isClaudeConfigLoading: true })
+    try {
+      const baseline = get().claudeConfigBaseline
+      const result = await getClaudeConfigDiff(baseline)
+      set({ claudeConfigDiff: result })
+    } catch (error) {
+      set({
+        feedback: buildFeedback(
+          'error',
+          '读取配置差异失败',
+          error instanceof Error ? error.message : String(error),
+        ),
+      })
+    } finally {
+      set({ isClaudeConfigLoading: false })
+    }
+  },
+
+  setClaudeConfigBaseline: async (baseline) => {
+    set({ claudeConfigBaseline: baseline })
+    await get().loadClaudeConfigDiff()
+  },
+
+  applyClaudeConfigSync: async () => {
+    const diff = get().claudeConfigDiff
+    if (!diff?.needsSync) {
+      set({
+        feedback: buildFeedback('info', '两边已一致，无需同步'),
+      })
+      return
+    }
+    set({ isClaudeConfigApplying: true })
+    try {
+      const baseline = get().claudeConfigBaseline
+      const result = await applyClaudeConfigFullSync(baseline)
+      set({
+        feedback: buildFeedback(
+          'success',
+          `已整段同步 ${result.appliedFields.length} 个字段到 cc-switch`,
+          `备份: ${result.backupPath}`,
+        ),
+      })
+      await get().loadClaudeConfigDiff()
+    } catch (error) {
+      set({
+        feedback: buildFeedback(
+          'error',
+          '同步到 cc-switch 失败',
+          error instanceof Error ? error.message : String(error),
+        ),
+      })
+    } finally {
+      set({ isClaudeConfigApplying: false })
+    }
+  },
+
   clearFeedback: () => set({ feedback: undefined }),
+
+  setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+
+  setSkillDetailOpen: (open) => set({ skillDetailOpen: open }),
+
+  loadSkillDetail: async (toolId, skillName) => {
+    set({ isSkillDetailLoading: true, skillDetailOpen: true })
+    try {
+      set({ selectedSkillDetail: await getSkillDetail(toolId, skillName) })
+    } catch (error) {
+      set({
+        feedback: buildFeedback(
+          'error',
+          '读取技能详情失败',
+          error instanceof Error ? error.message : String(error),
+        ),
+        skillDetailOpen: false,
+      })
+    } finally {
+      set({ isSkillDetailLoading: false })
+    }
+  },
+
+  refreshPresets: async () => {
+    set({ isPresetsLoading: true })
+    try {
+      const presets = await listPresets()
+      set({ presets })
+    } catch (error) {
+      set({
+        feedback: buildFeedback(
+          'error',
+          '读取预设失败',
+          error instanceof Error ? error.message : String(error),
+        ),
+      })
+    } finally {
+      set({ isPresetsLoading: false })
+    }
+  },
+
+  createPreset: async (name, skills) => {
+    try {
+      await savePreset(name, skills)
+      await get().refreshPresets()
+      set({
+        feedback: buildFeedback('success', '预设创建成功'),
+      })
+    } catch (error) {
+      set({
+        feedback: buildFeedback(
+          'error',
+          '创建预设失败',
+          error instanceof Error ? error.message : String(error),
+        ),
+      })
+    }
+  },
+
+  removePreset: async (id) => {
+    try {
+      await deletePreset(id)
+      await get().refreshPresets()
+      set({
+        feedback: buildFeedback('success', '预设已删除'),
+      })
+    } catch (error) {
+      set({
+        feedback: buildFeedback(
+          'error',
+          '删除预设失败',
+          error instanceof Error ? error.message : String(error),
+        ),
+      })
+    }
+  },
+
+  applyPreset: async (presetId: string, targetToolIds: string[]) => {
+    const preset = get().presets.find((p) => p.id === presetId)
+    if (!preset) {
+      set({ feedback: buildFeedback('error', '预设不存在') })
+      return
+    }
+    const skillNames = preset.skills.map((s) => s.skillName)
+    if (skillNames.length === 0) {
+      set({ feedback: buildFeedback('error', '预设中没有技能') })
+      return
+    }
+    try {
+      const results: string[] = []
+      for (const toolId of targetToolIds) {
+        const result = await batchSyncFromCenter(
+          skillNames,
+          toolId,
+          get().syncMode,
+          get().conflictStrategy,
+        )
+        results.push(`${toolId}: ${Array.isArray(result) ? result.length : 0} 个技能已同步`)
+      }
+      await get().refreshTools()
+      set({
+        feedback: buildFeedback('success', '预设应用成功', results.join('；')),
+      })
+    } catch (error) {
+      set({
+        feedback: buildFeedback(
+          'error',
+          '应用预设失败',
+          error instanceof Error ? error.message : String(error),
+        ),
+      })
+    }
+  },
 }))
