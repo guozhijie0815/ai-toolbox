@@ -14,6 +14,12 @@
 - **提取公共模块**：`src/utils/appUtils.ts`（hasTauriRuntime/normalizeFsPath/formatTime）和 `src/utils/errorUtils.ts`
 - **Vitest 测试框架**：14 个单元测试覆盖核心工具函数
 
+### UI 优化
+
+- **统一表面设计**：面板布局从独立浮动卡片改为无间距统一表面，列间用分割线分隔（Linear 风格）
+- **窗口圆角修复**：启用 `macOSPrivateApi` + WebKit mask hack，确保四角圆角正确渲染
+- **分支前缀规范**：AGENTS.md 分支前缀从 `codex/` 更新为 `qoder/`
+
 ## v0.2.1
 
 ### 新增
