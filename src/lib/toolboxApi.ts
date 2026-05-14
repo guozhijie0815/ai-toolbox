@@ -190,7 +190,8 @@ const normalizeSkill = (value: unknown): SkillItem | null => {
   const id =
     readString(record.id, record.name, record.label, record.skill_id, record.skillId) ??
     `skill-${Math.random().toString(36).slice(2, 8)}`
-  const name = readString(record.name, record.label, record.id, record.skill_name, record.skillName) ?? id
+  const name =
+    readString(record.name, record.label, record.id, record.skill_name, record.skillName) ?? id
 
   if (!name) {
     return null
@@ -230,7 +231,8 @@ const normalizeConfigFile = (value: unknown): ConfigFileItem | null => {
     return null
   }
 
-  const name = readString(record.name, record.file_name, record.fileName) ?? path.split('/').pop() ?? path
+  const name =
+    readString(record.name, record.file_name, record.fileName) ?? path.split('/').pop() ?? path
 
   return {
     id: readString(record.id, path) ?? path,
@@ -244,7 +246,9 @@ const normalizeRegistryConfigFile = (value: unknown): ToolRegistryConfigFile | n
   const record = asRecord(value)
   const path = readString(record.path, record.file, record.filePath, record.file_path)
   const label = readString(record.label, record.name, record.fileName, record.file_name)
-  const kind = readString(record.kind, record.language, record.lang) ?? (path ? languageFromPath(path) : 'plaintext')
+  const kind =
+    readString(record.kind, record.language, record.lang) ??
+    (path ? languageFromPath(path) : 'plaintext')
 
   if (!path || !label) return null
 
@@ -258,13 +262,7 @@ const normalizeRegistryConfigFile = (value: unknown): ToolRegistryConfigFile | n
 
 const normalizeTool = (value: unknown): ToolItem | null => {
   const record = asRecord(value)
-  const name = readString(
-    record.name,
-    record.label,
-    record.tool_name,
-    record.toolName,
-    record.id,
-  )
+  const name = readString(record.name, record.label, record.tool_name, record.toolName, record.id)
 
   if (!name) {
     return null
@@ -300,9 +298,7 @@ const normalizeToolsResponse = (value: unknown) => {
     ? value
     : readArray(root.tools ?? root.data ?? root.items ?? root.result)
 
-  return uniqById(
-    list.map(normalizeTool).filter((item): item is ToolItem => Boolean(item)),
-  )
+  return uniqById(list.map(normalizeTool).filter((item): item is ToolItem => Boolean(item)))
 }
 
 const normalizeToolRegistryEntry = (value: unknown): ToolRegistryEntry | null => {
@@ -331,12 +327,7 @@ const readContentResponse = (value: unknown) => {
 
   const record = asRecord(value)
 
-  return readString(
-    record.content,
-    record.text,
-    record.value,
-    record.data,
-  ) ?? ''
+  return readString(record.content, record.text, record.value, record.data) ?? ''
 }
 
 const readMessageResponse = (value: unknown, fallback: string) => {
@@ -346,46 +337,51 @@ const readMessageResponse = (value: unknown, fallback: string) => {
 
   const record = asRecord(value)
 
-  return (
-    readString(record.message, record.msg, record.status, record.result) ?? fallback
-  )
+  return readString(record.message, record.msg, record.status, record.result) ?? fallback
 }
 
 const normalizeSkillInsightsResponse = (value: unknown): SkillInsightEntry[] => {
-  const list = Array.isArray(value) ? value : readArray(asRecord(value).data ?? asRecord(value).items)
+  const list = Array.isArray(value)
+    ? value
+    : readArray(asRecord(value).data ?? asRecord(value).items)
 
-  return list.map((item) => {
-    const record = asRecord(item)
-    const laggingTools = readArray(record.laggingTools ?? record.lagging_tools)
-      .map((lag) => {
-        const lagRecord = asRecord(lag)
-        const diffs = readArray(lagRecord.diffs ?? lagRecord.diff)
-          .map((diffItem) => {
-            const diffRecord = asRecord(diffItem)
-            return {
-              fileName: readString(diffRecord.fileName, diffRecord.file_name) ?? '',
-              diffType: (readString(diffRecord.diffType, diffRecord.diff_type) ?? 'modified') as 'added' | 'modified' | 'deleted',
-            }
-          })
-          .filter((diff) => diff.fileName)
+  return list
+    .map((item) => {
+      const record = asRecord(item)
+      const laggingTools = readArray(record.laggingTools ?? record.lagging_tools)
+        .map((lag) => {
+          const lagRecord = asRecord(lag)
+          const diffs = readArray(lagRecord.diffs ?? lagRecord.diff)
+            .map((diffItem) => {
+              const diffRecord = asRecord(diffItem)
+              return {
+                fileName: readString(diffRecord.fileName, diffRecord.file_name) ?? '',
+                diffType: (readString(diffRecord.diffType, diffRecord.diff_type) ?? 'modified') as
+                  | 'added'
+                  | 'modified'
+                  | 'deleted',
+              }
+            })
+            .filter((diff) => diff.fileName)
 
-        return {
-          toolId: readString(lagRecord.toolId, lagRecord.tool_id) ?? '',
-          toolName: readString(lagRecord.toolName, lagRecord.tool_name) ?? '',
-          behindSeconds: readNumber(lagRecord.behindSeconds, lagRecord.behind_seconds) ?? 0,
-          diffs,
-        }
-      })
-      .filter((lag) => lag.toolId)
+          return {
+            toolId: readString(lagRecord.toolId, lagRecord.tool_id) ?? '',
+            toolName: readString(lagRecord.toolName, lagRecord.tool_name) ?? '',
+            behindSeconds: readNumber(lagRecord.behindSeconds, lagRecord.behind_seconds) ?? 0,
+            diffs,
+          }
+        })
+        .filter((lag) => lag.toolId)
 
-    return {
-      skillName: readString(record.skillName, record.skill_name) ?? '',
-      leaderToolId: readString(record.leaderToolId, record.leader_tool_id) ?? '',
-      leaderToolName: readString(record.leaderToolName, record.leader_tool_name) ?? '',
-      leaderUpdatedAt: readNumber(record.leaderUpdatedAt, record.leader_updated_at) ?? 0,
-      laggingTools,
-    }
-  }).filter((insight) => insight.skillName && insight.leaderToolId)
+      return {
+        skillName: readString(record.skillName, record.skill_name) ?? '',
+        leaderToolId: readString(record.leaderToolId, record.leader_tool_id) ?? '',
+        leaderToolName: readString(record.leaderToolName, record.leader_tool_name) ?? '',
+        leaderUpdatedAt: readNumber(record.leaderUpdatedAt, record.leader_updated_at) ?? 0,
+        laggingTools,
+      }
+    })
+    .filter((insight) => insight.skillName && insight.leaderToolId)
 }
 
 export const listTools = async () => {
@@ -420,11 +416,7 @@ export const readConfigFile = async (_tool: ToolItem, file: ConfigFileItem) => {
   return readContentResponse(response)
 }
 
-export const saveConfigFile = async (
-  _tool: ToolItem,
-  file: ConfigFileItem,
-  content: string,
-) => {
+export const saveConfigFile = async (_tool: ToolItem, file: ConfigFileItem, content: string) => {
   if (!hasTauriRuntime()) {
     mockFileContents[file.path] = content
     return '已在预览模式更新本地草稿'
@@ -473,7 +465,9 @@ export const syncSkills = async (params: {
 }
 
 const normalizeBackups = (value: unknown): BackupItem[] => {
-  const list = Array.isArray(value) ? value : readArray(asRecord(value).items ?? asRecord(value).data)
+  const list = Array.isArray(value)
+    ? value
+    : readArray(asRecord(value).items ?? asRecord(value).data)
 
   return list
     .map((item): BackupItem | null => {
@@ -536,12 +530,15 @@ export const listToolRegistry = async () => {
         kind: item.language,
         exists: true,
       })),
-      skillDir: tool.id === 'codex' ? '~/.agents/skills' : tool.path ? `${tool.path}/skills` : undefined,
+      skillDir:
+        tool.id === 'codex' ? '~/.agents/skills' : tool.path ? `${tool.path}/skills` : undefined,
     }))
   }
 
   const response = await invoke<unknown>('list_tool_registry')
-  const list = Array.isArray(response) ? response : readArray(asRecord(response).items ?? asRecord(response).data)
+  const list = Array.isArray(response)
+    ? response
+    : readArray(asRecord(response).items ?? asRecord(response).data)
   return list
     .map(normalizeToolRegistryEntry)
     .filter((item): item is ToolRegistryEntry => item !== null)
@@ -606,7 +603,11 @@ export const detectToolPaths = async (params: { id?: string; name?: string }) =>
   }
 }
 
-export async function toggleSkillEnabled(request: { toolId: string; skillName: string; enabled: boolean }): Promise<void> {
+export async function toggleSkillEnabled(request: {
+  toolId: string
+  skillName: string
+  enabled: boolean
+}): Promise<void> {
   return invoke('toggle_skill_enabled', { request })
 }
 
@@ -678,7 +679,12 @@ export async function batchSyncFromCenter(
   mode: string,
   conflictPolicy: string,
 ): Promise<SyncOutcome[]> {
-  return invoke('batch_sync_from_center', { skillNames, targetToolId, mode, conflictPolicy })
+  return invoke('batch_sync_from_center', {
+    skillNames,
+    targetToolId,
+    mode,
+    conflictPolicy,
+  })
 }
 
 export async function listCenterSkills(): Promise<CenterSkillInfo[]> {
@@ -695,18 +701,29 @@ export async function syncFromCenter(
   mode: string,
   conflictPolicy: string,
 ): Promise<SyncOutcome> {
-  return invoke('sync_from_center', { skillName, targetToolId, mode, conflictPolicy })
+  return invoke('sync_from_center', {
+    skillName,
+    targetToolId,
+    mode,
+    conflictPolicy,
+  })
 }
 
 export async function importToCenter(skillName: string, sourceToolId: string): Promise<string> {
   return invoke('import_to_center', { skillName, sourceToolId })
 }
 
-export async function installSkillFromGitToCenter(gitUrl: string, skillName?: string): Promise<string> {
+export async function installSkillFromGitToCenter(
+  gitUrl: string,
+  skillName?: string,
+): Promise<string> {
   return invoke('install_skill_from_git_to_git', { gitUrl, skillName })
 }
 
-export async function getSkillDetail(toolId: string, skillName: string): Promise<SkillDetailPayload> {
+export async function getSkillDetail(
+  toolId: string,
+  skillName: string,
+): Promise<SkillDetailPayload> {
   return invoke('get_skill_detail', { toolId, skillName })
 }
 
@@ -739,7 +756,9 @@ export async function deletePreset(id: string): Promise<void> {
 export async function getClaudeConfigDiff(
   baseline?: BaselineKind,
 ): Promise<ClaudeConfigDiffResult> {
-  return invoke('get_claude_config_diff', { baseline: baseline ?? { kind: 'live' } })
+  return invoke('get_claude_config_diff', {
+    baseline: baseline ?? { kind: 'live' },
+  })
 }
 
 export async function applyClaudeConfigFullSync(
@@ -756,4 +775,9 @@ export async function listClaudeSettingsSnapshots(): Promise<SnapshotMeta[]> {
 
 export async function restoreCswitchDbFromBackup(backupPath: string): Promise<void> {
   return invoke('restore_cswitch_db_from_backup', { backupPath })
+}
+
+/** 获取当前用户 Home 目录路径 */
+export async function getHomeDirPath(): Promise<string> {
+  return invoke('get_home_dir_path')
 }

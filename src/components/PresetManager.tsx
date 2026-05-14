@@ -1,15 +1,5 @@
 import { useState, useMemo } from 'react'
-import {
-  Button,
-  Dropdown,
-  Modal,
-  Form,
-  Input,
-  Select,
-  Tag,
-  Empty,
-  message,
-} from 'antd'
+import { Button, Dropdown, Modal, Form, Input, Select, Tag, Empty, message } from 'antd'
 import {
   PlusOutlined,
   MoreOutlined,
@@ -38,7 +28,12 @@ interface CreatePresetDialogProps {
   existingSkills: string[]
 }
 
-function CreatePresetDialog({ open, onCancel, onConfirm, existingSkills }: CreatePresetDialogProps) {
+function CreatePresetDialog({
+  open,
+  onCancel,
+  onConfirm,
+  existingSkills,
+}: CreatePresetDialogProps) {
   const [form] = Form.useForm()
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [selectOpen, setSelectOpen] = useState(false)
@@ -149,9 +144,7 @@ function ApplyPresetModal({ open, presetName, tools, onCancel, onConfirm }: Appl
       destroyOnClose
       centered
     >
-      <div style={{ marginBottom: 12 }}>
-        选择要应用到的目标工具：
-      </div>
+      <div style={{ marginBottom: 12 }}>选择要应用到的目标工具：</div>
       <Select
         mode="multiple"
         placeholder="选择目标工具"
@@ -239,7 +232,15 @@ export default function PresetManager({
 
   return (
     <div className="preset-manager" style={{ marginBottom: 20 }}>
-      <div className="preset-manager__header" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div
+        className="preset-manager__header"
+        style={{
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
         <span className="preset-manager__title">预设管理</span>
         <Button
           type="primary"
@@ -296,9 +297,7 @@ export default function PresetManager({
                 title={preset.skills.map((s) => s.skillName).join('、')}
               >
                 <span className="preset-pill__name">{preset.name}</span>
-                <Tag className="preset-pill__count">
-                  {preset.skills.length} 个技能
-                </Tag>
+                <Tag className="preset-pill__count">{preset.skills.length} 个技能</Tag>
                 <MoreOutlined className="preset-pill__more" />
               </button>
             </Dropdown>

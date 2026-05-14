@@ -27,12 +27,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
 
 import { useToolboxStore } from '../store/useToolboxStore'
-import type {
-  BaselineKind,
-  ConfigDiffEntry,
-  ConfigDiffType,
-  SnapshotMeta,
-} from '../types/toolbox'
+import type { BaselineKind, ConfigDiffEntry, ConfigDiffType, SnapshotMeta } from '../types/toolbox'
 
 const { Text } = Typography
 
@@ -40,27 +35,25 @@ interface Props {
   monacoTheme: 'vs' | 'vs-dark'
 }
 
-const diffTypeMeta: Record<
-  ConfigDiffType,
-  { label: string; color: string; description: string }
-> = {
-  missing: {
-    label: '缺失',
-    color: 'volcano',
-    description: 'settings.json 里有此字段，但 cc-switch 公共配置里没有，需回灌',
-  },
-  different: {
-    label: '不一致',
-    color: 'orange',
-    description: '两边都有此字段但值不同，回灌会整段覆盖 cc-switch 公共配置的值',
-  },
-  same: { label: '一致', color: 'success', description: '两边一致，无需操作' },
-  onlyInCcSwitch: {
-    label: '仅 cc-switch',
-    color: 'blue',
-    description: 'cc-switch 公共配置里有此字段，但 settings.json 里没有，同步时会保留',
-  },
-}
+const diffTypeMeta: Record<ConfigDiffType, { label: string; color: string; description: string }> =
+  {
+    missing: {
+      label: '缺失',
+      color: 'volcano',
+      description: 'settings.json 里有此字段，但 cc-switch 公共配置里没有，需回灌',
+    },
+    different: {
+      label: '不一致',
+      color: 'orange',
+      description: '两边都有此字段但值不同，回灌会整段覆盖 cc-switch 公共配置的值',
+    },
+    same: { label: '一致', color: 'success', description: '两边一致，无需操作' },
+    onlyInCcSwitch: {
+      label: '仅 cc-switch',
+      color: 'blue',
+      description: 'cc-switch 公共配置里有此字段，但 settings.json 里没有，同步时会保留',
+    },
+  }
 
 function formatValuePreview(value: unknown): string {
   if (value === undefined || value === null) return '—'
@@ -123,8 +116,8 @@ export default function ClaudeConfigSyncPanel({ monacoTheme }: Props) {
     }
   }, [diffResult, loadDiff])
 
-  const entries = diffResult?.entries ?? []
-  const snapshots = diffResult?.snapshots ?? []
+  const entries = useMemo(() => diffResult?.entries ?? [], [diffResult?.entries])
+  const snapshots = useMemo(() => diffResult?.snapshots ?? [], [diffResult?.snapshots])
   const excludedFields = diffResult?.excludedFields ?? []
   const needsSync = diffResult?.needsSync ?? false
 
@@ -224,7 +217,14 @@ export default function ClaudeConfigSyncPanel({ monacoTheme }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        height: '100%',
+      }}
+    >
       {/* 状态条 */}
       {diffResult ? (
         needsSync ? (
@@ -238,7 +238,11 @@ export default function ClaudeConfigSyncPanel({ monacoTheme }: Props) {
                 缺失 <b>{counts.missing}</b> · 不一致 <b>{counts.different}</b> · 一致{' '}
                 <b>{counts.same}</b>
                 {counts.onlyInCcSwitch > 0 && (
-                  <> · cc-switch 独有 <b>{counts.onlyInCcSwitch}</b>（同步时会保留）</>
+                  <>
+                    {' '}
+                    · cc-switch 独有 <b>{counts.onlyInCcSwitch}</b>
+                    （同步时会保留）
+                  </>
                 )}
               </span>
             }
@@ -392,11 +396,25 @@ export default function ClaudeConfigSyncPanel({ monacoTheme }: Props) {
         destroyOnHidden
       >
         {drawerEntry && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              height: '100%',
+            }}
+          >
             <Text type="secondary">
               左：cc-switch 公共配置当前值 &nbsp;|&nbsp; 右：基准（settings.json/快照）的值
             </Text>
-            <div style={{ flex: 1, minHeight: 480, border: '1px solid var(--ant-color-border)', borderRadius: 6 }}>
+            <div
+              style={{
+                flex: 1,
+                minHeight: 480,
+                border: '1px solid var(--ant-color-border)',
+                borderRadius: 6,
+              }}
+            >
               <DiffEditor
                 height="100%"
                 language="json"

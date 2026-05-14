@@ -15,6 +15,7 @@ import {
   syncSkills,
   toggleSkillEnabled as toggleSkillEnabledApi,
 } from '../lib/toolboxApi'
+import { getErrorMessage } from '../utils/errorUtils'
 import type {
   BaselineKind,
   ClaudeConfigDiffResult,
@@ -93,8 +94,7 @@ const buildFeedback = (
   timestamp: Date.now(),
 })
 
-const findTool = (tools: ToolItem[], toolId?: string) =>
-  tools.find((tool) => tool.id === toolId)
+const findTool = (tools: ToolItem[], toolId?: string) => tools.find((tool) => tool.id === toolId)
 
 const findConfig = (tool?: ToolItem, configId?: string) =>
   tool?.configFiles.find((file) => file.id === configId)
@@ -123,16 +123,12 @@ const resolveSelections = (
     'selectedToolId' | 'selectedConfigId' | 'targetToolId' | 'selectedSkillIds'
   >,
 ) => {
-  const nextSelectedTool =
-    findTool(tools, previous.selectedToolId) ?? tools[0]
+  const nextSelectedTool = findTool(tools, previous.selectedToolId) ?? tools[0]
   const nextConfig =
-    findConfig(nextSelectedTool, previous.selectedConfigId) ??
-    nextSelectedTool?.configFiles[0]
+    findConfig(nextSelectedTool, previous.selectedConfigId) ?? nextSelectedTool?.configFiles[0]
   const targetCandidates = tools.filter((tool) => tool.id !== nextSelectedTool?.id)
   const nextTargetTool =
-    findTool(targetCandidates, previous.targetToolId) ??
-    targetCandidates[0] ??
-    nextSelectedTool
+    findTool(targetCandidates, previous.targetToolId) ?? targetCandidates[0] ?? nextSelectedTool
   const validSkillIds = new Set(nextSelectedTool?.skills.map((skill) => skill.id) ?? [])
   const nextSelectedSkills = previous.selectedSkillIds.filter((skillId) =>
     validSkillIds.has(skillId),
@@ -201,11 +197,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       }
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '读取工具列表失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '读取工具列表失败', getErrorMessage(error)),
       })
     } finally {
       set({ isToolsLoading: false })
@@ -283,11 +275,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       }))
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          `读取 ${file.name} 失败`,
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', `读取 ${file.name} 失败`, getErrorMessage(error)),
       })
     } finally {
       set({ isConfigLoading: false })
@@ -302,17 +290,12 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
     }
 
     set((state) => ({
-      tools: mergeConfigFile(
-        state.tools,
-        selectedToolId,
-        selectedConfigId,
-        (file) => ({
-          ...file,
-          content,
-          loaded: true,
-          dirty: content !== (file.originalContent ?? ''),
-        }),
-      ),
+      tools: mergeConfigFile(state.tools, selectedToolId, selectedConfigId, (file) => ({
+        ...file,
+        content,
+        loaded: true,
+        dirty: content !== (file.originalContent ?? ''),
+      })),
     }))
   },
 
@@ -348,11 +331,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       }))
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          `保存 ${file.name} 失败`,
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', `保存 ${file.name} 失败`, getErrorMessage(error)),
       })
     } finally {
       set({ isSaving: false })
@@ -380,7 +359,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
 
     set({ isSyncing: true })
 
-      try {
+    try {
       const message = await syncSkills({
         sourceTool,
         targetTools: [targetTool],
@@ -397,11 +376,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       await get().refreshInsights()
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '同步失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '同步失败', getErrorMessage(error)),
       })
     } finally {
       set({ isSyncing: false })
@@ -428,7 +403,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
         feedback: buildFeedback(
           'error',
           enabled ? '启用技能失败' : '停用技能失败',
-          error instanceof Error ? error.message : String(error),
+          getErrorMessage(error),
         ),
       })
     }
@@ -442,11 +417,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       set({ claudeConfigDiff: result })
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '读取配置差异失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '读取配置差异失败', getErrorMessage(error)),
       })
     } finally {
       set({ isClaudeConfigLoading: false })
@@ -480,11 +451,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       await get().loadClaudeConfigDiff()
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '同步到 cc-switch 失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '同步到 cc-switch 失败', getErrorMessage(error)),
       })
     } finally {
       set({ isClaudeConfigApplying: false })
@@ -503,11 +470,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       set({ selectedSkillDetail: await getSkillDetail(toolId, skillName) })
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '读取技能详情失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '读取技能详情失败', getErrorMessage(error)),
         skillDetailOpen: false,
       })
     } finally {
@@ -522,11 +485,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       set({ presets })
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '读取预设失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '读取预设失败', getErrorMessage(error)),
       })
     } finally {
       set({ isPresetsLoading: false })
@@ -542,11 +501,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       })
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '创建预设失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '创建预设失败', getErrorMessage(error)),
       })
     }
   },
@@ -560,11 +515,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       })
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '删除预设失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '删除预设失败', getErrorMessage(error)),
       })
     }
   },
@@ -597,11 +548,7 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
       })
     } catch (error) {
       set({
-        feedback: buildFeedback(
-          'error',
-          '应用预设失败',
-          error instanceof Error ? error.message : String(error),
-        ),
+        feedback: buildFeedback('error', '应用预设失败', getErrorMessage(error)),
       })
     }
   },

@@ -82,7 +82,9 @@ pub struct ImportOutcome {
 // ============================================================================
 
 pub fn center_repo_dir() -> PathBuf {
-    PathBuf::from("/Users/smzdm/.ai-toolbox/skills")
+    crate::utils::get_home_dir()
+        .map(|h| h.join(".ai-toolbox/skills"))
+        .unwrap_or_else(|_| PathBuf::from(".ai-toolbox/skills"))
 }
 
 pub fn ensure_center_repo() -> Result<PathBuf, String> {

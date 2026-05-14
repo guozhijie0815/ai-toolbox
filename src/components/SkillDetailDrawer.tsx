@@ -25,11 +25,24 @@ export default function SkillDetailDrawer({ open, detail, isLoading, onClose }: 
       destroyOnClose
     >
       {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: 200,
+          }}
+        >
           <Spin size="large" tip="加载中..." />
         </div>
       ) : !detail ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--ant-color-text-secondary)' }}>
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '40px 0',
+            color: 'var(--ant-color-text-secondary)',
+          }}
+        >
           <Text type="secondary">暂无内容</Text>
         </div>
       ) : (

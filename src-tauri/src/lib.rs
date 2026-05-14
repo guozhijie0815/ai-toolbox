@@ -4,98 +4,184 @@ mod store;
 mod central_repo;
 mod file_watcher;
 mod claude_config;
+mod toolbox;
+mod utils;
 
 use types::*;
 use db::get_db;
 use db::init_db_pool;
+use utils::get_home_dir;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
-#[derive(Clone)]
-struct ToolSpec {
-    id: &'static str,
-    name: &'static str,
-    config_files: &'static [(&'static str, &'static str, &'static str)],
-    skill_dir: Option<&'static str>,
-    is_system: bool,
+
+/// 拼接主目录下的相对路径，返回绝对路径字符串
+fn home_path(relative: &str) -> Result<String, String> {
+    let home = get_home_dir()?;
+    Ok(path_to_string(&home.join(relative)))
 }
 
-const TOOL_SPECS: &[ToolSpec] = &[
-    ToolSpec {
-        id: "codex",
-        name: "Codex",
-        config_files: &[("config.toml", "/Users/smzdm/.codex/config.toml", "toml")],
-        skill_dir: Some("/Users/smzdm/.agents/skills"),
-        is_system: false,
-    },
-    ToolSpec {
-        id: "claude",
-        name: "Claude Code",
-        config_files: &[("settings.json", "/Users/smzdm/.claude/settings.json", "json")],
-        skill_dir: Some("/Users/smzdm/.claude/skills"),
-        is_system: false,
-    },
-    ToolSpec {
-        id: "cursor",
-        name: "Cursor",
-        config_files: &[
-            (
-                "settings.json",
-                "/Users/smzdm/Library/Application Support/Cursor/User/settings.json",
-                "json",
-            ),
-            ("mcp.json", "/Users/smzdm/.cursor/mcp.json", "json"),
-            ("hooks.json", "/Users/smzdm/.cursor/hooks.json", "json"),
-        ],
-        skill_dir: Some("/Users/smzdm/.cursor/skills-cursor"),
-        is_system: false,
-    },
-    ToolSpec {
-        id: "qoder",
-        name: "Qoder",
-        config_files: &[(
-            "settings.json",
-            "/Users/smzdm/Library/Application Support/Qoder/User/settings.json",
-            "json",
-        )],
-        skill_dir: Some("/Users/smzdm/.qoder/skills"),
-        is_system: false,
-    },
-    ToolSpec {
-        id: "trae",
-        name: "Trae",
-        config_files: &[
-            (
-                "settings.json",
-                "/Users/smzdm/Library/Application Support/Trae CN/User/settings.json",
-                "json",
-            ),
-            ("skill-config.json", "/Users/smzdm/.trae-cn/skill-config.json", "json"),
-        ],
-        skill_dir: Some("/Users/smzdm/.trae-cn/skills"),
-        is_system: false,
-    },
-    ToolSpec {
-        id: "opencode",
-        name: "OpenCode",
-        config_files: &[
-            ("opencode.jsonc", "/Users/smzdm/.config/opencode/opencode.jsonc", "jsonc"),
-            ("config.json", "/Users/smzdm/.config/opencode/config.json", "json"),
-        ],
-        skill_dir: Some("/Users/smzdm/.config/opencode/skills"),
-        is_system: false,
-    },
-    ToolSpec {
-        id: "agents",
-        name: "Agents Skills",
-        config_files: &[],
-        skill_dir: Some("/Users/smzdm/.agents/skills"),
-        is_system: false,
-    },
-];
+/// 根据当前用户主目录动态生成默认工具配置
+fn default_tool_specs() -> Result<Vec<UserToolSpec>, String> {
+    let h = get_home_dir()?;
+    let p = |rel: &str| path_to_string(&h.join(rel));
+
+    #[cfg(target_os = "macos")]
+    let specs = vec![
+        UserToolSpec {
+            id: "codex".into(),
+            name: "Codex".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "config.toml".into(), path: p(".codex/config.toml"), kind: "toml".into() },
+            ],
+            skill_dir: Some(p(".agents/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "claude".into(),
+            name: "Claude Code".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "settings.json".into(), path: p(".claude/settings.json"), kind: "json".into() },
+            ],
+            skill_dir: Some(p(".claude/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "cursor".into(),
+            name: "Cursor".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "settings.json".into(), path: p("Library/Application Support/Cursor/User/settings.json"), kind: "json".into() },
+                UserToolConfigFile { label: "mcp.json".into(), path: p(".cursor/mcp.json"), kind: "json".into() },
+                UserToolConfigFile { label: "hooks.json".into(), path: p(".cursor/hooks.json"), kind: "json".into() },
+            ],
+            skill_dir: Some(p(".cursor/skills-cursor")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "qoder".into(),
+            name: "Qoder".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "settings.json".into(), path: p("Library/Application Support/Qoder/User/settings.json"), kind: "json".into() },
+            ],
+            skill_dir: Some(p(".qoder/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "trae".into(),
+            name: "Trae".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "settings.json".into(), path: p("Library/Application Support/Trae CN/User/settings.json"), kind: "json".into() },
+                UserToolConfigFile { label: "skill-config.json".into(), path: p(".trae-cn/skill-config.json"), kind: "json".into() },
+            ],
+            skill_dir: Some(p(".trae-cn/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "opencode".into(),
+            name: "OpenCode".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "opencode.jsonc".into(), path: p(".config/opencode/opencode.jsonc"), kind: "jsonc".into() },
+                UserToolConfigFile { label: "config.json".into(), path: p(".config/opencode/config.json"), kind: "json".into() },
+            ],
+            skill_dir: Some(p(".config/opencode/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "agents".into(),
+            name: "Agents Skills".into(),
+            enabled: true,
+            config_files: vec![],
+            skill_dir: Some(p(".agents/skills")),
+            is_system: false,
+        },
+    ];
+
+    #[cfg(target_os = "windows")]
+    let specs = vec![
+        UserToolSpec {
+            id: "codex".into(),
+            name: "Codex".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "config.toml".into(), path: p(".codex/config.toml"), kind: "toml".into() },
+            ],
+            skill_dir: Some(p(".agents/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "claude".into(),
+            name: "Claude Code".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "settings.json".into(), path: p(".claude/settings.json"), kind: "json".into() },
+            ],
+            skill_dir: Some(p(".claude/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "cursor".into(),
+            name: "Cursor".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "settings.json".into(), path: p("AppData/Roaming/Cursor/User/settings.json"), kind: "json".into() },
+                UserToolConfigFile { label: "mcp.json".into(), path: p(".cursor/mcp.json"), kind: "json".into() },
+            ],
+            skill_dir: Some(p(".cursor/skills-cursor")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "agents".into(),
+            name: "Agents Skills".into(),
+            enabled: true,
+            config_files: vec![],
+            skill_dir: Some(p(".agents/skills")),
+            is_system: false,
+        },
+    ];
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let specs = vec![
+        UserToolSpec {
+            id: "codex".into(),
+            name: "Codex".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "config.toml".into(), path: p(".codex/config.toml"), kind: "toml".into() },
+            ],
+            skill_dir: Some(p(".agents/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "claude".into(),
+            name: "Claude Code".into(),
+            enabled: true,
+            config_files: vec![
+                UserToolConfigFile { label: "settings.json".into(), path: p(".claude/settings.json"), kind: "json".into() },
+            ],
+            skill_dir: Some(p(".claude/skills")),
+            is_system: false,
+        },
+        UserToolSpec {
+            id: "agents".into(),
+            name: "Agents Skills".into(),
+            enabled: true,
+            config_files: vec![],
+            skill_dir: Some(p(".agents/skills")),
+            is_system: false,
+        },
+    ];
+
+    Ok(specs)
+}
 
 /// 清理早期版本注入的伪系统工具（如 claude-code-config），
 /// 现在该功能已挪到 Claude Code 工具内部的 tab 中。
@@ -108,56 +194,46 @@ fn cleanup_legacy_system_tools() -> Result<(), String> {
     })
 }
 
-fn registry_dir() -> PathBuf {
-    PathBuf::from("/Users/smzdm/.ai-toolbox")
+fn registry_dir() -> Result<PathBuf, String> {
+    Ok(get_home_dir()?.join(".ai-toolbox"))
 }
 
-fn registry_file() -> PathBuf {
-    registry_dir().join("tools.json")
+fn registry_file() -> Result<PathBuf, String> {
+    Ok(registry_dir()?.join("tools.json"))
 }
 
-fn default_user_tools() -> Vec<UserToolSpec> {
-    TOOL_SPECS
-        .iter()
-        .map(|spec| UserToolSpec {
-            id: spec.id.to_string(),
-            name: spec.name.to_string(),
-            enabled: true,
-            config_files: spec
-                .config_files
-                .iter()
-                .map(|(label, path, kind)| UserToolConfigFile {
-                    label: (*label).to_string(),
-                    path: (*path).to_string(),
-                    kind: (*kind).to_string(),
-                })
-                .collect(),
-            skill_dir: spec.skill_dir.map(|value| value.to_string()),
-            is_system: spec.is_system,
-        })
-        .collect()
+fn default_user_tools() -> Result<Vec<UserToolSpec>, String> {
+    default_tool_specs()
 }
 
 fn ensure_tool_registry() -> Result<(), String> {
-    let file = registry_file();
+    let file = registry_file()?;
     if file.exists() {
         return Ok(());
     }
-    fs::create_dir_all(registry_dir()).map_err(|err| err.to_string())?;
-    let data = serde_json::to_string_pretty(&default_user_tools()).map_err(|err| err.to_string())?;
+    fs::create_dir_all(registry_dir()?).map_err(|err| err.to_string())?;
+    let data = serde_json::to_string_pretty(&default_user_tools()?).map_err(|err| err.to_string())?;
     fs::write(file, data).map_err(|err| err.to_string())
 }
 
 fn load_tool_registry() -> Result<Vec<UserToolSpec>, String> {
     ensure_tool_registry()?;
-    let content = fs::read_to_string(registry_file()).map_err(|err| err.to_string())?;
+    let content = fs::read_to_string(registry_file()?).map_err(|err| err.to_string())?;
     let mut items = serde_json::from_str::<Vec<UserToolSpec>>(&content).map_err(|err| err.to_string())?;
     items.retain(|item| !item.id.trim().is_empty() && !item.name.trim().is_empty());
+
+    // 迁移：旧版 codex 技能目录可能指向 ~/.codex/skills，需修正为 ~/.agents/skills
+    let agents_skills_dir = home_path(".agents/skills").ok();
+    let codex_old_dir = home_path(".codex/skills").ok();
     let mut changed = false;
     for item in &mut items {
-        if item.id == "codex" && item.skill_dir.as_deref() == Some("/Users/smzdm/.codex/skills") {
-            item.skill_dir = Some("/Users/smzdm/.agents/skills".to_string());
-            changed = true;
+        if item.id == "codex" {
+            if let (Some(ref old), Some(ref new_dir)) = (&codex_old_dir, &agents_skills_dir) {
+                if item.skill_dir.as_deref() == Some(old.as_str()) {
+                    item.skill_dir = Some(new_dir.clone());
+                    changed = true;
+                }
+            }
         }
     }
     if changed {
@@ -167,9 +243,9 @@ fn load_tool_registry() -> Result<Vec<UserToolSpec>, String> {
 }
 
 fn save_tool_registry(items: &[UserToolSpec]) -> Result<(), String> {
-    fs::create_dir_all(registry_dir()).map_err(|err| err.to_string())?;
+    fs::create_dir_all(registry_dir()?).map_err(|err| err.to_string())?;
     let data = serde_json::to_string_pretty(items).map_err(|err| err.to_string())?;
-    fs::write(registry_file(), data).map_err(|err| err.to_string())
+    fs::write(registry_file()?, data).map_err(|err| err.to_string())
 }
 
 fn registry_tool_by_id<'a>(items: &'a [UserToolSpec], id: &str) -> Option<&'a UserToolSpec> {
@@ -251,78 +327,104 @@ fn detect_tool_paths_from_name(input: &str) -> DetectToolPathsResult {
     let mut config_files = Vec::new();
     let mut skill_dir = None::<String>;
 
-    let apply = |configs: &[(&str, &str, &str)], skills: Option<&str>, out: &mut Vec<ConfigFile>, skill_out: &mut Option<String>| {
+    let home = match get_home_dir() {
+        Ok(h) => h,
+        Err(_) => return DetectToolPathsResult { config_files, skill_dir },
+    };
+
+    let apply = |configs: &[(&str, PathBuf, &str)], skills: Option<PathBuf>, out: &mut Vec<ConfigFile>, skill_out: &mut Option<String>| {
         for (label, path, kind) in configs {
-            if Path::new(path).exists() {
+            if path.exists() {
                 out.push(ConfigFile {
                     label: (*label).to_string(),
-                    path: (*path).to_string(),
+                    path: path.to_string_lossy().to_string(),
                     kind: (*kind).to_string(),
                     exists: true,
                 });
             }
         }
         if let Some(skills_path) = skills {
-            if Path::new(skills_path).exists() {
-                *skill_out = Some(skills_path.to_string());
+            if skills_path.exists() {
+                *skill_out = Some(skills_path.to_string_lossy().to_string());
             }
         }
     };
 
     if key.contains("codex") {
         apply(
-            &[("config.toml", "/Users/smzdm/.codex/config.toml", "toml")],
-            Some("/Users/smzdm/.agents/skills"),
+            &[("config.toml", home.join(".codex/config.toml"), "toml")],
+            Some(home.join(".agents/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("claude") {
         apply(
-            &[("settings.json", "/Users/smzdm/.claude/settings.json", "json")],
-            Some("/Users/smzdm/.claude/skills"),
+            &[("settings.json", home.join(".claude/settings.json"), "json")],
+            Some(home.join(".claude/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("cursor") {
+        #[cfg(target_os = "macos")]
+        let settings_path = home.join("Library/Application Support/Cursor/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let settings_path = home.join("AppData/Roaming/Cursor/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let settings_path = home.join(".config/Cursor/User/settings.json");
+
         apply(
             &[
-                ("settings.json", "/Users/smzdm/Library/Application Support/Cursor/User/settings.json", "json"),
-                ("mcp.json", "/Users/smzdm/.cursor/mcp.json", "json"),
-                ("hooks.json", "/Users/smzdm/.cursor/hooks.json", "json"),
+                ("settings.json", settings_path, "json"),
+                ("mcp.json", home.join(".cursor/mcp.json"), "json"),
+                ("hooks.json", home.join(".cursor/hooks.json"), "json"),
             ],
-            Some("/Users/smzdm/.cursor/skills-cursor"),
+            Some(home.join(".cursor/skills-cursor")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("qoder") {
+        #[cfg(target_os = "macos")]
+        let settings_path = home.join("Library/Application Support/Qoder/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let settings_path = home.join("AppData/Roaming/Qoder/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let settings_path = home.join(".config/Qoder/User/settings.json");
+
         apply(
-            &[("settings.json", "/Users/smzdm/Library/Application Support/Qoder/User/settings.json", "json")],
-            Some("/Users/smzdm/.qoder/skills"),
+            &[("settings.json", settings_path, "json")],
+            Some(home.join(".qoder/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("trae") {
+        #[cfg(target_os = "macos")]
+        let settings_path = home.join("Library/Application Support/Trae CN/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let settings_path = home.join("AppData/Roaming/Trae CN/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let settings_path = home.join(".config/Trae CN/User/settings.json");
+
         apply(
             &[
-                ("settings.json", "/Users/smzdm/Library/Application Support/Trae CN/User/settings.json", "json"),
-                ("skill-config.json", "/Users/smzdm/.trae-cn/skill-config.json", "json"),
+                ("settings.json", settings_path, "json"),
+                ("skill-config.json", home.join(".trae-cn/skill-config.json"), "json"),
             ],
-            Some("/Users/smzdm/.trae-cn/skills"),
+            Some(home.join(".trae-cn/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("opencode") {
         apply(
             &[
-                ("opencode.jsonc", "/Users/smzdm/.config/opencode/opencode.jsonc", "jsonc"),
-                ("config.json", "/Users/smzdm/.config/opencode/config.json", "json"),
+                ("opencode.jsonc", home.join(".config/opencode/opencode.jsonc"), "jsonc"),
+                ("config.json", home.join(".config/opencode/config.json"), "json"),
             ],
-            Some("/Users/smzdm/.config/opencode/skills"),
+            Some(home.join(".config/opencode/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("agent") {
-        apply(&[], Some("/Users/smzdm/.agents/skills"), &mut config_files, &mut skill_dir);
+        apply(&[], Some(home.join(".agents/skills")), &mut config_files, &mut skill_dir);
     }
 
     DetectToolPathsResult { config_files, skill_dir }
@@ -508,6 +610,11 @@ fn with_conflict_policy(path: &Path, policy: &str) -> Result<(PathBuf, String), 
         }
         _ => Err(format!("unsupported conflict policy: {policy}")),
     }
+}
+
+#[tauri::command]
+fn get_home_dir_path() -> Result<String, String> {
+    get_home_dir().map(|p| p.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -1234,13 +1341,14 @@ pub fn run() {
                     .collect();
 
                 // 追加 Claude Code Config Sync 监听的两个路径
-                for extra in [
-                    "/Users/smzdm/.claude/settings.json",
-                    "/Users/smzdm/.cc-switch/cc-switch.db",
-                ] {
-                    let p = PathBuf::from(extra);
-                    if p.exists() {
-                        watch_paths.push(p);
+                if let Ok(home) = get_home_dir() {
+                    for extra in [
+                        home.join(".claude/settings.json"),
+                        home.join(".cc-switch/cc-switch.db"),
+                    ] {
+                        if extra.exists() {
+                            watch_paths.push(extra);
+                        }
                     }
                 }
 
@@ -1263,6 +1371,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             healthcheck,
+            get_home_dir_path,
             list_tools,
             get_skill_insights,
             list_tool_registry,

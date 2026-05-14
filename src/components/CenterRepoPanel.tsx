@@ -33,7 +33,12 @@ import {
   syncFromCenter,
   importToCenter,
 } from '../lib/toolboxApi'
-import type { CenterSkillInfo, DiscoveredSkill, ImportOutcome, SyncOutcome } from '../lib/toolboxApi'
+import type {
+  CenterSkillInfo,
+  DiscoveredSkill,
+  ImportOutcome,
+  SyncOutcome,
+} from '../lib/toolboxApi'
 import type { SyncMode, ConflictStrategy, ToolItem } from '../types/toolbox'
 
 const { Text, Title } = Typography
@@ -78,7 +83,9 @@ export default function CenterRepoPanel({
   const [selectedDiscovered, setSelectedDiscovered] = useState<Set<string>>(new Set())
   const [importingDiscovered, setImportingDiscovered] = useState(false)
 
-  const [filterType, setFilterType] = useState<'all' | 'unsynced' | 'partial' | 'fullySynced'>('all')
+  const [filterType, setFilterType] = useState<'all' | 'unsynced' | 'partial' | 'fullySynced'>(
+    'all',
+  )
   const [sourceFilter, setSourceFilter] = useState<'all' | 'custom' | 'git'>('custom')
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set())
   const [batchSyncOpen, setBatchSyncOpen] = useState(false)
@@ -103,6 +110,7 @@ export default function CenterRepoPanel({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 打开时加载数据并重置筛选状态
       void loadSkills()
       setKeyword('')
       setFilterType('all')
@@ -130,9 +138,7 @@ export default function CenterRepoPanel({
     if (keyword.trim()) {
       const k = keyword.trim().toLowerCase()
       result = result.filter(
-        (s) =>
-          s.name.toLowerCase().includes(k) ||
-          (s.description ?? '').toLowerCase().includes(k),
+        (s) => s.name.toLowerCase().includes(k) || (s.description ?? '').toLowerCase().includes(k),
       )
     }
     if (filterType !== 'all') {
@@ -388,16 +394,13 @@ export default function CenterRepoPanel({
       setSelectedSkills(new Set())
       await loadSkills()
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '批量标记失败')
+      message.error(getErrorMessage(error, '批量标记失败'))
     } finally {
       setSettingCategory(false)
     }
   }
 
-  const toolOptions = useMemo(
-    () => tools.map((t) => ({ label: t.name, value: t.id })),
-    [tools],
-  )
+  const toolOptions = useMemo(() => tools.map((t) => ({ label: t.name, value: t.id })), [tools])
 
   const categoryOptions = [
     { label: '自定义', value: 'custom' },
@@ -410,7 +413,9 @@ export default function CenterRepoPanel({
       <Drawer
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Title level={5} style={{ margin: 0 }}>中央仓库</Title>
+            <Title level={5} style={{ margin: 0 }}>
+              中央仓库
+            </Title>
             <Tag variant="filled" color="blue">
               {skills.length} 个技能
             </Tag>
@@ -429,18 +434,10 @@ export default function CenterRepoPanel({
             >
               扫描发现
             </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              loading={loading}
-              onClick={() => void loadSkills()}
-            >
+            <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void loadSkills()}>
               刷新
             </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setInstallOpen(true)}
-            >
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setInstallOpen(true)}>
               从 Git 安装
             </Button>
           </Space>
@@ -482,9 +479,18 @@ export default function CenterRepoPanel({
           <Space style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap' }}>
             {[
               { key: 'all', label: `全部同步状态` },
-              { key: 'unsynced', label: `未同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'unsynced').length})` },
-              { key: 'partial', label: `部分同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'partial').length})` },
-              { key: 'fullySynced', label: `已全量同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'fullySynced').length})` },
+              {
+                key: 'unsynced',
+                label: `未同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'unsynced').length})`,
+              },
+              {
+                key: 'partial',
+                label: `部分同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'partial').length})`,
+              },
+              {
+                key: 'fullySynced',
+                label: `已全量同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'fullySynced').length})`,
+              },
             ].map((item) => (
               <Button
                 key={item.key}
@@ -499,7 +505,14 @@ export default function CenterRepoPanel({
         )}
 
         {selectedSkills.size > 0 && (
-          <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            style={{
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
             <Text type="secondary">已选 {selectedSkills.size} 个</Text>
             <Button size="small" type="primary" onClick={openBatchSyncModal}>
               批量同步到工具
@@ -560,7 +573,15 @@ export default function CenterRepoPanel({
                     style={{ marginTop: 6 }}
                   />
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginBottom: 4,
+                      }}
+                    >
                       <Text strong>{skill.name}</Text>
                       <Select
                         size="small"
@@ -593,7 +614,15 @@ export default function CenterRepoPanel({
                         {skill.description}
                       </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        flexWrap: 'nowrap',
+                        overflow: 'hidden',
+                      }}
+                    >
                       {skill.syncStatuses.slice(0, 4).map((status) => (
                         <Tag
                           key={status.toolId}
@@ -609,7 +638,9 @@ export default function CenterRepoPanel({
                         </Text>
                       )}
                       {skill.syncStatuses.length === 0 && (
-                        <Text type="secondary" style={{ fontSize: 11 }}>未同步到任何工具</Text>
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          未同步到任何工具
+                        </Text>
                       )}
                     </div>
                   </div>
@@ -760,16 +791,11 @@ export default function CenterRepoPanel({
             <Spin />
           </div>
         ) : discovered.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="未发现新的技能"
-          />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未发现新的技能" />
         ) : (
           <>
             <div style={{ marginBottom: 12 }}>
-              <Text type="secondary">
-                发现 {discovered.length} 个技能分散在各工具中，尚未入库
-              </Text>
+              <Text type="secondary">发现 {discovered.length} 个技能分散在各工具中，尚未入库</Text>
             </div>
             <List
               dataSource={discovered}
@@ -778,7 +804,14 @@ export default function CenterRepoPanel({
                   onClick={() => toggleDiscovered(skill.name)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, width: '100%' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 12,
+                      width: '100%',
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedDiscovered.has(skill.name)}
@@ -787,7 +820,14 @@ export default function CenterRepoPanel({
                       style={{ marginTop: 4 }}
                     />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          marginBottom: 4,
+                        }}
+                      >
                         <Text strong>{skill.name}</Text>
                         <Tag variant="filled" color="default">
                           {skill.sources.map((s) => s.toolName).join(', ')}

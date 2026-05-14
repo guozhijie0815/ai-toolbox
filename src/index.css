@@ -14,11 +14,8 @@
   --chip-border: #d7ded0;
   --item-bg: #ffffff;
   --item-hover: #fff6ef;
-  --mono:
-    'SFMono-Regular', 'JetBrains Mono', 'SF Mono', 'Roboto Mono', Consolas,
-    monospace;
-  font-family:
-    'Avenir Next', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  --mono: 'SFMono-Regular', 'JetBrains Mono', 'SF Mono', 'Roboto Mono', Consolas, monospace;
+  font-family: 'Avenir Next', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
   color: #18222d;
   font-synthesis: none;
   text-rendering: optimizeLegibility;

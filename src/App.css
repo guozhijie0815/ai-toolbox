@@ -4,19 +4,25 @@
    ============================================ */
 
 /* macOS 无边框窗口圆角 */
-html, body, #root {
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
   height: 100%;
 }
 
-html, body {
+html,
+body {
   background: transparent !important;
 }
 
 #root {
   border-radius: 14px;
   overflow: hidden;
+  /* WebKit 硬件加速内容圆角裁剪修复 */
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  isolation: isolate;
 }
 
 /* ---- 浅色主题变量（默认） ---- */
@@ -129,7 +135,8 @@ html, body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  padding: 10px;
+  padding: 0;
+  border-radius: 14px;
   color: var(--primary-text);
   font-family: var(--font-body);
 }
@@ -141,7 +148,11 @@ html, body {
     radial-gradient(ellipse 80% 50% at 50% 0%, rgba(216, 105, 51, 0.06), transparent),
     radial-gradient(ellipse 60% 40% at 85% 100%, rgba(31, 138, 91, 0.04), transparent),
     var(--page-bg);
-  background-size: 24px 24px, auto, auto, auto;
+  background-size:
+    24px 24px,
+    auto,
+    auto,
+    auto;
 }
 
 /* 深色背景 */
@@ -152,7 +163,12 @@ html, body {
     radial-gradient(ellipse 80% 50% at 50% 0%, rgba(34, 211, 238, 0.08), transparent),
     radial-gradient(ellipse 60% 40% at 85% 100%, rgba(168, 85, 247, 0.05), transparent),
     var(--page-bg);
-  background-size: 200px 200px, 24px 24px, auto, auto, auto;
+  background-size:
+    200px 200px,
+    24px 24px,
+    auto,
+    auto,
+    auto;
 }
 
 /* ---- 头部 ---- */
@@ -161,13 +177,14 @@ html, body {
   flex-direction: column;
   gap: 10px;
   margin-top: 0;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   padding: 14px 20px;
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-lg);
+  border: none;
+  border-bottom: 1px solid var(--panel-border);
+  border-radius: 0;
   background: var(--panel-bg);
   backdrop-filter: blur(16px);
-  box-shadow: var(--panel-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: none;
   user-select: none;
   animation: fadeInUp 0.6s ease-out both;
   animation-delay: 0.1s;
@@ -290,7 +307,9 @@ html, body {
 
 .header-search .ant-input {
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .header-search .ant-input:hover,
@@ -415,17 +434,17 @@ html, body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
   min-height: 0;
   overflow: hidden;
 }
 
-/* ---- 网格布局 ---- */
+/* ---- 网格布局（统一表面，无间距） ---- */
 .app-grid {
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr) 320px;
-  gap: 16px;
+  gap: 0;
   height: auto;
   min-height: 0;
   overflow: hidden;
@@ -435,26 +454,28 @@ html, body {
   grid-template-columns: 320px minmax(0, 1fr) 320px;
 }
 
-/* ---- 面板 ---- */
+/* ---- 面板（统一表面设计，内部用分割线） ---- */
 .panel {
   display: flex;
   min-height: 0;
   flex-direction: column;
   padding: 20px;
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-lg);
+  border: none;
+  border-radius: 0;
   background: var(--panel-bg);
   backdrop-filter: blur(12px);
-  box-shadow: var(--panel-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow: none;
   animation: fadeInUp 0.6s ease-out both;
 }
 
 .panel--nav {
   animation-delay: 0.2s;
+  border-right: 1px solid var(--panel-border);
 }
 
 .panel--workspace {
   animation-delay: 0.3s;
+  border-right: 1px solid var(--panel-border);
 }
 
 .panel--skills {
@@ -480,7 +501,9 @@ html, body {
 }
 
 .panel-slide {
-  transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  transition:
+    opacity 0.4s ease,
+    transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .panel-slide:first-child {
@@ -609,7 +632,9 @@ html, body {
   flex-direction: column;
   padding: 12px 16px;
   overflow: hidden;
-  transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  transition:
+    opacity 0.4s ease,
+    transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .panel--insights .insights-content {
@@ -783,7 +808,9 @@ html, body {
 .config-tab.is-active {
   border-color: var(--accent);
   background: var(--active-bg);
-  box-shadow: 0 0 24px var(--accent-glow), inset 0 0 0 1px var(--accent-soft);
+  box-shadow:
+    0 0 24px var(--accent-glow),
+    inset 0 0 0 1px var(--accent-soft);
 }
 
 .tool-item__title {
@@ -1055,7 +1082,6 @@ html, body {
   background: rgba(6, 9, 20, 0.7);
 }
 
-
 .skill-view-list {
   margin-top: 12px;
 }
@@ -1221,7 +1247,9 @@ html, body {
   overflow: hidden;
   background: var(--panel-bg-solid);
   backdrop-filter: blur(20px);
-  box-shadow: var(--panel-shadow), 0 0 0 1px var(--accent-soft);
+  box-shadow:
+    var(--panel-shadow),
+    0 0 0 1px var(--accent-soft);
 }
 
 .sync-modal .ant-modal-header,
@@ -1612,7 +1640,9 @@ html, body {
   box-shadow: 0 4px 16px var(--accent-glow);
   font-family: var(--font-display);
   font-weight: 600;
-  transition: box-shadow 0.3s ease, background 0.3s ease;
+  transition:
+    box-shadow 0.3s ease,
+    background 0.3s ease;
 }
 
 .toolbox-shell .ant-btn-primary:hover {
@@ -1624,7 +1654,10 @@ html, body {
   border-color: var(--chip-border);
   background: var(--chip-bg);
   color: var(--secondary-text);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .toolbox-shell .ant-btn-default:hover {
@@ -1741,7 +1774,9 @@ html, body {
   box-shadow: 0 4px 16px var(--accent-glow);
   font-family: var(--font-display);
   font-weight: 600;
-  transition: box-shadow 0.3s ease, background 0.3s ease;
+  transition:
+    box-shadow 0.3s ease,
+    background 0.3s ease;
 }
 
 .sync-modal .ant-btn-primary:hover,
@@ -1755,7 +1790,10 @@ html, body {
   border-color: var(--chip-border);
   background: var(--chip-bg);
   color: var(--secondary-text);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .sync-modal .ant-btn-default:hover,
@@ -1848,7 +1886,8 @@ html, body {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -1859,12 +1898,24 @@ html, body {
 }
 
 /* ---- 工具颜色工具类 ---- */
-.tool-color-codex { --tool-color: var(--tool-codex); }
-.tool-color-cursor { --tool-color: var(--tool-cursor); }
-.tool-color-claude { --tool-color: var(--tool-claude); }
-.tool-color-opencode { --tool-color: var(--tool-opencode); }
-.tool-color-qoder { --tool-color: var(--tool-qoder); }
-.tool-color-trae { --tool-color: var(--tool-trae); }
+.tool-color-codex {
+  --tool-color: var(--tool-codex);
+}
+.tool-color-cursor {
+  --tool-color: var(--tool-cursor);
+}
+.tool-color-claude {
+  --tool-color: var(--tool-claude);
+}
+.tool-color-opencode {
+  --tool-color: var(--tool-opencode);
+}
+.tool-color-qoder {
+  --tool-color: var(--tool-qoder);
+}
+.tool-color-trae {
+  --tool-color: var(--tool-trae);
+}
 
 /* ---- 变动洞察 ---- */
 .skill-insights {
@@ -1986,32 +2037,32 @@ html, body {
   font-weight: 600;
 }
 
-.skill-insight-card__leader[data-tool="codex"] {
+.skill-insight-card__leader[data-tool='codex'] {
   background: rgba(59, 130, 246, 0.15);
   color: #3b82f6;
 }
 
-.skill-insight-card__leader[data-tool="cursor"] {
+.skill-insight-card__leader[data-tool='cursor'] {
   background: rgba(168, 85, 247, 0.15);
   color: #a855f7;
 }
 
-.skill-insight-card__leader[data-tool="claude"] {
+.skill-insight-card__leader[data-tool='claude'] {
   background: rgba(245, 158, 11, 0.15);
   color: #f59e0b;
 }
 
-.skill-insight-card__leader[data-tool="opencode"] {
+.skill-insight-card__leader[data-tool='opencode'] {
   background: rgba(34, 197, 94, 0.15);
   color: #22c55e;
 }
 
-.skill-insight-card__leader[data-tool="qoder"] {
+.skill-insight-card__leader[data-tool='qoder'] {
   background: rgba(236, 72, 153, 0.15);
   color: #ec4899;
 }
 
-.skill-insight-card__leader[data-tool="trae"] {
+.skill-insight-card__leader[data-tool='trae'] {
   background: rgba(249, 115, 22, 0.15);
   color: #f97316;
 }
@@ -2185,7 +2236,7 @@ html, body {
   .app-grid {
     grid-template-columns: 280px minmax(0, 1fr) 280px;
   }
-  
+
   .app-grid--edit {
     grid-template-columns: 280px minmax(0, 1fr) 280px;
   }
@@ -2195,15 +2246,20 @@ html, body {
   .app-grid {
     grid-template-columns: 280px minmax(0, 1fr);
   }
-  
+
   .app-grid--edit {
     grid-template-columns: 280px minmax(0, 1fr);
   }
 
   .panel--skills {
     grid-column: 1 / -1;
+    border-top: 1px solid var(--panel-border);
   }
-  
+
+  .panel--workspace {
+    border-right: none;
+  }
+
   .app-grid--edit .panel--insights {
     display: none;
   }
@@ -2236,6 +2292,12 @@ html, body {
 
   .panel {
     min-height: 340px;
+    border-right: none;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .panel:last-child {
+    border-bottom: none;
   }
 
   .sync-modal__layout {

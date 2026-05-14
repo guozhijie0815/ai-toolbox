@@ -1,7 +1,8 @@
 use crate::db::DbPool;
 use crate::types::{DetectToolPathsResult, UserToolConfigFile, UserToolSpec};
+use crate::utils::get_home_dir;
 use rusqlite::params;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 // ============================================================================
 // 工具注册表 CRUD
@@ -62,12 +63,14 @@ pub fn load_tool_registry(db: &DbPool) -> Result<Vec<UserToolSpec>, String> {
 
         // 数据迁移兼容：codex 的 skill_dir 修正
         let mut changed = false;
-        for tool in &mut tools {
-            if tool.id == "codex"
-                && tool.skill_dir.as_deref() == Some("/Users/smzdm/.codex/skills")
-            {
-                tool.skill_dir = Some("/Users/smzdm/.agents/skills".to_string());
-                changed = true;
+        if let Ok(home) = get_home_dir() {
+            let old_codex_skills = home.join(".codex/skills").to_string_lossy().to_string();
+            let agents_skills = home.join(".agents/skills").to_string_lossy().to_string();
+            for tool in &mut tools {
+                if tool.id == "codex" && tool.skill_dir.as_deref() == Some(&old_codex_skills) {
+                    tool.skill_dir = Some(agents_skills.clone());
+                    changed = true;
+                }
             }
         }
 
@@ -246,24 +249,24 @@ pub fn get_tool_by_id(db: &DbPool, id: &str) -> Result<Option<UserToolSpec>, Str
 // ============================================================================
 
 fn apply_detect(
-    configs: &[(&str, &str, &str)],
-    skills: Option<&str>,
+    configs: &[(&str, PathBuf, &str)],
+    skills: Option<PathBuf>,
     out: &mut Vec<crate::types::ConfigFile>,
     skill_out: &mut Option<String>,
 ) {
     for (label, path, kind) in configs {
-        if Path::new(path).exists() {
+        if path.exists() {
             out.push(crate::types::ConfigFile {
                 label: (*label).to_string(),
-                path: (*path).to_string(),
+                path: path.to_string_lossy().to_string(),
                 kind: (*kind).to_string(),
                 exists: true,
             });
         }
     }
     if let Some(skills_path) = skills {
-        if Path::new(skills_path).exists() {
-            *skill_out = Some(skills_path.to_string());
+        if skills_path.exists() {
+            *skill_out = Some(skills_path.to_string_lossy().to_string());
         }
     }
 }
@@ -282,70 +285,88 @@ pub fn detect_tool_paths(
     let mut config_files = Vec::new();
     let mut skill_dir = None::<String>;
 
+    let home = match get_home_dir() {
+        Ok(h) => h,
+        Err(_) => return Ok(DetectToolPathsResult { config_files, skill_dir }),
+    };
+
     if key.contains("codex") {
         apply_detect(
-            &[("config.toml", "/Users/smzdm/.codex/config.toml", "toml")],
-            Some("/Users/smzdm/.agents/skills"),
+            &[("config.toml", home.join(".codex/config.toml"), "toml")],
+            Some(home.join(".agents/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("claude") {
         apply_detect(
-            &[("settings.json", "/Users/smzdm/.claude/settings.json", "json")],
-            Some("/Users/smzdm/.claude/skills"),
+            &[("settings.json", home.join(".claude/settings.json"), "json")],
+            Some(home.join(".claude/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("cursor") {
+        #[cfg(target_os = "macos")]
+        let settings_path = home.join("Library/Application Support/Cursor/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let settings_path = home.join("AppData/Roaming/Cursor/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let settings_path = home.join(".config/Cursor/User/settings.json");
+
         apply_detect(
             &[
-                (
-                    "settings.json",
-                    "/Users/smzdm/Library/Application Support/Cursor/User/settings.json",
-                    "json",
-                ),
-                ("mcp.json", "/Users/smzdm/.cursor/mcp.json", "json"),
-                ("hooks.json", "/Users/smzdm/.cursor/hooks.json", "json"),
+                ("settings.json", settings_path, "json"),
+                ("mcp.json", home.join(".cursor/mcp.json"), "json"),
+                ("hooks.json", home.join(".cursor/hooks.json"), "json"),
             ],
-            Some("/Users/smzdm/.cursor/skills-cursor"),
+            Some(home.join(".cursor/skills-cursor")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("qoder") {
+        #[cfg(target_os = "macos")]
+        let settings_path = home.join("Library/Application Support/Qoder/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let settings_path = home.join("AppData/Roaming/Qoder/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let settings_path = home.join(".config/Qoder/User/settings.json");
+
         apply_detect(
-            &[("settings.json", "/Users/smzdm/Library/Application Support/Qoder/User/settings.json", "json")],
-            Some("/Users/smzdm/.qoder/skills"),
+            &[("settings.json", settings_path, "json")],
+            Some(home.join(".qoder/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("trae") {
+        #[cfg(target_os = "macos")]
+        let settings_path = home.join("Library/Application Support/Trae CN/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let settings_path = home.join("AppData/Roaming/Trae CN/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let settings_path = home.join(".config/Trae CN/User/settings.json");
+
         apply_detect(
             &[
-                (
-                    "settings.json",
-                    "/Users/smzdm/Library/Application Support/Trae CN/User/settings.json",
-                    "json",
-                ),
-                ("skill-config.json", "/Users/smzdm/.trae-cn/skill-config.json", "json"),
+                ("settings.json", settings_path, "json"),
+                ("skill-config.json", home.join(".trae-cn/skill-config.json"), "json"),
             ],
-            Some("/Users/smzdm/.trae-cn/skills"),
+            Some(home.join(".trae-cn/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("opencode") {
         apply_detect(
             &[
-                ("opencode.jsonc", "/Users/smzdm/.config/opencode/opencode.jsonc", "jsonc"),
-                ("config.json", "/Users/smzdm/.config/opencode/config.json", "json"),
+                ("opencode.jsonc", home.join(".config/opencode/opencode.jsonc"), "jsonc"),
+                ("config.json", home.join(".config/opencode/config.json"), "json"),
             ],
-            Some("/Users/smzdm/.config/opencode/skills"),
+            Some(home.join(".config/opencode/skills")),
             &mut config_files,
             &mut skill_dir,
         );
     } else if key.contains("agent") {
         apply_detect(
             &[],
-            Some("/Users/smzdm/.agents/skills"),
+            Some(home.join(".agents/skills")),
             &mut config_files,
             &mut skill_dir,
         );

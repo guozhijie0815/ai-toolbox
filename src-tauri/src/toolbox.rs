@@ -3,21 +3,20 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Clone, Copy)]
 struct ToolDefinition {
-    id: &'static str,
-    label: &'static str,
-    config_files: &'static [ConfigFileDefinition],
-    skills_dir: Option<&'static str>,
+    id: String,
+    label: String,
+    config_files: Vec<ConfigFileDefinition>,
+    skills_dir: Option<String>,
 }
 
-#[derive(Clone, Copy)]
 struct ConfigFileDefinition {
-    id: &'static str,
-    label: &'static str,
-    path: &'static str,
+    id: String,
+    label: String,
+    path: String,
     is_primary: bool,
 }
 
@@ -99,127 +98,126 @@ pub struct SkillSyncOperation {
     pub is_symlink: bool,
 }
 
-const EMPTY_CONFIGS: &[ConfigFileDefinition] = &[];
+static TOOLS: OnceLock<Vec<ToolDefinition>> = OnceLock::new();
 
-const CODEX_CONFIGS: &[ConfigFileDefinition] = &[ConfigFileDefinition {
-    id: "config",
-    label: "Config",
-    path: "/Users/smzdm/.codex/config.toml",
-    is_primary: true,
-}];
+fn get_tools() -> &'static [ToolDefinition] {
+    TOOLS.get_or_init(|| {
+        let home = crate::utils::get_home_dir()
+            .unwrap_or_else(|_| PathBuf::from("/tmp"));
+        let h = |sub: &str| -> String {
+            home.join(sub).to_string_lossy().to_string()
+        };
 
-const CLAUDE_CONFIGS: &[ConfigFileDefinition] = &[ConfigFileDefinition {
-    id: "settings",
-    label: "Settings",
-    path: "/Users/smzdm/.claude/settings.json",
-    is_primary: true,
-}];
+        #[cfg(target_os = "macos")]
+        let cursor_settings = h("Library/Application Support/Cursor/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let cursor_settings = h("AppData/Roaming/Cursor/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let cursor_settings = h(".config/Cursor/User/settings.json");
 
-const CURSOR_CONFIGS: &[ConfigFileDefinition] = &[
-    ConfigFileDefinition {
-        id: "settings",
-        label: "Settings",
-        path: "/Users/smzdm/Library/Application Support/Cursor/User/settings.json",
-        is_primary: true,
-    },
-    ConfigFileDefinition {
-        id: "mcp",
-        label: "MCP",
-        path: "/Users/smzdm/.cursor/mcp.json",
-        is_primary: false,
-    },
-    ConfigFileDefinition {
-        id: "hooks",
-        label: "Hooks",
-        path: "/Users/smzdm/.cursor/hooks.json",
-        is_primary: false,
-    },
-];
+        #[cfg(target_os = "macos")]
+        let qoder_settings = h("Library/Application Support/Qoder/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let qoder_settings = h("AppData/Roaming/Qoder/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let qoder_settings = h(".config/Qoder/User/settings.json");
 
-const QODER_CONFIGS: &[ConfigFileDefinition] = &[ConfigFileDefinition {
-    id: "settings",
-    label: "Settings",
-    path: "/Users/smzdm/Library/Application Support/Qoder/User/settings.json",
-    is_primary: true,
-}];
+        #[cfg(target_os = "macos")]
+        let trae_settings = h("Library/Application Support/Trae CN/User/settings.json");
+        #[cfg(target_os = "windows")]
+        let trae_settings = h("AppData/Roaming/Trae CN/User/settings.json");
+        #[cfg(target_os = "linux")]
+        let trae_settings = h(".config/Trae CN/User/settings.json");
 
-const TRAE_CONFIGS: &[ConfigFileDefinition] = &[
-    ConfigFileDefinition {
-        id: "settings",
-        label: "Settings",
-        path: "/Users/smzdm/Library/Application Support/Trae CN/User/settings.json",
-        is_primary: true,
-    },
-    ConfigFileDefinition {
-        id: "skill-config",
-        label: "Skill Config",
-        path: "/Users/smzdm/.trae-cn/skill-config.json",
-        is_primary: false,
-    },
-];
-
-const OPENCODE_CONFIGS: &[ConfigFileDefinition] = &[
-    ConfigFileDefinition {
-        id: "opencode",
-        label: "OpenCode",
-        path: "/Users/smzdm/.config/opencode/opencode.jsonc",
-        is_primary: true,
-    },
-    ConfigFileDefinition {
-        id: "config",
-        label: "Config",
-        path: "/Users/smzdm/.config/opencode/config.json",
-        is_primary: false,
-    },
-];
-
-const TOOLS: &[ToolDefinition] = &[
-    ToolDefinition {
-        id: "codex",
-        label: "Codex",
-        config_files: CODEX_CONFIGS,
-        skills_dir: Some("/Users/smzdm/.agents/skills"),
-    },
-    ToolDefinition {
-        id: "claude",
-        label: "Claude",
-        config_files: CLAUDE_CONFIGS,
-        skills_dir: Some("/Users/smzdm/.claude/skills"),
-    },
-    ToolDefinition {
-        id: "cursor",
-        label: "Cursor",
-        config_files: CURSOR_CONFIGS,
-        skills_dir: Some("/Users/smzdm/.cursor/skills-cursor"),
-    },
-    ToolDefinition {
-        id: "qoder",
-        label: "Qoder",
-        config_files: QODER_CONFIGS,
-        skills_dir: Some("/Users/smzdm/.qoder/skills"),
-    },
-    ToolDefinition {
-        id: "trae",
-        label: "Trae",
-        config_files: TRAE_CONFIGS,
-        skills_dir: Some("/Users/smzdm/.trae-cn/skills"),
-    },
-    ToolDefinition {
-        id: "opencode",
-        label: "OpenCode",
-        config_files: OPENCODE_CONFIGS,
-        skills_dir: Some("/Users/smzdm/.config/opencode/skills"),
-    },
-    ToolDefinition {
-        id: "agents",
-        label: "Agents",
-        config_files: EMPTY_CONFIGS,
-        skills_dir: Some("/Users/smzdm/.agents/skills"),
-    },
-];
+        vec![
+            ToolDefinition {
+                id: "codex".into(),
+                label: "Codex".into(),
+                config_files: vec![ConfigFileDefinition {
+                    id: "config".into(), label: "Config".into(),
+                    path: h(".codex/config.toml"), is_primary: true,
+                }],
+                skills_dir: Some(h(".agents/skills")),
+            },
+            ToolDefinition {
+                id: "claude".into(),
+                label: "Claude".into(),
+                config_files: vec![ConfigFileDefinition {
+                    id: "settings".into(), label: "Settings".into(),
+                    path: h(".claude/settings.json"), is_primary: true,
+                }],
+                skills_dir: Some(h(".claude/skills")),
+            },
+            ToolDefinition {
+                id: "cursor".into(),
+                label: "Cursor".into(),
+                config_files: vec![
+                    ConfigFileDefinition {
+                        id: "settings".into(), label: "Settings".into(),
+                        path: cursor_settings, is_primary: true,
+                    },
+                    ConfigFileDefinition {
+                        id: "mcp".into(), label: "MCP".into(),
+                        path: h(".cursor/mcp.json"), is_primary: false,
+                    },
+                    ConfigFileDefinition {
+                        id: "hooks".into(), label: "Hooks".into(),
+                        path: h(".cursor/hooks.json"), is_primary: false,
+                    },
+                ],
+                skills_dir: Some(h(".cursor/skills-cursor")),
+            },
+            ToolDefinition {
+                id: "qoder".into(),
+                label: "Qoder".into(),
+                config_files: vec![ConfigFileDefinition {
+                    id: "settings".into(), label: "Settings".into(),
+                    path: qoder_settings, is_primary: true,
+                }],
+                skills_dir: Some(h(".qoder/skills")),
+            },
+            ToolDefinition {
+                id: "trae".into(),
+                label: "Trae".into(),
+                config_files: vec![
+                    ConfigFileDefinition {
+                        id: "settings".into(), label: "Settings".into(),
+                        path: trae_settings, is_primary: true,
+                    },
+                    ConfigFileDefinition {
+                        id: "skill-config".into(), label: "Skill Config".into(),
+                        path: h(".trae-cn/skill-config.json"), is_primary: false,
+                    },
+                ],
+                skills_dir: Some(h(".trae-cn/skills")),
+            },
+            ToolDefinition {
+                id: "opencode".into(),
+                label: "OpenCode".into(),
+                config_files: vec![
+                    ConfigFileDefinition {
+                        id: "opencode".into(), label: "OpenCode".into(),
+                        path: h(".config/opencode/opencode.jsonc"), is_primary: true,
+                    },
+                    ConfigFileDefinition {
+                        id: "config".into(), label: "Config".into(),
+                        path: h(".config/opencode/config.json"), is_primary: false,
+                    },
+                ],
+                skills_dir: Some(h(".config/opencode/skills")),
+            },
+            ToolDefinition {
+                id: "agents".into(),
+                label: "Agents".into(),
+                config_files: vec![],
+                skills_dir: Some(h(".agents/skills")),
+            },
+        ]
+    })
+}
 
 pub fn list_tools() -> Result<Vec<ToolDescriptor>, String> {
-    TOOLS
+    get_tools()
         .iter()
         .map(build_tool_descriptor)
         .collect::<Result<Vec<_>, _>>()
@@ -232,7 +230,7 @@ pub fn read_config_file(
 ) -> Result<ConfigFileContent, String> {
     let tool_def = find_tool(tool)?;
     let config_def = resolve_config_file(tool_def, config_id, path)?;
-    let content = fs::read_to_string(config_def.path)
+    let content = fs::read_to_string(&config_def.path)
         .map_err(|error| format!("failed to read {}: {}", config_def.path, error))?;
 
     Ok(ConfigFileContent {
@@ -244,7 +242,7 @@ pub fn read_config_file(
 
 pub fn read_config_file_by_path(path: &str) -> Result<ConfigFileContent, String> {
     let (tool, config) = resolve_config_file_by_path(path)?;
-    read_config_file(tool.id, Some(config.id), Some(config.path))
+    read_config_file(&tool.id, Some(&config.id), Some(&config.path))
 }
 
 pub fn save_config_file(
@@ -255,7 +253,7 @@ pub fn save_config_file(
 ) -> Result<SaveConfigResult, String> {
     let tool_def = find_tool(tool)?;
     let config_def = resolve_config_file(tool_def, config_id, path)?;
-    let config_path = Path::new(config_def.path);
+    let config_path = Path::new(&config_def.path);
 
     if let Some(parent) = config_path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
@@ -293,7 +291,7 @@ pub fn save_config_file(
 
 pub fn save_config_file_by_path(path: &str, content: &str) -> Result<SaveConfigResult, String> {
     let (tool, config) = resolve_config_file_by_path(path)?;
-    save_config_file(tool.id, content, Some(config.id), Some(config.path))
+    save_config_file(&tool.id, content, Some(&config.id), Some(&config.path))
 }
 
 pub fn sync_skills(
@@ -314,11 +312,13 @@ pub fn sync_skills(
     let source_root = PathBuf::from(
         source_def
             .skills_dir
+            .as_deref()
             .ok_or_else(|| format!("tool {} does not expose skills", source_def.id))?,
     );
     let target_root = PathBuf::from(
         target_def
             .skills_dir
+            .as_deref()
             .ok_or_else(|| format!("tool {} does not expose skills", target_def.id))?,
     );
 
@@ -405,7 +405,7 @@ fn build_tool_descriptor(tool: &ToolDefinition) -> Result<ToolDescriptor, String
         .iter()
         .map(build_config_descriptor)
         .collect::<Vec<_>>();
-    let skills_dir = tool.skills_dir.map(scan_skills_dir).transpose()?;
+    let skills_dir = tool.skills_dir.as_deref().map(scan_skills_dir).transpose()?;
 
     Ok(ToolDescriptor {
         id: tool.id.to_string(),
@@ -420,7 +420,7 @@ fn build_config_descriptor(config: &ConfigFileDefinition) -> ConfigFileDescripto
         id: config.id.to_string(),
         label: config.label.to_string(),
         path: config.path.to_string(),
-        exists: Path::new(config.path).exists(),
+        exists: Path::new(&config.path).exists(),
         is_primary: config.is_primary,
     }
 }
@@ -476,7 +476,7 @@ fn collect_skills(
             symlink_target: if dir_meta.file_type().is_symlink() {
                 fs::read_link(skill_dir)
                     .ok()
-                    .map(|target| path_to_string(resolve_symlink_target(skill_dir, &target)))
+                    .map(|target| path_to_string(&resolve_symlink_target(skill_dir, &target)))
             } else {
                 None
             },
@@ -516,7 +516,7 @@ fn collect_skills(
 }
 
 fn find_tool(tool: &str) -> Result<&'static ToolDefinition, String> {
-    TOOLS
+    get_tools()
         .iter()
         .find(|definition| definition.id.eq_ignore_ascii_case(tool))
         .ok_or_else(|| format!("unknown tool: {}", tool))
@@ -557,7 +557,7 @@ fn resolve_config_file<'a>(
 fn resolve_config_file_by_path(
     path: &str,
 ) -> Result<(&'static ToolDefinition, &'static ConfigFileDefinition), String> {
-    for tool in TOOLS {
+    for tool in get_tools() {
         if let Some(config) = tool.config_files.iter().find(|config| config.path == path) {
             return Ok((tool, config));
         }

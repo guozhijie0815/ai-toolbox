@@ -7,10 +7,24 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const SETTINGS_PATH: &str = "/Users/smzdm/.claude/settings.json";
-const CSWITCH_DB_PATH: &str = "/Users/smzdm/.cc-switch/cc-switch.db";
-const CSWITCH_BACKUP_DIR: &str = "/Users/smzdm/.cc-switch/backups";
-const SNAPSHOT_DIR: &str = "/Users/smzdm/.ai-toolbox/snapshots/claude-settings";
+use crate::utils::get_home_dir;
+
+fn settings_path() -> Result<std::path::PathBuf, String> {
+    Ok(get_home_dir()?.join(".claude/settings.json"))
+}
+
+fn cswitch_db_path() -> Result<std::path::PathBuf, String> {
+    Ok(get_home_dir()?.join(".cc-switch/cc-switch.db"))
+}
+
+fn cswitch_backup_dir() -> Result<std::path::PathBuf, String> {
+    Ok(get_home_dir()?.join(".cc-switch/backups"))
+}
+
+fn snapshot_dir() -> Result<std::path::PathBuf, String> {
+    Ok(get_home_dir()?.join(".ai-toolbox/snapshots/claude-settings"))
+}
+
 const COMMON_CONFIG_KEY: &str = "common_config_claude";
 const MAX_SNAPSHOTS: usize = 50;
 
@@ -135,7 +149,7 @@ fn read_json_as_map(path: &Path) -> Result<Map<String, Value>, String> {
 // ============================================================================
 
 pub fn list_snapshots() -> Result<Vec<SnapshotMeta>, String> {
-    let dir = PathBuf::from(SNAPSHOT_DIR);
+    let dir = snapshot_dir()?;
     if !dir.exists() {
         return Ok(Vec::new());
     }
@@ -177,11 +191,11 @@ pub fn list_snapshots() -> Result<Vec<SnapshotMeta>, String> {
 }
 
 pub fn snapshot_settings_if_changed() -> Result<Option<PathBuf>, String> {
-    let settings_path = PathBuf::from(SETTINGS_PATH);
-    if !settings_path.exists() {
+    let sp = settings_path()?;
+    if !sp.exists() {
         return Ok(None);
     }
-    let content = fs::read_to_string(&settings_path).map_err(|e| e.to_string())?;
+    let content = fs::read_to_string(&sp).map_err(|e| e.to_string())?;
     let hash = md5_hex(content.as_bytes());
     let hash8 = &hash[..8.min(hash.len())];
 
@@ -191,7 +205,7 @@ pub fn snapshot_settings_if_changed() -> Result<Option<PathBuf>, String> {
         return Ok(None);
     }
 
-    let dir = PathBuf::from(SNAPSHOT_DIR);
+    let dir = snapshot_dir()?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let ts = now_unix();
     let target = dir.join(format!("{}-{}.json", ts, hash8));
@@ -213,7 +227,8 @@ pub fn snapshot_settings_if_changed() -> Result<Option<PathBuf>, String> {
 fn pick_baseline(kind: &BaselineKind) -> Result<(Map<String, Value>, Option<String>), String> {
     match kind {
         BaselineKind::Live => {
-            let map = read_json_as_map(Path::new(SETTINGS_PATH))?;
+            let sp = settings_path()?;
+            let map = read_json_as_map(&sp)?;
             Ok((map, None))
         }
         BaselineKind::Richest => {
@@ -238,7 +253,8 @@ fn pick_baseline(kind: &BaselineKind) -> Result<(Map<String, Value>, Option<Stri
                 }
                 None => {
                     // 没有快照，回退 Live
-                    let map = read_json_as_map(Path::new(SETTINGS_PATH))?;
+                    let sp = settings_path()?;
+                    let map = read_json_as_map(&sp)?;
                     Ok((map, None))
                 }
             }
@@ -265,9 +281,9 @@ fn pick_baseline(kind: &BaselineKind) -> Result<(Map<String, Value>, Option<Stri
 // ============================================================================
 
 fn read_cswitch_common_config() -> Result<Map<String, Value>, String> {
-    let db_path = PathBuf::from(CSWITCH_DB_PATH);
+    let db_path = cswitch_db_path()?;
     if !db_path.exists() {
-        return Err(format!("cc-switch 数据库不存在: {}", CSWITCH_DB_PATH));
+        return Err(format!("cc-switch 数据库不存在: {}", db_path.display()));
     }
     let conn = Connection::open_with_flags(
         &db_path,
@@ -290,7 +306,10 @@ fn read_cswitch_common_config() -> Result<Map<String, Value>, String> {
 }
 
 pub fn check_cswitch_write_lock() -> bool {
-    let db_path = PathBuf::from(CSWITCH_DB_PATH);
+    let db_path = match cswitch_db_path() {
+        Ok(p) => p,
+        Err(_) => return false,
+    };
     if !db_path.exists() {
         return false;
     }
@@ -311,8 +330,8 @@ pub fn check_cswitch_write_lock() -> bool {
 }
 
 fn backup_cswitch_db() -> Result<PathBuf, String> {
-    let src = PathBuf::from(CSWITCH_DB_PATH);
-    let dir = PathBuf::from(CSWITCH_BACKUP_DIR);
+    let src = cswitch_db_path()?;
+    let dir = cswitch_backup_dir()?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let ts = now_unix();
     let dst = dir.join(format!("cc-switch.db.aitoolbox-bak.{}", ts));
@@ -333,7 +352,7 @@ fn backup_cswitch_db() -> Result<PathBuf, String> {
 }
 
 fn write_cswitch_common_config(merged: &Map<String, Value>) -> Result<(), String> {
-    let db_path = PathBuf::from(CSWITCH_DB_PATH);
+    let db_path = cswitch_db_path()?;
     let conn = Connection::open_with_flags(
         &db_path,
         OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_URI,
@@ -429,10 +448,10 @@ pub fn get_claude_config_diff(baseline_kind: BaselineKind) -> Result<ClaudeConfi
         entries,
         baseline_kind,
         baseline_path,
-        cswitch_db_path: CSWITCH_DB_PATH.to_string(),
+        cswitch_db_path: cswitch_db_path().map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
         cswitch_locked,
         snapshots,
-        settings_path: SETTINGS_PATH.to_string(),
+        settings_path: settings_path().map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
         needs_sync,
         excluded_fields: EXCLUDE_FIELDS.iter().map(|s| s.to_string()).collect(),
     })
@@ -481,7 +500,7 @@ pub fn restore_cswitch_db_from_backup(backup_path: String) -> Result<(), String>
         return Err(format!("备份文件不存在: {}", backup_path));
     }
 
-    let dst = PathBuf::from(CSWITCH_DB_PATH);
+    let dst = cswitch_db_path()?;
     let src_conn = Connection::open_with_flags(
         &src,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,

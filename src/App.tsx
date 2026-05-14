@@ -49,9 +49,31 @@ import {
 } from 'antd'
 
 import './App.css'
-import { deleteSkill, deleteToolRegistryItem, detectToolPaths, listToolRegistry, openPathInFinder, syncSkills, upsertToolRegistryItem } from './lib/toolboxApi'
+import {
+  deleteSkill,
+  deleteToolRegistryItem,
+  detectToolPaths,
+  getHomeDirPath,
+  listToolRegistry,
+  openPathInFinder,
+  syncSkills,
+  upsertToolRegistryItem,
+} from './lib/toolboxApi'
 import { useToolboxStore } from './store/useToolboxStore'
-import type { ConflictStrategy, SkillItem, SyncMode, ToolRegistryConfigFile, ToolRegistryEntry } from './types/toolbox'
+import {
+  formatTime,
+  hasTauriRuntime,
+  isInteractiveDragTarget,
+  normalizeFsPath,
+} from './utils/appUtils'
+import { getErrorMessage } from './utils/errorUtils'
+import type {
+  ConflictStrategy,
+  SkillItem,
+  SyncMode,
+  ToolRegistryConfigFile,
+  ToolRegistryEntry,
+} from './types/toolbox'
 
 const { Text, Title } = Typography
 
@@ -90,12 +112,17 @@ const themeOptions = [
   { label: '深色', value: 'dark' },
 ]
 
-const SHARED_SKILL_DIR = '/Users/smzdm/.agents/skills'
+/** 运行时动态获取的 Home 目录，启动时通过 Tauri 命令填充 */
+let _homeDir = ''
 
-const normalizeFsPath = (value?: string) =>
-  value?.replace(/^~(?=\/)/, '/Users/smzdm').replace(/\/+$/, '')
+const getSharedSkillDir = () => `${_homeDir}/.agents/skills`
 
-const isSharedSkillTool = (tool: { id: string; name?: string; configFiles: unknown[]; skillDir?: string }) => {
+const isSharedSkillTool = (tool: {
+  id: string
+  name?: string
+  configFiles: unknown[]
+  skillDir?: string
+}) => {
   const id = tool.id.toLowerCase()
   const name = tool.name?.toLowerCase()
   return (
@@ -103,20 +130,10 @@ const isSharedSkillTool = (tool: { id: string; name?: string; configFiles: unkno
     id === 'agents' ||
     name === '.agent' ||
     name === 'agents skills' ||
-    (tool.configFiles.length === 0 && normalizeFsPath(tool.skillDir) === SHARED_SKILL_DIR)
+    (tool.configFiles.length === 0 &&
+      normalizeFsPath(_homeDir, tool.skillDir) === getSharedSkillDir())
   )
 }
-
-const isInteractiveDragTarget = (target: EventTarget | null) =>
-  target instanceof HTMLElement &&
-  Boolean(target.closest('button,input,textarea,select,[role="button"],[role="tab"],[role="radio"],[role="switch"],.ant-segmented,.ant-select,.monaco-editor'))
-
-const formatTime = (value?: number) => {
-  if (!value) return '未知时间'
-  return new Date(value * 1000).toLocaleString('zh-CN', { hour12: false })
-}
-
-const hasTauriRuntime = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 function App() {
   const [toolForm] = Form.useForm()
@@ -184,6 +201,17 @@ function App() {
   const toggleSkillEnabled = useToolboxStore((state) => state.toggleSkillEnabled)
 
   useEffect(() => {
+    // 初始化 home 目录（需要在 initialize 之前完成）
+    if (hasTauriRuntime()) {
+      getHomeDirPath()
+        .then((dir) => {
+          _homeDir = dir
+        })
+        .catch(() => {})
+    }
+  }, [])
+
+  useEffect(() => {
     startTransition(() => {
       void initialize()
     })
@@ -194,6 +222,7 @@ function App() {
 
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = (event: MediaQueryListEvent) => setSystemDark(event.matches)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 初始化同步系统主题
     setSystemDark(media.matches)
     media.addEventListener('change', handleChange)
     return () => media.removeEventListener('change', handleChange)
@@ -232,7 +261,7 @@ function App() {
 
   const selectedTool = visibleTools.find((tool) => tool.id === selectedToolId) ?? visibleTools[0]
   const selectedFile = selectedTool?.configFiles.find((file) => file.id === selectedConfigId)
-  const currentSkills = selectedTool?.skills ?? []
+  const currentSkills = useMemo(() => selectedTool?.skills ?? [], [selectedTool?.skills])
   const sortedSkills = useMemo(() => {
     return [...currentSkills].sort((a, b) => {
       const timeA = a.updatedAt ?? 0
@@ -265,23 +294,20 @@ function App() {
     })
   }, [sortedSkills, syncKeyword])
 
-  const syncTargetOptions = useMemo(
-    () => {
-      const selectedSkillDir = normalizeFsPath(selectedTool?.skillDir)
-      return visibleTools
-        .filter((tool) => {
-          if (tool.id === selectedTool?.id) return false
-          const targetSkillDir = normalizeFsPath(tool.skillDir)
-          if (selectedSkillDir && targetSkillDir && selectedSkillDir === targetSkillDir) return false
-          return true
-        })
-        .map((tool) => ({
-          label: tool.name,
-          value: tool.id,
-        }))
-    },
-    [selectedTool?.id, selectedTool?.skillDir, visibleTools],
-  )
+  const syncTargetOptions = useMemo(() => {
+    const selectedSkillDir = normalizeFsPath(selectedTool?.skillDir)
+    return visibleTools
+      .filter((tool) => {
+        if (tool.id === selectedTool?.id) return false
+        const targetSkillDir = normalizeFsPath(_homeDir, tool.skillDir)
+        if (selectedSkillDir && targetSkillDir && selectedSkillDir === targetSkillDir) return false
+        return true
+      })
+      .map((tool) => ({
+        label: tool.name,
+        value: tool.id,
+      }))
+  }, [selectedTool?.id, selectedTool?.skillDir, visibleTools])
 
   const selectedSyncTargetNames = useMemo(
     () =>
@@ -308,12 +334,14 @@ function App() {
 
   useEffect(() => {
     const validTargetIds = new Set(syncTargetOptions.map((option) => option.value))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 清除无效选中项
     setSyncTargetToolIds((current) => current.filter((toolId) => validTargetIds.has(toolId)))
   }, [syncTargetOptions])
 
   // 切到非 Claude Code 工具时，若停在「配置同步」tab，自动回退到「技能」
   useEffect(() => {
     if (selectedTool?.id !== 'claude' && middleTab === 'sync') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 联动 tab 重置
       setMiddleTab('skills')
     }
   }, [selectedTool?.id, middleTab])
@@ -326,7 +354,7 @@ function App() {
       const list = await listToolRegistry()
       setRegistryTools(list)
     } catch (error) {
-      void messageApi.error(error instanceof Error ? error.message : String(error))
+      void messageApi.error(getErrorMessage(error))
     } finally {
       setRegistryLoading(false)
     }
@@ -338,7 +366,14 @@ function App() {
       void saveCurrentFile({ silent: true })
     }, 1200)
     return () => window.clearTimeout(timer)
-  }, [autoSave, isSaving, saveCurrentFile, selectedFile?.dirty, selectedFile?.content, selectedFile?.id])
+  }, [
+    autoSave,
+    isSaving,
+    saveCurrentFile,
+    selectedFile?.dirty,
+    selectedFile?.content,
+    selectedFile?.id,
+  ])
 
   const openSyncModal = () => {
     setSyncModalOpen(true)
@@ -410,9 +445,7 @@ function App() {
       await refreshTools()
       resetToolForm()
     } catch (error) {
-      if (error instanceof Error) {
-        void messageApi.error(error.message)
-      }
+      void messageApi.error(getErrorMessage(error))
     } finally {
       setRegistrySaving(false)
     }
@@ -444,8 +477,10 @@ function App() {
       return
     }
 
-    const targetTools = visibleTools.filter((tool) =>
-      syncTargetToolIds.includes(tool.id) && syncTargetOptions.some((option) => option.value === tool.id),
+    const targetTools = visibleTools.filter(
+      (tool) =>
+        syncTargetToolIds.includes(tool.id) &&
+        syncTargetOptions.some((option) => option.value === tool.id),
     )
     if (targetTools.length === 0) {
       void messageApi.warning('至少选择一个目标工具')
@@ -470,7 +505,7 @@ function App() {
       setSyncModalOpen(false)
       await refreshTools()
     } catch (error) {
-      void messageApi.error(error instanceof Error ? error.message : String(error))
+      void messageApi.error(getErrorMessage(error))
     } finally {
       setIsSyncSubmitting(false)
     }
@@ -504,7 +539,11 @@ function App() {
 
   const renderSkillMeta = (skill: SkillItem) => (
     <div className="skill-entry__meta">
-      {skill.isSymlink ? <Tag variant="filled" color="gold">软链接</Tag> : null}
+      {skill.isSymlink ? (
+        <Tag variant="filled" color="gold">
+          软链接
+        </Tag>
+      ) : null}
     </div>
   )
 
@@ -567,34 +606,34 @@ function App() {
     }
   }
 
-
   return (
     <ConfigProvider
       theme={{
         algorithm,
-        token: resolvedTheme === 'dark'
-          ? {
-              colorPrimary: '#22d3ee',
-              colorInfo: '#22d3ee',
-              colorSuccess: '#4ade80',
-              colorWarning: '#fbbf24',
-              colorError: '#f87171',
-              colorBgBase: '#060914',
-              colorTextBase: '#e2e8f0',
-              borderRadius: 10,
-              fontFamily: '"Plus Jakarta Sans", "PingFang SC", "Hiragino Sans GB", sans-serif',
-            }
-          : {
-              colorPrimary: '#d86933',
-              colorInfo: '#d86933',
-              colorSuccess: '#1f8a5b',
-              colorWarning: '#c28a1a',
-              colorError: '#d64545',
-              colorBgBase: '#f4f6f1',
-              colorTextBase: '#1f2d37',
-              borderRadius: 10,
-              fontFamily: '"Plus Jakarta Sans", "PingFang SC", "Hiragino Sans GB", sans-serif',
-            },
+        token:
+          resolvedTheme === 'dark'
+            ? {
+                colorPrimary: '#22d3ee',
+                colorInfo: '#22d3ee',
+                colorSuccess: '#4ade80',
+                colorWarning: '#fbbf24',
+                colorError: '#f87171',
+                colorBgBase: '#060914',
+                colorTextBase: '#e2e8f0',
+                borderRadius: 10,
+                fontFamily: '"Plus Jakarta Sans", "PingFang SC", "Hiragino Sans GB", sans-serif',
+              }
+            : {
+                colorPrimary: '#d86933',
+                colorInfo: '#d86933',
+                colorSuccess: '#1f8a5b',
+                colorWarning: '#c28a1a',
+                colorError: '#d64545',
+                colorBgBase: '#f4f6f1',
+                colorTextBase: '#1f2d37',
+                borderRadius: 10,
+                fontFamily: '"Plus Jakarta Sans", "PingFang SC", "Hiragino Sans GB", sans-serif',
+              },
       }}
     >
       <AntdApp>
@@ -633,9 +672,22 @@ function App() {
             {/* 标题行：左侧标题 + 右侧操作 */}
             <div className="header-top">
               <div className="header-brand">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <Title level={2} style={{ margin: 0, fontSize: 20 }}>工具配置台</Title>
-                  <Tag variant="filled" color={isPreview ? 'gold' : 'success'} className="runtime-mini-tag">
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    marginBottom: 4,
+                  }}
+                >
+                  <Title level={2} style={{ margin: 0, fontSize: 20 }}>
+                    工具配置台
+                  </Title>
+                  <Tag
+                    variant="filled"
+                    color={isPreview ? 'gold' : 'success'}
+                    className="runtime-mini-tag"
+                  >
                     {isPreview ? 'Preview' : 'Tauri'} · {visibleTools.length} tools
                   </Tag>
                 </div>
@@ -721,7 +773,11 @@ function App() {
                             {tool.name}
                             {tool.isSystem ? (
                               <LockOutlined
-                                style={{ marginLeft: 6, fontSize: 11, color: 'var(--ant-color-text-tertiary)' }}
+                                style={{
+                                  marginLeft: 6,
+                                  fontSize: 11,
+                                  color: 'var(--ant-color-text-tertiary)',
+                                }}
                               />
                             ) : null}
                           </span>
@@ -757,7 +813,9 @@ function App() {
                             </span>
                           )}
                         </div>
-                        {tool.description ? <Text className="tool-item__desc">{tool.description}</Text> : null}
+                        {tool.description ? (
+                          <Text className="tool-item__desc">{tool.description}</Text>
+                        ) : null}
                         <div className="tool-item__meta">
                           <span>{tool.configFiles.length} configs</span>
                           <span>{tool.skills.length} skills</span>
@@ -792,253 +850,278 @@ function App() {
                   </div>
                 ) : null}
                 {selectedTool?.id === 'claude' && middleTab === 'sync' ? (
-                  <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 16 }}>
+                  <div
+                    style={{
+                      flex: 1,
+                      minHeight: 0,
+                      overflow: 'auto',
+                      padding: 16,
+                    }}
+                  >
                     <ClaudeConfigSyncPanel monacoTheme={monacoTheme} />
                   </div>
                 ) : (
-                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                <div className="panel-push-wrapper">
-                  {/* 第一屏：技能列表 */}
-                  <div className="panel-slide">
-                    <div className="panel-header">
-                      <div>
-                        <Text className="panel-kicker">Skills</Text>
-                        <Title level={4}>当前技能</Title>
-                      </div>
-                      <Space>
-                        <Tag variant="filled" color="cyan">
-                          {filteredCurrentSkills.length}/{currentSkills.length}
-                        </Tag>
-                        <Button icon={<SyncOutlined />} onClick={openSyncModal}>
-                          同步技能
-                        </Button>
-                      </Space>
-                    </div>
+                  <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                    <div className="panel-push-wrapper">
+                      {/* 第一屏：技能列表 */}
+                      <div className="panel-slide">
+                        <div className="panel-header">
+                          <div>
+                            <Text className="panel-kicker">Skills</Text>
+                            <Title level={4}>当前技能</Title>
+                          </div>
+                          <Space>
+                            <Tag variant="filled" color="cyan">
+                              {filteredCurrentSkills.length}/{currentSkills.length}
+                            </Tag>
+                            <Button icon={<SyncOutlined />} onClick={openSyncModal}>
+                              同步技能
+                            </Button>
+                          </Space>
+                        </div>
 
-                    <PresetManager
-                      presets={presets}
-                      tools={tools.map((t) => ({ id: t.id, name: t.name }))}
-                      allSkills={allSkills}
-                      onApply={(presetId, targetToolIds) => {
-                        void applyPreset(presetId, targetToolIds)
-                      }}
-                      onCreate={(name, skills) => {
-                        void createPreset(name, skills)
-                      }}
-                      onDelete={(presetId) => {
-                        void removePreset(presetId)
-                      }}
-                      isLoading={isPresetsLoading}
-                    />
+                        <PresetManager
+                          presets={presets}
+                          tools={tools.map((t) => ({ id: t.id, name: t.name }))}
+                          allSkills={allSkills}
+                          onApply={(presetId, targetToolIds) => {
+                            void applyPreset(presetId, targetToolIds)
+                          }}
+                          onCreate={(name, skills) => {
+                            void createPreset(name, skills)
+                          }}
+                          onDelete={(presetId) => {
+                            void removePreset(presetId)
+                          }}
+                          isLoading={isPresetsLoading}
+                        />
 
-                    <Input
-                      allowClear
-                      size="large"
-                      prefix={<SearchOutlined />}
-                      placeholder="筛选当前工具已有技能"
-                      value={skillKeyword}
-                      onChange={(event) => setSkillKeyword(event.target.value)}
-                    />
+                        <Input
+                          allowClear
+                          size="large"
+                          prefix={<SearchOutlined />}
+                          placeholder="筛选当前工具已有技能"
+                          value={skillKeyword}
+                          onChange={(event) => setSkillKeyword(event.target.value)}
+                        />
 
-                    <div className="skill-view-list">
-                      {filteredCurrentSkills.length > 0 ? (
-                        filteredCurrentSkills.map((skill) => (
-                          <div key={skill.id} className={`skill-entry${skill.enabled === false ? ' is-disabled' : ''}`}>
-                              <div className="skill-entry__top">
-                                <span
-                                  className="skill-entry__name"
-                                  title={skill.name}
-                                  onClick={() => {
-                                    if (selectedTool) {
-                                      loadSkillDetail(selectedTool.id, skill.name)
-                                    }
-                                  }}
-                                  style={{ cursor: 'pointer' }}
-                                >
-                                  {skill.name}
-                                </span>
-                                <div className="skill-entry__actions">
-                                  {(skill.tags?.length ?? 0) > 0 && skill.tags!.map((tag) => (
-                                    <Tag key={tag}>{tag}</Tag>
-                                  ))}
-                                  {skill.updatedAt ? <span className="skill-entry__time">{formatTime(skill.updatedAt)}</span> : null}
-                                  {renderSkillMeta(skill)}
-                                  <Switch
-                                    size="small"
-                                    checked={skill.enabled !== false}
-                                    onChange={(checked) => {
+                        <div className="skill-view-list">
+                          {filteredCurrentSkills.length > 0 ? (
+                            filteredCurrentSkills.map((skill) => (
+                              <div
+                                key={skill.id}
+                                className={`skill-entry${skill.enabled === false ? ' is-disabled' : ''}`}
+                              >
+                                <div className="skill-entry__top">
+                                  <span
+                                    className="skill-entry__name"
+                                    title={skill.name}
+                                    onClick={() => {
                                       if (selectedTool) {
-                                        toggleSkillEnabled(selectedTool.id, skill.name, checked)
+                                        loadSkillDetail(selectedTool.id, skill.name)
                                       }
                                     }}
-                                  />
-                                  <Dropdown
-                                    trigger={['click']}
-                                    menu={{
-                                      items: [
-                                        {
-                                          key: 'detail',
-                                          icon: <FileTextOutlined />,
-                                          label: '查看详情',
-                                          onClick: () => {
-                                            if (selectedTool) {
-                                              loadSkillDetail(selectedTool.id, skill.name)
-                                            }
-                                          },
-                                        },
-                                        {
-                                          key: 'delete',
-                                          danger: true,
-                                          icon: <DeleteOutlined />,
-                                          label: '删除',
-                                          onClick: () => handleDeleteSkill(skill),
-                                        },
-                                      ],
-                                    }}
+                                    style={{ cursor: 'pointer' }}
                                   >
-                                    <Button
-                                      type="text"
+                                    {skill.name}
+                                  </span>
+                                  <div className="skill-entry__actions">
+                                    {(skill.tags?.length ?? 0) > 0 &&
+                                      skill.tags!.map((tag) => <Tag key={tag}>{tag}</Tag>)}
+                                    {skill.updatedAt ? (
+                                      <span className="skill-entry__time">
+                                        {formatTime(skill.updatedAt)}
+                                      </span>
+                                    ) : null}
+                                    {renderSkillMeta(skill)}
+                                    <Switch
                                       size="small"
-                                      icon={<MoreOutlined />}
-                                      aria-label={`${skill.name} 操作`}
+                                      checked={skill.enabled !== false}
+                                      onChange={(checked) => {
+                                        if (selectedTool) {
+                                          toggleSkillEnabled(selectedTool.id, skill.name, checked)
+                                        }
+                                      }}
                                     />
-                                  </Dropdown>
+                                    <Dropdown
+                                      trigger={['click']}
+                                      menu={{
+                                        items: [
+                                          {
+                                            key: 'detail',
+                                            icon: <FileTextOutlined />,
+                                            label: '查看详情',
+                                            onClick: () => {
+                                              if (selectedTool) {
+                                                loadSkillDetail(selectedTool.id, skill.name)
+                                              }
+                                            },
+                                          },
+                                          {
+                                            key: 'delete',
+                                            danger: true,
+                                            icon: <DeleteOutlined />,
+                                            label: '删除',
+                                            onClick: () => handleDeleteSkill(skill),
+                                          },
+                                        ],
+                                      }}
+                                    >
+                                      <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<MoreOutlined />}
+                                        aria-label={`${skill.name} 操作`}
+                                      />
+                                    </Dropdown>
+                                  </div>
                                 </div>
+                                {renderSkillDescription(skill)}
+                                {skill.path ? (
+                                  <div className="skill-entry__path-row">
+                                    <Text
+                                      className="skill-entry__path skill-entry__path--no-margin"
+                                      style={{ flex: 1, minWidth: 0 }}
+                                    >
+                                      {skill.path}
+                                    </Text>
+                                    <button
+                                      type="button"
+                                      className="skill-open-location"
+                                      onClick={() => void openPathInFinder(skill.path!)}
+                                    >
+                                      <FolderOpenOutlined />
+                                      打开位置
+                                    </button>
+                                  </div>
+                                ) : null}
                               </div>
-                              {renderSkillDescription(skill)}
-                              {skill.path ? (
-                                <div className="skill-entry__path-row">
-                                  <Text className="skill-entry__path skill-entry__path--no-margin" style={{ flex: 1, minWidth: 0 }}>{skill.path}</Text>
-                                  <button
-                                    type="button"
-                                    className="skill-open-location"
-                                    onClick={() => void openPathInFinder(skill.path!)}
-                                  >
-                                    <FolderOpenOutlined />
-                                    打开位置
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                        ))
-                      ) : (
-                        <Empty
-                          image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description={currentSkills.length > 0 ? '没有匹配的技能' : '当前工具没有技能'}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 第二屏：编辑器 */}
-                  <div className="panel-slide">
-                    <div className="editor-content__header">
-                      <div className="config-strip" style={{ flex: 1, marginBottom: 0 }}>
-                        {selectedTool?.configFiles.length ? (
-                          selectedTool.configFiles.map((file) => (
-                            <button
-                              key={file.id}
-                              type="button"
-                              className={`config-tab${file.id === selectedConfigId ? ' is-active' : ''}`}
-                              onClick={() => void selectConfigFile(file.id)}
-                            >
-                              <span className="config-tab__name">
-                                <FileTextOutlined />
-                                {file.name}
-                              </span>
-                              <span className="config-tab__meta">
-                                <span>{file.language}</span>
-                                {file.dirty ? <span className="dirty-dot" /> : null}
-                              </span>
-                            </button>
-                          ))
-                        ) : (
-                          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前工具没有配置文件" />
-                        )}
-                      </div>
-                      <Space>
-                        <Switch
-                          checked={autoSave}
-                          onChange={setAutoSave}
-                          checkedChildren="自动保存"
-                          unCheckedChildren="自动保存"
-                        />
-                        <Button
-                          icon={<FolderOpenOutlined />}
-                          disabled={!selectedFile}
-                          onClick={() => selectedFile && void openPathInFinder(selectedFile.path)}
-                        >
-                          打开目录
-                        </Button>
-                        <Button
-                          type="primary"
-                          icon={<SaveOutlined />}
-                          loading={isSaving}
-                          disabled={!selectedFile || !selectedFile.dirty}
-                          onClick={async () => {
-                            try {
-                              await saveCurrentFile()
-                              void messageApi.success('保存成功')
-                            } catch (error) {
-                              void messageApi.error('保存失败')
-                            }
-                          }}
-                        >
-                          保存
-                        </Button>
-                        <Button
-                          type="text"
-                          icon={<CloseOutlined />}
-                          onClick={() => {
-                            setEditorMode(false)
-                            setMiddleTab('skills')
-                          }}
-                          title="关闭编辑"
-                          style={{ fontSize: 16 }}
-                        />
-                      </Space>
-                    </div>
-
-                    <div className="editor-content__body">
-                      <div className="editor-content__editor">
-                        {selectedFile ? (
-                          <>
-                            <Editor
-                              height="100%"
-                              defaultLanguage={selectedFile.language}
-                              language={selectedFile.language}
-                              theme={monacoTheme}
-                              loading={<Spin />}
-                              options={{
-                                automaticLayout: true,
-                                fontSize: 14,
-                                minimap: { enabled: false },
-                                padding: { top: 18, bottom: 18 },
-                                roundedSelection: true,
-                                scrollBeyondLastLine: false,
-                                wordWrap: 'on',
-                                smoothScrolling: true,
-                                cursorSmoothCaretAnimation: 'on',
-                              }}
-                              value={selectedFile.content ?? ''}
-                              onChange={(value) => setEditorContent(value ?? '')}
+                            ))
+                          ) : (
+                            <Empty
+                              image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              description={
+                                currentSkills.length > 0 ? '没有匹配的技能' : '当前工具没有技能'
+                              }
                             />
-                            {isConfigLoading ? (
-                              <div className="editor-mask">
-                                <Spin size="large" />
-                              </div>
-                            ) : null}
-                          </>
-                        ) : (
-                          <div className="editor-empty">
-                            <Empty description="请选择要编辑的配置文件" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 第二屏：编辑器 */}
+                      <div className="panel-slide">
+                        <div className="editor-content__header">
+                          <div className="config-strip" style={{ flex: 1, marginBottom: 0 }}>
+                            {selectedTool?.configFiles.length ? (
+                              selectedTool.configFiles.map((file) => (
+                                <button
+                                  key={file.id}
+                                  type="button"
+                                  className={`config-tab${file.id === selectedConfigId ? ' is-active' : ''}`}
+                                  onClick={() => void selectConfigFile(file.id)}
+                                >
+                                  <span className="config-tab__name">
+                                    <FileTextOutlined />
+                                    {file.name}
+                                  </span>
+                                  <span className="config-tab__meta">
+                                    <span>{file.language}</span>
+                                    {file.dirty ? <span className="dirty-dot" /> : null}
+                                  </span>
+                                </button>
+                              ))
+                            ) : (
+                              <Empty
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                description="当前工具没有配置文件"
+                              />
+                            )}
                           </div>
-                        )}
+                          <Space>
+                            <Switch
+                              checked={autoSave}
+                              onChange={setAutoSave}
+                              checkedChildren="自动保存"
+                              unCheckedChildren="自动保存"
+                            />
+                            <Button
+                              icon={<FolderOpenOutlined />}
+                              disabled={!selectedFile}
+                              onClick={() =>
+                                selectedFile && void openPathInFinder(selectedFile.path)
+                              }
+                            >
+                              打开目录
+                            </Button>
+                            <Button
+                              type="primary"
+                              icon={<SaveOutlined />}
+                              loading={isSaving}
+                              disabled={!selectedFile || !selectedFile.dirty}
+                              onClick={async () => {
+                                try {
+                                  await saveCurrentFile()
+                                  void messageApi.success('保存成功')
+                                } catch {
+                                  void messageApi.error('保存失败')
+                                }
+                              }}
+                            >
+                              保存
+                            </Button>
+                            <Button
+                              type="text"
+                              icon={<CloseOutlined />}
+                              onClick={() => {
+                                setEditorMode(false)
+                                setMiddleTab('skills')
+                              }}
+                              title="关闭编辑"
+                              style={{ fontSize: 16 }}
+                            />
+                          </Space>
+                        </div>
+
+                        <div className="editor-content__body">
+                          <div className="editor-content__editor">
+                            {selectedFile ? (
+                              <>
+                                <Editor
+                                  height="100%"
+                                  defaultLanguage={selectedFile.language}
+                                  language={selectedFile.language}
+                                  theme={monacoTheme}
+                                  loading={<Spin />}
+                                  options={{
+                                    automaticLayout: true,
+                                    fontSize: 14,
+                                    minimap: { enabled: false },
+                                    padding: { top: 18, bottom: 18 },
+                                    roundedSelection: true,
+                                    scrollBeyondLastLine: false,
+                                    wordWrap: 'on',
+                                    smoothScrolling: true,
+                                    cursorSmoothCaretAnimation: 'on',
+                                  }}
+                                  value={selectedFile.content ?? ''}
+                                  onChange={(value) => setEditorContent(value ?? '')}
+                                />
+                                {isConfigLoading ? (
+                                  <div className="editor-mask">
+                                    <Spin size="large" />
+                                  </div>
+                                ) : null}
+                              </>
+                            ) : (
+                              <div className="editor-empty">
+                                <Empty description="请选择要编辑的配置文件" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                </div>
                 )}
               </main>
 
@@ -1050,7 +1133,12 @@ function App() {
                       <Text className="panel-kicker">Insights</Text>
                       <Title level={4}>变动洞察</Title>
                     </div>
-                    <Button type="link" size="small" onClick={() => void refreshInsights()} loading={isInsightsLoading}>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() => void refreshInsights()}
+                      loading={isInsightsLoading}
+                    >
                       刷新
                     </Button>
                   </div>
@@ -1062,16 +1150,26 @@ function App() {
                           <div className="skill-insight-card__row">
                             <div className="skill-insight-card__info">
                               <div className="skill-insight-card__info-top">
-                                <span className="skill-insight-card__name">{insight.skillName}</span>
+                                <span className="skill-insight-card__name">
+                                  {insight.skillName}
+                                </span>
                                 <Tag variant="filled" color="warning" style={{ fontSize: 11 }}>
                                   {insight.laggingTools.length} 个工具未同步
                                 </Tag>
                               </div>
                               <div className="skill-insight-card__info-bottom">
-                                <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
+                                <span
+                                  className="skill-insight-card__leader"
+                                  data-tool={insight.leaderToolId}
+                                >
                                   {insight.leaderToolName}
                                 </span>
-                                <span style={{ fontSize: 11, color: 'var(--muted-text)' }}>
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: 'var(--muted-text)',
+                                  }}
+                                >
                                   {formatTime(insight.leaderUpdatedAt)}
                                 </span>
                               </div>
@@ -1082,7 +1180,7 @@ function App() {
                               icon={<SyncOutlined />}
                               style={{ borderRadius: 999 }}
                               onClick={() => {
-                                setSyncTargetToolIds(insight.laggingTools.map(lag => lag.toolId))
+                                setSyncTargetToolIds(insight.laggingTools.map((lag) => lag.toolId))
                                 setSyncSelectedSkillIds([insight.skillName])
                                 setSyncModalOpen(true)
                               }}
@@ -1092,7 +1190,11 @@ function App() {
                       ))}
                     </div>
                   ) : (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无变动洞察" style={{ marginTop: 40 }} />
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="暂无变动洞察"
+                      style={{ marginTop: 40 }}
+                    />
                   )}
 
                   {/* 工具统计信息 */}
@@ -1100,7 +1202,9 @@ function App() {
                     <Text className="field-label">工具统计</Text>
                     <div className="tool-info-grid">
                       <div className="tool-info-item">
-                        <span className="tool-info-value">{selectedTool?.configFiles.length ?? 0}</span>
+                        <span className="tool-info-value">
+                          {selectedTool?.configFiles.length ?? 0}
+                        </span>
                         <span className="tool-info-label">配置文件</span>
                       </div>
                       <div className="tool-info-item">
@@ -1119,7 +1223,9 @@ function App() {
                       <div className="insights-block__header">
                         <div>
                           <Text className="panel-kicker">Skills</Text>
-                          <Title level={4} style={{ marginTop: 4 }}>当前技能</Title>
+                          <Title level={4} style={{ marginTop: 4 }}>
+                            当前技能
+                          </Title>
                         </div>
                         <Space>
                           <Tag variant="filled" color="cyan">
@@ -1135,9 +1241,15 @@ function App() {
                           filteredCurrentSkills.map((skill) => (
                             <div key={skill.id} className="skill-entry">
                               <div className="skill-entry__top">
-                                <span className="skill-entry__name" title={skill.name}>{skill.name}</span>
+                                <span className="skill-entry__name" title={skill.name}>
+                                  {skill.name}
+                                </span>
                                 <div className="skill-entry__actions">
-                                  {skill.updatedAt ? <span className="skill-entry__time">{formatTime(skill.updatedAt)}</span> : null}
+                                  {skill.updatedAt ? (
+                                    <span className="skill-entry__time">
+                                      {formatTime(skill.updatedAt)}
+                                    </span>
+                                  ) : null}
                                   {renderSkillMeta(skill)}
                                   <Dropdown
                                     trigger={['click']}
@@ -1166,7 +1278,10 @@ function App() {
                             </div>
                           ))
                         ) : (
-                          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前工具没有技能" />
+                          <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description="当前工具没有技能"
+                          />
                         )}
                       </div>
                     </div>
@@ -1176,9 +1291,16 @@ function App() {
                       <div className="insights-block__header">
                         <div>
                           <Text className="panel-kicker">Insights</Text>
-                          <Title level={4} style={{ marginTop: 4 }}>变动洞察</Title>
+                          <Title level={4} style={{ marginTop: 4 }}>
+                            变动洞察
+                          </Title>
                         </div>
-                        <Button type="link" size="small" onClick={() => void refreshInsights()} loading={isInsightsLoading}>
+                        <Button
+                          type="link"
+                          size="small"
+                          onClick={() => void refreshInsights()}
+                          loading={isInsightsLoading}
+                        >
                           刷新
                         </Button>
                       </div>
@@ -1189,16 +1311,26 @@ function App() {
                               <div className="skill-insight-card__row">
                                 <div className="skill-insight-card__info">
                                   <div className="skill-insight-card__info-top">
-                                    <span className="skill-insight-card__name">{insight.skillName}</span>
+                                    <span className="skill-insight-card__name">
+                                      {insight.skillName}
+                                    </span>
                                     <Tag variant="filled" color="warning" style={{ fontSize: 11 }}>
                                       {insight.laggingTools.length} 个工具未同步
                                     </Tag>
                                   </div>
                                   <div className="skill-insight-card__info-bottom">
-                                    <span className="skill-insight-card__leader" data-tool={insight.leaderToolId}>
+                                    <span
+                                      className="skill-insight-card__leader"
+                                      data-tool={insight.leaderToolId}
+                                    >
                                       {insight.leaderToolName}
                                     </span>
-                                    <span style={{ fontSize: 11, color: 'var(--muted-text)' }}>
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        color: 'var(--muted-text)',
+                                      }}
+                                    >
                                       {formatTime(insight.leaderUpdatedAt)}
                                     </span>
                                   </div>
@@ -1209,7 +1341,9 @@ function App() {
                                   icon={<SyncOutlined />}
                                   style={{ borderRadius: 999 }}
                                   onClick={() => {
-                                    setSyncTargetToolIds(insight.laggingTools.map(lag => lag.toolId))
+                                    setSyncTargetToolIds(
+                                      insight.laggingTools.map((lag) => lag.toolId),
+                                    )
                                     setSyncSelectedSkillIds([insight.skillName])
                                     setSyncModalOpen(true)
                                   }}
@@ -1226,7 +1360,6 @@ function App() {
                 </div>
               </aside>
             </div>
-
           </div>
 
           <Modal
@@ -1260,7 +1393,12 @@ function App() {
                             {row.name}
                             {row.isSystem ? (
                               <Tooltip title="系统内置工具，不可编辑或删除">
-                                <LockOutlined style={{ marginLeft: 6, color: 'var(--ant-color-text-tertiary)' }} />
+                                <LockOutlined
+                                  style={{
+                                    marginLeft: 6,
+                                    color: 'var(--ant-color-text-tertiary)',
+                                  }}
+                                />
                               </Tooltip>
                             ) : null}
                           </div>
@@ -1273,7 +1411,11 @@ function App() {
                       dataIndex: 'enabled',
                       key: 'enabled',
                       width: 90,
-                      render: (enabled) => <Tag color={enabled ? 'success' : 'default'}>{enabled ? '启用' : '停用'}</Tag>,
+                      render: (enabled) => (
+                        <Tag color={enabled ? 'success' : 'default'}>
+                          {enabled ? '启用' : '停用'}
+                        </Tag>
+                      ),
                     },
                     {
                       title: '操作',
@@ -1284,8 +1426,17 @@ function App() {
                           <Tag color="default">系统</Tag>
                         ) : (
                           <Space size={4}>
-                            <Button size="small" icon={<EditOutlined />} onClick={() => openEditTool(row)} />
-                            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => onDeleteTool(row)} />
+                            <Button
+                              size="small"
+                              icon={<EditOutlined />}
+                              onClick={() => openEditTool(row)}
+                            />
+                            <Button
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => onDeleteTool(row)}
+                            />
                           </Space>
                         ),
                     },
@@ -1296,14 +1447,26 @@ function App() {
               <div className="tool-manager-form">
                 <div className="tool-manager-form__header">
                   <Text className="field-label">{editingToolId ? '编辑工具' : '新增工具'}</Text>
-                  {editingToolId ? <Tag variant="filled" color="blue">{editingToolId}</Tag> : null}
+                  {editingToolId ? (
+                    <Tag variant="filled" color="blue">
+                      {editingToolId}
+                    </Tag>
+                  ) : null}
                 </div>
                 <Form form={toolForm} layout="vertical" initialValues={{ enabled: true }}>
                   <div className="tool-form-row">
-                    <Form.Item label="工具 ID" name="id" rules={[{ required: true, message: '必填' }]}>
+                    <Form.Item
+                      label="工具 ID"
+                      name="id"
+                      rules={[{ required: true, message: '必填' }]}
+                    >
                       <Input placeholder="例如 codex-custom" disabled={Boolean(editingToolId)} />
                     </Form.Item>
-                    <Form.Item label="名称" name="name" rules={[{ required: true, message: '必填' }]}>
+                    <Form.Item
+                      label="名称"
+                      name="name"
+                      rules={[{ required: true, message: '必填' }]}
+                    >
                       <Input placeholder="显示名称" />
                     </Form.Item>
                     <Form.Item label="启用" name="enabled" valuePropName="checked">
@@ -1321,7 +1484,10 @@ function App() {
                       <Button
                         size="small"
                         onClick={() =>
-                          setEditingConfigFiles((items) => [...items, { label: '', path: '', kind: 'plaintext' }])
+                          setEditingConfigFiles((items) => [
+                            ...items,
+                            { label: '', path: '', kind: 'plaintext' },
+                          ])
                         }
                       >
                         添加配置
@@ -1340,7 +1506,9 @@ function App() {
                           value={item.label}
                           onChange={(event) =>
                             setEditingConfigFiles((items) =>
-                              items.map((row, idx) => (idx === index ? { ...row, label: event.target.value } : row)),
+                              items.map((row, idx) =>
+                                idx === index ? { ...row, label: event.target.value } : row,
+                              ),
                             )
                           }
                         />
@@ -1349,7 +1517,9 @@ function App() {
                           value={item.path}
                           onChange={(event) =>
                             setEditingConfigFiles((items) =>
-                              items.map((row, idx) => (idx === index ? { ...row, path: event.target.value } : row)),
+                              items.map((row, idx) =>
+                                idx === index ? { ...row, path: event.target.value } : row,
+                              ),
                             )
                           }
                         />
@@ -1358,7 +1528,9 @@ function App() {
                           value={item.kind}
                           onChange={(event) =>
                             setEditingConfigFiles((items) =>
-                              items.map((row, idx) => (idx === index ? { ...row, kind: event.target.value } : row)),
+                              items.map((row, idx) =>
+                                idx === index ? { ...row, kind: event.target.value } : row,
+                              ),
                             )
                           }
                         />
@@ -1366,17 +1538,28 @@ function App() {
                           danger
                           icon={<DeleteOutlined />}
                           onClick={() =>
-                            setEditingConfigFiles((items) => items.filter((_, idx) => idx !== index))
+                            setEditingConfigFiles((items) =>
+                              items.filter((_, idx) => idx !== index),
+                            )
                           }
                         />
                       </div>
                     ))}
-                    {editingConfigFiles.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无配置文件，可先自动探测或手动添加" /> : null}
+                    {editingConfigFiles.length === 0 ? (
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="无配置文件，可先自动探测或手动添加"
+                      />
+                    ) : null}
                   </div>
 
                   <div className="tool-manager-actions">
                     <Button onClick={resetToolForm}>{editingToolId ? '取消' : '重置'}</Button>
-                    <Button type="primary" loading={registrySaving} onClick={() => void onSaveTool()}>
+                    <Button
+                      type="primary"
+                      loading={registrySaving}
+                      onClick={() => void onSaveTool()}
+                    >
                       {editingToolId ? '保存修改' : '保存工具'}
                     </Button>
                   </div>
@@ -1418,7 +1601,12 @@ function App() {
                     style={{ width: '100%' }}
                   />
                   <div className="quick-actions">
-                    <Button size="small" onClick={() => setSyncTargetToolIds(syncTargetOptions.map((item) => item.value))}>
+                    <Button
+                      size="small"
+                      onClick={() =>
+                        setSyncTargetToolIds(syncTargetOptions.map((item) => item.value))
+                      }
+                    >
                       全选
                     </Button>
                     <Button size="small" onClick={() => setSyncTargetToolIds([])}>
@@ -1429,7 +1617,13 @@ function App() {
 
                 <div className="sync-control-group">
                   <Text className="field-label">同步模式</Text>
-                  <Segmented block size="large" options={modeOptions} value={syncMode} onChange={(value) => setSyncModeState(value as SyncMode)} />
+                  <Segmented
+                    block
+                    size="large"
+                    options={modeOptions}
+                    value={syncMode}
+                    onChange={(value) => setSyncModeState(value as SyncMode)}
+                  />
                 </div>
 
                 <div className="sync-control-group">
@@ -1458,7 +1652,12 @@ function App() {
                     <Tag variant="filled" color="cyan">
                       {syncSelectedSkillIds.length}/{currentSkills.length}
                     </Tag>
-                    <Button size="small" onClick={() => setSyncSelectedSkillIds(filteredSyncSkills.map((skill) => skill.id))}>
+                    <Button
+                      size="small"
+                      onClick={() =>
+                        setSyncSelectedSkillIds(filteredSyncSkills.map((skill) => skill.id))
+                      }
+                    >
                       全选
                     </Button>
                     <Button size="small" onClick={() => setSyncSelectedSkillIds([])}>
@@ -1491,14 +1690,26 @@ function App() {
                       />
                       <div className="skill-item__body">
                         <div className="skill-item__top">
-                          <span className="skill-item__name" title={skill.name}>{skill.name}</span>
+                          <span className="skill-item__name" title={skill.name}>
+                            {skill.name}
+                          </span>
                           <div className="skill-item__tags">
-                            {skill.isSymlink ? <Tag variant="filled" color="gold">软链接</Tag> : null}
-                            {skill.updatedAt ? <span className="skill-item__time">{formatTime(skill.updatedAt)}</span> : null}
+                            {skill.isSymlink ? (
+                              <Tag variant="filled" color="gold">
+                                软链接
+                              </Tag>
+                            ) : null}
+                            {skill.updatedAt ? (
+                              <span className="skill-item__time">
+                                {formatTime(skill.updatedAt)}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
-                        {skill.summary ?? skill.description ? (
-                          <Text className="skill-item__desc">{skill.summary ?? skill.description}</Text>
+                        {(skill.summary ?? skill.description) ? (
+                          <Text className="skill-item__desc">
+                            {skill.summary ?? skill.description}
+                          </Text>
                         ) : null}
                         {skill.path ? <Text className="skill-item__path">{skill.path}</Text> : null}
                       </div>
@@ -1546,7 +1757,9 @@ function App() {
         syncMode={syncMode}
         conflictStrategy={conflictStrategy}
         onClose={() => setCenterRepoOpen(false)}
-        onSyncComplete={() => { void refreshTools() }}
+        onSyncComplete={() => {
+          void refreshTools()
+        }}
       />
     </ConfigProvider>
   )

@@ -28,7 +28,11 @@ function inferSkillName(gitUrl: string): string {
 }
 
 export default function GitInstallDialog({ open, tools, isInstalling, onInstall, onClose }: Props) {
-  const [form] = Form.useForm<{ gitUrl: string; targetToolId: string; skillName: string }>()
+  const [form] = Form.useForm<{
+    gitUrl: string
+    targetToolId: string
+    skillName: string
+  }>()
   const [customNameVisible, setCustomNameVisible] = useState(false)
 
   const toolOptions = useMemo(
@@ -43,6 +47,7 @@ export default function GitInstallDialog({ open, tools, isInstalling, onInstall,
   useEffect(() => {
     if (open) {
       form.resetFields()
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCustomNameVisible(false)
     }
   }, [open, form])
@@ -100,11 +105,7 @@ export default function GitInstallDialog({ open, tools, isInstalling, onInstall,
           name="targetToolId"
           rules={[{ required: true, message: '请选择目标工具' }]}
         >
-          <Select
-            placeholder="选择要安装到的工具"
-            options={toolOptions}
-            disabled={isInstalling}
-          />
+          <Select placeholder="选择要安装到的工具" options={toolOptions} disabled={isInstalling} />
         </Form.Item>
 
         <Form.Item>
@@ -128,7 +129,14 @@ export default function GitInstallDialog({ open, tools, isInstalling, onInstall,
           </Form.Item>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
           <Button onClick={handleClose} disabled={isInstalling}>
             取消
           </Button>

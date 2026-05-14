@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import {
-  SearchOutlined,
-} from '@ant-design/icons'
-import {
-  Empty,
-  Input,
-  Modal,
-  Tag,
-  Typography,
-} from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
+import { Empty, Input, Modal, Tag, Typography } from 'antd'
 
 const { Text } = Typography
 
@@ -48,6 +40,7 @@ export default function CommandPalette({
 }: Props) {
   const [keyword, setKeyword] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- antd Input ref 类型兼容
   const inputRef = useRef<any>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -56,26 +49,25 @@ export default function CommandPalette({
 
   const filteredTools = useMemo(() => {
     if (!trimmedKeyword) return tools
-    return tools.filter((tool) =>
-      tool.name.toLowerCase().includes(trimmedKeyword) ||
-      tool.id.toLowerCase().includes(trimmedKeyword)
+    return tools.filter(
+      (tool) =>
+        tool.name.toLowerCase().includes(trimmedKeyword) ||
+        tool.id.toLowerCase().includes(trimmedKeyword),
     )
   }, [tools, trimmedKeyword])
 
   const filteredSkills = useMemo(() => {
     if (!trimmedKeyword) return skills
-    return skills.filter((skill) =>
-      skill.name.toLowerCase().includes(trimmedKeyword) ||
-      (skill.description ?? '').toLowerCase().includes(trimmedKeyword) ||
-      skill.toolName.toLowerCase().includes(trimmedKeyword)
+    return skills.filter(
+      (skill) =>
+        skill.name.toLowerCase().includes(trimmedKeyword) ||
+        (skill.description ?? '').toLowerCase().includes(trimmedKeyword) ||
+        skill.toolName.toLowerCase().includes(trimmedKeyword),
     )
   }, [skills, trimmedKeyword])
 
   const allResults = useMemo(() => {
-    const list: Array<
-      | { type: 'tool'; data: ToolItem }
-      | { type: 'skill'; data: SkillItem }
-    > = []
+    const list: Array<{ type: 'tool'; data: ToolItem } | { type: 'skill'; data: SkillItem }> = []
     filteredTools.forEach((tool) => list.push({ type: 'tool', data: tool }))
     filteredSkills.forEach((skill) => list.push({ type: 'skill', data: skill }))
     return list
@@ -83,6 +75,7 @@ export default function CommandPalette({
 
   // 重置选中项当搜索结果变化时
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex(0)
   }, [trimmedKeyword])
 
@@ -99,6 +92,7 @@ export default function CommandPalette({
   // 关闭时清空关键词
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 重置状态
       setKeyword('')
       setActiveIndex(0)
     }
@@ -132,17 +126,13 @@ export default function CommandPalette({
       // 上下导航
       if (event.key === 'ArrowDown') {
         event.preventDefault()
-        setActiveIndex((prev) =>
-          prev >= allResults.length - 1 ? 0 : prev + 1
-        )
+        setActiveIndex((prev) => (prev >= allResults.length - 1 ? 0 : prev + 1))
         return
       }
 
       if (event.key === 'ArrowUp') {
         event.preventDefault()
-        setActiveIndex((prev) =>
-          prev <= 0 ? allResults.length - 1 : prev - 1
-        )
+        setActiveIndex((prev) => (prev <= 0 ? allResults.length - 1 : prev - 1))
         return
       }
 
@@ -188,12 +178,12 @@ export default function CommandPalette({
       }
       onClose()
     },
-    [allResults, onSelectTool, onSelectSkill, onClose]
+    [allResults, onSelectTool, onSelectSkill, onClose],
   )
 
   const renderResultItem = (
     item: { type: 'tool'; data: ToolItem } | { type: 'skill'; data: SkillItem },
-    index: number
+    index: number,
   ) => {
     const isActive = index === activeIndex
     const refCallback = (el: HTMLDivElement | null) => {
@@ -214,7 +204,9 @@ export default function CommandPalette({
         >
           <div className="command-palette__item-main">
             <span className="command-palette__item-name">{tool.name}</span>
-            <Tag variant="filled" color="blue">工具</Tag>
+            <Tag variant="filled" color="blue">
+              工具
+            </Tag>
           </div>
           <Text className="command-palette__item-meta">{tool.id}</Text>
         </div>
@@ -234,14 +226,14 @@ export default function CommandPalette({
       >
         <div className="command-palette__item-main">
           <span className="command-palette__item-name">{skill.name}</span>
-            <Tag variant="filled" color="cyan">技能</Tag>
+          <Tag variant="filled" color="cyan">
+            技能
+          </Tag>
         </div>
         {skill.description ? (
           <Text className="command-palette__item-desc">{skill.description}</Text>
         ) : null}
-        <Text className="command-palette__item-meta">
-          所属工具: {skill.toolName}
-        </Text>
+        <Text className="command-palette__item-meta">所属工具: {skill.toolName}</Text>
       </div>
     )
   }
@@ -259,7 +251,10 @@ export default function CommandPalette({
       centered
       className="command-palette-modal"
       wrapClassName="command-palette-wrap"
-      maskStyle={{ background: 'rgba(0, 0, 0, 0.45)', backdropFilter: 'blur(2px)' }}
+      maskStyle={{
+        background: 'rgba(0, 0, 0, 0.45)',
+        backdropFilter: 'blur(2px)',
+      }}
       destroyOnClose={false}
       afterOpenChange={(visible) => {
         if (visible) {
@@ -306,13 +301,17 @@ export default function CommandPalette({
 
         <div className="command-palette__footer">
           <div className="command-palette__hints">
-            <span><kbd>↑</kbd> <kbd>↓</kbd> 导航</span>
-            <span><kbd>Enter</kbd> 选择</span>
-            <span><kbd>ESC</kbd> 关闭</span>
+            <span>
+              <kbd>↑</kbd> <kbd>↓</kbd> 导航
+            </span>
+            <span>
+              <kbd>Enter</kbd> 选择
+            </span>
+            <span>
+              <kbd>ESC</kbd> 关闭
+            </span>
           </div>
-          <Text className="command-palette__count">
-            {allResults.length} 个结果
-          </Text>
+          <Text className="command-palette__count">{allResults.length} 个结果</Text>
         </div>
       </div>
     </Modal>

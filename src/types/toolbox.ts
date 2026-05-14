@@ -99,10 +99,7 @@ export type ConfigDiffType = 'missing' | 'different' | 'same' | 'onlyInCcSwitch'
 
 export type ValueKind = 'scalar' | 'object' | 'array'
 
-export type BaselineKind =
-  | { kind: 'live' }
-  | { kind: 'richest' }
-  | { kind: 'snapshot'; ts: number }
+export type BaselineKind = { kind: 'live' } | { kind: 'richest' } | { kind: 'snapshot'; ts: number }
 
 export interface ConfigDiffEntry {
   field: string

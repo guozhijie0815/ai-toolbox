@@ -210,7 +210,7 @@ impl DbPool {
 static DB_POOL: OnceLock<DbPool> = OnceLock::new();
 
 pub fn init_db_pool() -> Result<(), String> {
-    let dir = PathBuf::from("/Users/smzdm/.ai-toolbox");
+    let dir = crate::utils::get_home_dir()?.join(".ai-toolbox");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let pool = DbPool::new(dir.join("toolbox.db"))?;
     DB_POOL.set(pool).map_err(|_| "数据库已初始化".to_string())

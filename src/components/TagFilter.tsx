@@ -1,28 +1,28 @@
-import React from 'react';
-import { Tag, Space, Button } from 'antd';
-import { CloseCircleOutlined } from '@ant-design/icons';
+import React from 'react'
+import { Tag, Space, Button } from 'antd'
+import { CloseCircleOutlined } from '@ant-design/icons'
 
 interface Props {
-  allTags: string[];
-  selectedTags: string[];
-  onChange: (tags: string[]) => void;
+  allTags: string[]
+  selectedTags: string[]
+  onChange: (tags: string[]) => void
 }
 
 const TagFilter: React.FC<Props> = ({ allTags, selectedTags, onChange }) => {
   const handleToggle = (tag: string, checked: boolean) => {
     if (checked) {
-      onChange([...selectedTags, tag]);
+      onChange([...selectedTags, tag])
     } else {
-      onChange(selectedTags.filter((t) => t !== tag));
+      onChange(selectedTags.filter((t) => t !== tag))
     }
-  };
+  }
 
   const handleClear = () => {
-    onChange([]);
-  };
+    onChange([])
+  }
 
   if (allTags.length === 0) {
-    return null;
+    return null
   }
 
   return (
@@ -51,7 +51,7 @@ const TagFilter: React.FC<Props> = ({ allTags, selectedTags, onChange }) => {
         )}
       </Space>
     </div>
-  );
-};
+  )
+}
 
-export default TagFilter;
+export default TagFilter

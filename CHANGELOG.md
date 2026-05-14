@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.2.2 (开发中)
+
+### 工程质量改进
+
+- **移除所有硬编码路径**：Rust 后端 6 个模块 + 前端均改为运行时动态获取 Home 目录，支持跨平台（macOS/Windows/Linux）
+- **Prettier 代码格式化**：统一代码风格（单引号、无分号、100 字符宽度）
+- **Husky + lint-staged**：pre-commit 自动执行 ESLint + Prettier
+- **ESLint 增强**：集成 eslint-config-prettier，添加 unused-vars/explicit-any 规则
+- **TypeScript strict 模式**：启用全量严格类型检查
+- **Vite 构建优化**：添加 `@` 路径别名 + manualChunks 分包（vendor/antd/editor）
+- **统一错误处理**：提取 `getErrorMessage()` 工具函数，消除 26 处重复的 `error instanceof Error` 模式
+- **提取公共模块**：`src/utils/appUtils.ts`（hasTauriRuntime/normalizeFsPath/formatTime）和 `src/utils/errorUtils.ts`
+- **Vitest 测试框架**：14 个单元测试覆盖核心工具函数
+
 ## v0.2.1
 
 ### 新增
