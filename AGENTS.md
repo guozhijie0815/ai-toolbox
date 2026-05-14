@@ -17,7 +17,7 @@
 
 ## Git 与回滚安全规则
 
-- 每个新需求必须先创建独立分支，默认使用 `codex/` 前缀。
+- 每个新需求必须先创建独立分支，默认使用 `qoder/` 前缀。
 - 执行代码回滚、分支切换、清理文件、覆盖文件前，必须先检查 `git status`。
 - 发现未提交改动时，禁止直接执行会丢失改动的命令。
 - 回滚代码前必须先备份当前改动。
@@ -36,7 +36,7 @@ git ls-files --others --exclude-standard
 更稳妥的方式是创建备份分支：
 
 ```bash
-git checkout -b codex/backup-before-rollback-$(date +%Y%m%d-%H%M%S)
+git checkout -b qoder/backup-before-rollback-$(date +%Y%m%d-%H%M%S)
 git add -A
 git commit -m "chore: 回滚前备份当前未提交改动"
 ```
