@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Button, Dropdown, Modal, Form, Input, Select, Tag, Empty, message } from 'antd'
 import {
   PlusOutlined,
@@ -26,6 +26,7 @@ interface CreatePresetDialogProps {
   onCancel: () => void
   onConfirm: (name: string, skills: string[]) => void
   existingSkills: string[]
+  preset?: PresetEntry | null
 }
 
 function CreatePresetDialog({
@@ -33,10 +34,24 @@ function CreatePresetDialog({
   onCancel,
   onConfirm,
   existingSkills,
+  preset,
 }: CreatePresetDialogProps) {
   const [form] = Form.useForm()
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [selectOpen, setSelectOpen] = useState(false)
+  const isEditing = Boolean(preset)
+
+  useEffect(() => {
+    if (!open) return
+    if (preset) {
+      form.setFieldsValue({
+        name: preset.name,
+        skills: preset.skills.map((skill) => skill.skillName),
+      })
+      return
+    }
+    form.resetFields()
+  }, [form, open, preset])
 
   const handleOk = async () => {
     try {
@@ -59,7 +74,7 @@ function CreatePresetDialog({
 
   return (
     <Modal
-      title="创建预设"
+      title={isEditing ? '编辑预设' : '创建预设'}
       open={open}
       onOk={handleOk}
       onCancel={handleCancel}
@@ -164,6 +179,7 @@ interface Props {
   allSkills: string[]
   onApply: (presetId: string, targetToolIds: string[]) => void
   onCreate: (name: string, skills: string[]) => void
+  onUpdate: (presetId: string, name: string, skills: string[]) => void
   onDelete: (presetId: string) => void
   isLoading: boolean
 }
@@ -174,12 +190,14 @@ export default function PresetManager({
   allSkills,
   onApply,
   onCreate,
+  onUpdate,
   onDelete,
   isLoading,
 }: Props) {
   const [createOpen, setCreateOpen] = useState(false)
   const [applyOpen, setApplyOpen] = useState(false)
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null)
 
   const activePreset = useMemo(
     () => presets.find((p) => p.id === activePresetId),
@@ -201,8 +219,23 @@ export default function PresetManager({
   }
 
   const handleCreateConfirm = async (name: string, skills: string[]) => {
-    await onCreate(name, skills)
+    if (editingPresetId) {
+      await onUpdate(editingPresetId, name, skills)
+      setEditingPresetId(null)
+    } else {
+      await onCreate(name, skills)
+    }
     setCreateOpen(false)
+  }
+
+  const openCreateModal = () => {
+    setEditingPresetId(null)
+    setCreateOpen(true)
+  }
+
+  const openEditModal = (presetId: string) => {
+    setEditingPresetId(presetId)
+    setCreateOpen(true)
   }
 
   const handleDelete = (presetId: string) => {
@@ -242,12 +275,7 @@ export default function PresetManager({
         }}
       >
         <span className="preset-manager__title">预设管理</span>
-        <Button
-          type="primary"
-          size="small"
-          icon={<PlusOutlined />}
-          onClick={() => setCreateOpen(true)}
-        >
+        <Button type="primary" size="small" icon={<PlusOutlined />} onClick={openCreateModal}>
           创建预设
         </Button>
       </div>
@@ -276,7 +304,7 @@ export default function PresetManager({
                     key: 'edit',
                     icon: <EditOutlined />,
                     label: '编辑',
-                    disabled: true,
+                    onClick: () => openEditModal(preset.id),
                   },
                   {
                     type: 'divider',
@@ -307,9 +335,13 @@ export default function PresetManager({
 
       <CreatePresetDialog
         open={createOpen}
-        onCancel={() => setCreateOpen(false)}
+        onCancel={() => {
+          setCreateOpen(false)
+          setEditingPresetId(null)
+        }}
         onConfirm={handleCreateConfirm}
         existingSkills={allSkillNames}
+        preset={presets.find((preset) => preset.id === editingPresetId) ?? null}
       />
 
       {activePreset && (

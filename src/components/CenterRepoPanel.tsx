@@ -12,15 +12,19 @@ import {
   Tag,
   Tooltip,
   Typography,
+  Checkbox,
+  Card,
   message,
 } from 'antd'
 import {
   CloudDownloadOutlined,
+  SearchOutlined,
   DeleteOutlined,
   PlusOutlined,
   ReloadOutlined,
   ScanOutlined,
   SyncOutlined,
+  CheckSquareOutlined,
 } from '@ant-design/icons'
 import {
   batchImportToCenter,
@@ -40,6 +44,7 @@ import type {
   SyncOutcome,
 } from '../lib/toolboxApi'
 import type { SyncMode, ConflictStrategy, ToolItem } from '../types/toolbox'
+import { getErrorMessage } from '../utils/errorUtils'
 
 const { Text, Title } = Typography
 
@@ -86,7 +91,7 @@ export default function CenterRepoPanel({
   const [filterType, setFilterType] = useState<'all' | 'unsynced' | 'partial' | 'fullySynced'>(
     'all',
   )
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'custom' | 'git'>('custom')
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'custom' | 'git' | 'system'>('custom')
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set())
   const [batchSyncOpen, setBatchSyncOpen] = useState(false)
   const [batchSyncTargetToolId, setBatchSyncTargetToolId] = useState('')
@@ -134,6 +139,8 @@ export default function CenterRepoPanel({
       result = result.filter((s) => s.sourceType === 'custom')
     } else if (sourceFilter === 'git') {
       result = result.filter((s) => s.sourceType === 'git')
+    } else if (sourceFilter === 'system') {
+      result = result.filter((s) => s.sourceType === 'system')
     }
     if (keyword.trim()) {
       const k = keyword.trim().toLowerCase()
@@ -408,25 +415,47 @@ export default function CenterRepoPanel({
     { label: '系统', value: 'system' },
   ]
 
+  const customCount = skills.filter((s) => s.sourceType === 'custom').length
+  const gitCount = skills.filter((s) => s.sourceType === 'git').length
+  const systemCount = skills.filter((s) => s.sourceType === 'system').length
+  const unsyncedCount = skills.filter((s) => getSkillFilterStatus(s) === 'unsynced').length
+  const partialCount = skills.filter((s) => getSkillFilterStatus(s) === 'partial').length
+  const fullySyncedCount = skills.filter((s) => getSkillFilterStatus(s) === 'fullySynced').length
+
+  const sourceFilters = [
+    { key: 'custom', label: '自定义', count: customCount },
+    { key: 'git', label: '市场', count: gitCount },
+    { key: 'system', label: '系统', count: systemCount },
+    { key: 'all', label: '全部', count: skills.length },
+  ] as const
+
+  const syncFilters = [
+    { key: 'all', label: '全部状态', count: skills.length },
+    { key: 'unsynced', label: '未同步', count: unsyncedCount },
+    { key: 'partial', label: '部分同步', count: partialCount },
+    { key: 'fullySynced', label: '已全量同步', count: fullySyncedCount },
+  ] as const
+
   return (
     <>
       <Drawer
+        className="center-repo-drawer"
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Title level={5} style={{ margin: 0 }}>
+          <div className="center-repo-title">
+            <Title level={4} className="center-repo-title__text">
               中央仓库
             </Title>
-            <Tag variant="filled" color="blue">
-              {skills.length} 个技能
-            </Tag>
+            <Text className="center-repo-title__meta">
+              {filteredSkills.length} / {skills.length} 个技能
+            </Text>
           </div>
         }
         placement="right"
-        width={560}
+        size="large"
         open={open}
         onClose={onClose}
         extra={
-          <Space>
+          <Space className="center-repo-actions">
             <Button
               icon={<ScanOutlined />}
               loading={discoverLoading}
@@ -443,212 +472,191 @@ export default function CenterRepoPanel({
           </Space>
         }
       >
-        <Input.Search
-          placeholder="搜索技能..."
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          style={{ marginBottom: 12 }}
-          allowClear
-        />
+        <div className="center-repo-shell">
+          <div className="center-repo-toolbar">
+            <Input
+              className="center-repo-search"
+              prefix={<SearchOutlined />}
+              placeholder="搜索技能名称或描述"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              allowClear
+            />
 
-        <Space style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap' }}>
-          <Button
-            size="small"
-            type={sourceFilter === 'custom' ? 'primary' : 'default'}
-            onClick={() => setSourceFilter('custom')}
-          >
-            自定义 ({skills.filter((s) => s.sourceType === 'custom').length})
-          </Button>
-          <Button
-            size="small"
-            type={sourceFilter === 'git' ? 'primary' : 'default'}
-            onClick={() => setSourceFilter('git')}
-          >
-            市场 ({skills.filter((s) => s.sourceType === 'git').length})
-          </Button>
-          <Button
-            size="small"
-            type={sourceFilter === 'all' ? 'primary' : 'default'}
-            onClick={() => setSourceFilter('all')}
-          >
-            全部 ({skills.length})
-          </Button>
-        </Space>
-
-        {sourceFilter === 'all' && (
-          <Space style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap' }}>
-            {[
-              { key: 'all', label: `全部同步状态` },
-              {
-                key: 'unsynced',
-                label: `未同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'unsynced').length})`,
-              },
-              {
-                key: 'partial',
-                label: `部分同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'partial').length})`,
-              },
-              {
-                key: 'fullySynced',
-                label: `已全量同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'fullySynced').length})`,
-              },
-            ].map((item) => (
-              <Button
-                key={item.key}
-                size="small"
-                type={filterType === item.key ? 'primary' : 'default'}
-                onClick={() => setFilterType(item.key as typeof filterType)}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </Space>
-        )}
-
-        {selectedSkills.size > 0 && (
-          <div
-            style={{
-              marginBottom: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <Text type="secondary">已选 {selectedSkills.size} 个</Text>
-            <Button size="small" type="primary" onClick={openBatchSyncModal}>
-              批量同步到工具
-            </Button>
-            <Button size="small" onClick={openBatchCategoryModal}>
-              批量修改分类
-            </Button>
-            <Button size="small" onClick={() => setSelectedSkills(new Set())}>
-              取消选择
-            </Button>
+            <div className="center-repo-filter-row">
+              {sourceFilters.map((item) => (
+                <Button
+                  key={item.key}
+                  size="small"
+                  type={sourceFilter === item.key ? 'primary' : 'default'}
+                  onClick={() => setSourceFilter(item.key)}
+                >
+                  {item.label}
+                  <span className="center-repo-filter-count">{item.count}</span>
+                </Button>
+              ))}
+            </div>
           </div>
-        )}
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <Spin />
+          {sourceFilter === 'all' && (
+            <div className="center-repo-filter-row center-repo-filter-row--muted">
+              {syncFilters.map((item) => (
+                <Button
+                  key={item.key}
+                  size="small"
+                  type={filterType === item.key ? 'primary' : 'default'}
+                  onClick={() => setFilterType(item.key as typeof filterType)}
+                >
+                  {item.label}
+                  <span className="center-repo-filter-count">{item.count}</span>
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {selectedSkills.size > 0 && (
+            <Card className="center-repo-selection" bordered={false}>
+              <div className="center-repo-selection__info">
+                <CheckSquareOutlined />
+                <Text>已选择 {selectedSkills.size} 个技能</Text>
+              </div>
+              <div className="center-repo-selection__actions">
+                <Button size="small" type="primary" onClick={openBatchSyncModal}>
+                  批量同步
+                </Button>
+                <Button size="small" onClick={openBatchCategoryModal}>
+                  修改分类
+                </Button>
+                <Button size="small" onClick={() => setSelectedSkills(new Set())}>
+                  取消
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          <div className="center-repo-list-head">
+            <Text className="center-repo-list-head__title">技能列表</Text>
+            <Text className="center-repo-list-head__count">{filteredSkills.length} 项</Text>
           </div>
-        ) : filteredSkills.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={keyword.trim() ? '未找到匹配结果' : '中央仓库暂无技能'}
-          />
-        ) : (
-          <List
-            dataSource={filteredSkills}
-            renderItem={(skill) => (
-              <List.Item
-                actions={[
-                  <Tooltip title="同步到工具" key="sync">
-                    <Button
-                      icon={<SyncOutlined />}
-                      size="small"
-                      onClick={() => openSyncModal(skill.name)}
-                    />
-                  </Tooltip>,
-                  <Tooltip title="从工具导入" key="import">
-                    <Button
-                      icon={<CloudDownloadOutlined />}
-                      size="small"
-                      onClick={() => openImportModal(skill.name)}
-                    />
-                  </Tooltip>,
-                  <Tooltip title="删除" key="delete">
-                    <Button
-                      icon={<DeleteOutlined />}
-                      size="small"
-                      danger
-                      onClick={() => handleDelete(skill.name)}
-                    />
-                  </Tooltip>,
-                ]}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedSkills.has(skill.name)}
-                    onChange={() => toggleSkillSelection(skill.name)}
-                    style={{ marginTop: 6 }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        flexWrap: 'wrap',
-                        marginBottom: 4,
-                      }}
-                    >
-                      <Text strong>{skill.name}</Text>
-                      <Select
-                        size="small"
-                        variant="borderless"
-                        value={skill.sourceType}
-                        options={categoryOptions}
-                        onChange={(val) => handleSetCategory(skill.name, val)}
-                        style={{ width: 80 }}
+
+          {loading ? (
+            <div className="center-repo-loading">
+              <Spin size="large" />
+            </div>
+          ) : filteredSkills.length === 0 ? (
+            <div className="center-repo-empty">
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={keyword.trim() ? '未找到匹配结果' : '中央仓库暂无技能'}
+              />
+            </div>
+          ) : (
+            <div className="center-repo-list">
+              {filteredSkills.map((skill) => {
+                const selected = selectedSkills.has(skill.name)
+                const status = getSkillFilterStatus(skill)
+                const statusLabel =
+                  status === 'fullySynced'
+                    ? '已全量同步'
+                    : status === 'partial'
+                      ? '部分同步'
+                      : '未同步'
+
+                return (
+                  <Card
+                    key={skill.name}
+                    className={`center-repo-card ${selected ? 'is-selected' : ''}`}
+                    bordered={false}
+                  >
+                    <div className="center-repo-card__select">
+                      <Checkbox
+                        checked={selected}
+                        onChange={() => toggleSkillSelection(skill.name)}
                       />
-                      {skill.hasSkillMd && (
-                        <Tag variant="filled" color="green">
-                          skill.md
-                        </Tag>
-                      )}
                     </div>
-                    {skill.description && (
-                      <div
-                        style={{
-                          marginBottom: 4,
-                          color: 'rgba(0,0,0,0.65)',
-                          fontSize: 13,
-                          lineHeight: '1.5',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {skill.description}
-                      </div>
-                    )}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        flexWrap: 'nowrap',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {skill.syncStatuses.slice(0, 4).map((status) => (
+
+                    <div className="center-repo-card__main">
+                      <div className="center-repo-card__top">
+                        <div className="center-repo-card__identity">
+                          <Text className="center-repo-card__name">{skill.name}</Text>
+                          <Select
+                            size="small"
+                            variant="borderless"
+                            value={skill.sourceType}
+                            options={categoryOptions}
+                            onChange={(val) => handleSetCategory(skill.name, val)}
+                            className="center-repo-card__category"
+                          />
+                          {skill.hasSkillMd && (
+                            <Tag className="center-repo-card__doc-tag" color="green">
+                              skill.md
+                            </Tag>
+                          )}
+                        </div>
                         <Tag
-                          key={status.toolId}
-                          color={status.synced ? 'success' : 'default'}
-                          style={{ fontSize: 11, flexShrink: 0 }}
+                          className={`center-repo-card__status center-repo-card__status--${status}`}
                         >
-                          {status.toolName} {status.synced ? '✓' : '✗'}
+                          {statusLabel}
                         </Tag>
-                      ))}
-                      {skill.syncStatuses.length > 4 && (
-                        <Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
-                          +{skill.syncStatuses.length - 4}
-                        </Text>
+                      </div>
+
+                      {skill.description && (
+                        <p className="center-repo-card__description">{skill.description}</p>
                       )}
-                      {skill.syncStatuses.length === 0 && (
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          未同步到任何工具
-                        </Text>
-                      )}
+
+                      <div className="center-repo-card__sync">
+                        {skill.syncStatuses.length === 0 ? (
+                          <Text className="center-repo-card__sync-empty">未同步到任何工具</Text>
+                        ) : (
+                          <>
+                            {skill.syncStatuses.slice(0, 4).map((syncStatus) => (
+                              <Tag
+                                key={syncStatus.toolId}
+                                className={`center-repo-card__tool-tag ${syncStatus.synced ? 'is-synced' : ''}`}
+                              >
+                                {syncStatus.toolName} {syncStatus.synced ? '✓' : '×'}
+                              </Tag>
+                            ))}
+                            {skill.syncStatuses.length > 4 && (
+                              <Text className="center-repo-card__more">
+                                +{skill.syncStatuses.length - 4}
+                              </Text>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </List.Item>
-            )}
-          />
-        )}
+
+                    <div className="center-repo-card__ops">
+                      <Tooltip title="同步到工具">
+                        <Button
+                          icon={<SyncOutlined />}
+                          size="small"
+                          onClick={() => openSyncModal(skill.name)}
+                        />
+                      </Tooltip>
+                      <Tooltip title="从工具导入">
+                        <Button
+                          icon={<CloudDownloadOutlined />}
+                          size="small"
+                          onClick={() => openImportModal(skill.name)}
+                        />
+                      </Tooltip>
+                      <Tooltip title="删除">
+                        <Button
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          danger
+                          onClick={() => handleDelete(skill.name)}
+                        />
+                      </Tooltip>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </Drawer>
 
       {/* 从 Git 安装 */}

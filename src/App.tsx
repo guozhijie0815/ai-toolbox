@@ -19,7 +19,6 @@ import {
   LinkOutlined,
   LockOutlined,
   MoreOutlined,
-  ReloadOutlined,
   SaveOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -196,6 +195,7 @@ function App() {
   const isPresetsLoading = useToolboxStore((state) => state.isPresetsLoading)
   const refreshPresets = useToolboxStore((state) => state.refreshPresets)
   const createPreset = useToolboxStore((state) => state.createPreset)
+  const updatePreset = useToolboxStore((state) => state.updatePreset)
   const removePreset = useToolboxStore((state) => state.removePreset)
   const applyPreset = useToolboxStore((state) => state.applyPreset)
   const toggleSkillEnabled = useToolboxStore((state) => state.toggleSkillEnabled)
@@ -295,7 +295,7 @@ function App() {
   }, [sortedSkills, syncKeyword])
 
   const syncTargetOptions = useMemo(() => {
-    const selectedSkillDir = normalizeFsPath(selectedTool?.skillDir)
+    const selectedSkillDir = normalizeFsPath(_homeDir, selectedTool?.skillDir)
     return visibleTools
       .filter((tool) => {
         if (tool.id === selectedTool?.id) return false
@@ -724,14 +724,6 @@ function App() {
                 <Button icon={<CloudOutlined />} onClick={() => setCenterRepoOpen(true)}>
                   中央仓库
                 </Button>
-                <Button
-                  icon={<ReloadOutlined />}
-                  loading={isToolsLoading}
-                  onClick={() => void refreshTools()}
-                  type="text"
-                  size="small"
-                  title="刷新工具列表"
-                />
               </div>
             </div>
           </header>
@@ -890,6 +882,9 @@ function App() {
                           onCreate={(name, skills) => {
                             void createPreset(name, skills)
                           }}
+                          onUpdate={(presetId, name, skills) => {
+                            void updatePreset(presetId, name, skills)
+                          }}
                           onDelete={(presetId) => {
                             void removePreset(presetId)
                           }}
@@ -926,8 +921,6 @@ function App() {
                                     {skill.name}
                                   </span>
                                   <div className="skill-entry__actions">
-                                    {(skill.tags?.length ?? 0) > 0 &&
-                                      skill.tags!.map((tag) => <Tag key={tag}>{tag}</Tag>)}
                                     {skill.updatedAt ? (
                                       <span className="skill-entry__time">
                                         {formatTime(skill.updatedAt)}
@@ -977,6 +970,13 @@ function App() {
                                   </div>
                                 </div>
                                 {renderSkillDescription(skill)}
+                                {(skill.tags?.length ?? 0) > 0 && (
+                                  <div className="skill-entry__tags">
+                                    {skill.tags!.map((tag) => (
+                                      <Tag key={tag}>{tag}</Tag>
+                                    ))}
+                                  </div>
+                                )}
                                 {skill.path ? (
                                   <div className="skill-entry__path-row">
                                     <Text
@@ -1127,233 +1127,246 @@ function App() {
 
               {/* 右侧：变动洞察（普通）/ 技能列表+洞察（编辑） */}
               <aside className="panel panel--insights">
-                <div className="insights-content">
-                  <div className="panel-header">
-                    <div>
-                      <Text className="panel-kicker">Insights</Text>
-                      <Title level={4}>变动洞察</Title>
-                    </div>
-                    <Button
-                      type="link"
-                      size="small"
-                      onClick={() => void refreshInsights()}
-                      loading={isInsightsLoading}
-                    >
-                      刷新
-                    </Button>
-                  </div>
-
-                  {skillInsights.length > 0 ? (
-                    <div className="skill-insights__list" style={{ overflow: 'auto', flex: 1 }}>
-                      {skillInsights.map((insight) => (
-                        <div key={insight.skillName} className="skill-insight-card">
-                          <div className="skill-insight-card__row">
-                            <div className="skill-insight-card__info">
-                              <div className="skill-insight-card__info-top">
-                                <span className="skill-insight-card__name">
-                                  {insight.skillName}
-                                </span>
-                                <Tag variant="filled" color="warning" style={{ fontSize: 11 }}>
-                                  {insight.laggingTools.length} 个工具未同步
-                                </Tag>
-                              </div>
-                              <div className="skill-insight-card__info-bottom">
-                                <span
-                                  className="skill-insight-card__leader"
-                                  data-tool={insight.leaderToolId}
-                                >
-                                  {insight.leaderToolName}
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    color: 'var(--muted-text)',
-                                  }}
-                                >
-                                  {formatTime(insight.leaderUpdatedAt)}
-                                </span>
-                              </div>
-                            </div>
-                            <Button
-                              type="primary"
-                              size="small"
-                              icon={<SyncOutlined />}
-                              style={{ borderRadius: 999 }}
-                              onClick={() => {
-                                setSyncTargetToolIds(insight.laggingTools.map((lag) => lag.toolId))
-                                setSyncSelectedSkillIds([insight.skillName])
-                                setSyncModalOpen(true)
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <Empty
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      description="暂无变动洞察"
-                      style={{ marginTop: 40 }}
-                    />
-                  )}
-
-                  {/* 工具统计信息 */}
-                  <div className="tool-info-section">
-                    <Text className="field-label">工具统计</Text>
-                    <div className="tool-info-grid">
-                      <div className="tool-info-item">
-                        <span className="tool-info-value">
-                          {selectedTool?.configFiles.length ?? 0}
-                        </span>
-                        <span className="tool-info-label">配置文件</span>
+                <div className="panel--insights__container">
+                  <div className="insights-content">
+                    <div className="panel-header">
+                      <div>
+                        <Text className="panel-kicker">Insights</Text>
+                        <Title level={4}>变动洞察</Title>
                       </div>
-                      <div className="tool-info-item">
-                        <span className="tool-info-value">{selectedTool?.skills.length ?? 0}</span>
-                        <span className="tool-info-label">技能</span>
-                      </div>
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={() => void refreshInsights()}
+                        loading={isInsightsLoading}
+                      >
+                        刷新
+                      </Button>
                     </div>
-                  </div>
-                </div>
 
-                {/* 编辑模式：技能列表 + 洞察 */}
-                <div className="skills-overlay">
-                  <div className="insights-split-view">
-                    {/* 上方：技能列表 */}
-                    <div className="insights-block">
-                      <div className="insights-block__header">
-                        <div>
-                          <Text className="panel-kicker">Skills</Text>
-                          <Title level={4} style={{ marginTop: 4 }}>
-                            当前技能
-                          </Title>
-                        </div>
-                        <Space>
-                          <Tag variant="filled" color="cyan">
-                            {filteredCurrentSkills.length}/{currentSkills.length}
-                          </Tag>
-                          <Button size="small" icon={<SyncOutlined />} onClick={openSyncModal}>
-                            同步
-                          </Button>
-                        </Space>
-                      </div>
-                      <div className="insights-block__content">
-                        {filteredCurrentSkills.length > 0 ? (
-                          filteredCurrentSkills.map((skill) => (
-                            <div key={skill.id} className="skill-entry">
-                              <div className="skill-entry__top">
-                                <span className="skill-entry__name" title={skill.name}>
-                                  {skill.name}
-                                </span>
-                                <div className="skill-entry__actions">
-                                  {skill.updatedAt ? (
-                                    <span className="skill-entry__time">
-                                      {formatTime(skill.updatedAt)}
-                                    </span>
-                                  ) : null}
-                                  {renderSkillMeta(skill)}
-                                  <Dropdown
-                                    trigger={['click']}
-                                    menu={{
-                                      items: [
-                                        {
-                                          key: 'delete',
-                                          danger: true,
-                                          icon: <DeleteOutlined />,
-                                          label: '删除',
-                                          onClick: () => handleDeleteSkill(skill),
-                                        },
-                                      ],
+                    {skillInsights.length > 0 ? (
+                      <div className="skill-insights__list" style={{ overflow: 'auto', flex: 1 }}>
+                        {skillInsights.map((insight) => (
+                          <div key={insight.skillName} className="skill-insight-card">
+                            <div className="skill-insight-card__row">
+                              <div className="skill-insight-card__info">
+                                <div className="skill-insight-card__info-top">
+                                  <span className="skill-insight-card__name">
+                                    {insight.skillName}
+                                  </span>
+                                  <Tag variant="filled" color="warning" style={{ fontSize: 11 }}>
+                                    {insight.laggingTools.length} 个工具未同步
+                                  </Tag>
+                                </div>
+                                <div className="skill-insight-card__info-bottom">
+                                  <span
+                                    className="skill-insight-card__leader"
+                                    data-tool={insight.leaderToolId}
+                                  >
+                                    {insight.leaderToolName}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      color: 'var(--muted-text)',
                                     }}
                                   >
-                                    <Button
-                                      type="text"
-                                      size="small"
-                                      icon={<MoreOutlined />}
-                                      aria-label={`${skill.name} 操作`}
-                                    />
-                                  </Dropdown>
+                                    {formatTime(insight.leaderUpdatedAt)}
+                                  </span>
                                 </div>
                               </div>
-                              {renderSkillDescription(skill)}
+                              <Button
+                                type="primary"
+                                size="small"
+                                icon={<SyncOutlined />}
+                                style={{ borderRadius: 999 }}
+                                onClick={() => {
+                                  setSyncTargetToolIds(
+                                    insight.laggingTools.map((lag) => lag.toolId),
+                                  )
+                                  setSyncSelectedSkillIds([insight.skillName])
+                                  setSyncModalOpen(true)
+                                }}
+                              />
                             </div>
-                          ))
-                        ) : (
-                          <Empty
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            description="当前工具没有技能"
-                          />
-                        )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="暂无变动洞察"
+                        style={{ marginTop: 40 }}
+                      />
+                    )}
+
+                    {/* 工具统计信息 */}
+                    <div className="tool-info-section">
+                      <Text className="field-label">工具统计</Text>
+                      <div className="tool-info-grid">
+                        <div className="tool-info-item">
+                          <span className="tool-info-value">
+                            {selectedTool?.configFiles.length ?? 0}
+                          </span>
+                          <span className="tool-info-label">配置文件</span>
+                        </div>
+                        <div className="tool-info-item">
+                          <span className="tool-info-value">
+                            {selectedTool?.skills.length ?? 0}
+                          </span>
+                          <span className="tool-info-label">技能</span>
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* 下方：变动洞察 */}
-                    <div className="insights-block">
-                      <div className="insights-block__header">
-                        <div>
-                          <Text className="panel-kicker">Insights</Text>
-                          <Title level={4} style={{ marginTop: 4 }}>
-                            变动洞察
-                          </Title>
+                  {/* 编辑模式：技能列表 + 洞察 */}
+                  <div className="skills-overlay">
+                    <div className="insights-split-view">
+                      {/* 上方：技能列表 */}
+                      <div className="insights-block">
+                        <div className="insights-block__header">
+                          <div>
+                            <Text className="panel-kicker">Skills</Text>
+                            <Title level={4} style={{ marginTop: 4 }}>
+                              当前技能
+                            </Title>
+                          </div>
+                          <Space>
+                            <Tag variant="filled" color="cyan">
+                              {filteredCurrentSkills.length}/{currentSkills.length}
+                            </Tag>
+                            <Button size="small" icon={<SyncOutlined />} onClick={openSyncModal}>
+                              同步
+                            </Button>
+                          </Space>
                         </div>
-                        <Button
-                          type="link"
-                          size="small"
-                          onClick={() => void refreshInsights()}
-                          loading={isInsightsLoading}
-                        >
-                          刷新
-                        </Button>
-                      </div>
-                      <div className="insights-block__content">
-                        {skillInsights.length > 0 ? (
-                          skillInsights.map((insight) => (
-                            <div key={insight.skillName} className="skill-insight-card">
-                              <div className="skill-insight-card__row">
-                                <div className="skill-insight-card__info">
-                                  <div className="skill-insight-card__info-top">
-                                    <span className="skill-insight-card__name">
-                                      {insight.skillName}
-                                    </span>
-                                    <Tag variant="filled" color="warning" style={{ fontSize: 11 }}>
-                                      {insight.laggingTools.length} 个工具未同步
-                                    </Tag>
-                                  </div>
-                                  <div className="skill-insight-card__info-bottom">
-                                    <span
-                                      className="skill-insight-card__leader"
-                                      data-tool={insight.leaderToolId}
-                                    >
-                                      {insight.leaderToolName}
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontSize: 11,
-                                        color: 'var(--muted-text)',
+                        <div className="insights-block__content">
+                          {filteredCurrentSkills.length > 0 ? (
+                            filteredCurrentSkills.map((skill) => (
+                              <div key={skill.id} className="skill-entry">
+                                <div className="skill-entry__top">
+                                  <span className="skill-entry__name" title={skill.name}>
+                                    {skill.name}
+                                  </span>
+                                  <div className="skill-entry__actions">
+                                    {skill.updatedAt ? (
+                                      <span className="skill-entry__time">
+                                        {formatTime(skill.updatedAt)}
+                                      </span>
+                                    ) : null}
+                                    {renderSkillMeta(skill)}
+                                    <Dropdown
+                                      trigger={['click']}
+                                      menu={{
+                                        items: [
+                                          {
+                                            key: 'delete',
+                                            danger: true,
+                                            icon: <DeleteOutlined />,
+                                            label: '删除',
+                                            onClick: () => handleDeleteSkill(skill),
+                                          },
+                                        ],
                                       }}
                                     >
-                                      {formatTime(insight.leaderUpdatedAt)}
-                                    </span>
+                                      <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<MoreOutlined />}
+                                        aria-label={`${skill.name} 操作`}
+                                      />
+                                    </Dropdown>
                                   </div>
                                 </div>
-                                <Button
-                                  type="primary"
-                                  size="small"
-                                  icon={<SyncOutlined />}
-                                  style={{ borderRadius: 999 }}
-                                  onClick={() => {
-                                    setSyncTargetToolIds(
-                                      insight.laggingTools.map((lag) => lag.toolId),
-                                    )
-                                    setSyncSelectedSkillIds([insight.skillName])
-                                    setSyncModalOpen(true)
-                                  }}
-                                />
+                                {renderSkillDescription(skill)}
                               </div>
-                            </div>
-                          ))
-                        ) : (
-                          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无变动洞察" />
-                        )}
+                            ))
+                          ) : (
+                            <Empty
+                              image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              description="当前工具没有技能"
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 下方：变动洞察 */}
+                      <div className="insights-block">
+                        <div className="insights-block__header">
+                          <div>
+                            <Text className="panel-kicker">Insights</Text>
+                            <Title level={4} style={{ marginTop: 4 }}>
+                              变动洞察
+                            </Title>
+                          </div>
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() => void refreshInsights()}
+                            loading={isInsightsLoading}
+                          >
+                            刷新
+                          </Button>
+                        </div>
+                        <div className="insights-block__content">
+                          {skillInsights.length > 0 ? (
+                            skillInsights.map((insight) => (
+                              <div key={insight.skillName} className="skill-insight-card">
+                                <div className="skill-insight-card__row">
+                                  <div className="skill-insight-card__info">
+                                    <div className="skill-insight-card__info-top">
+                                      <span className="skill-insight-card__name">
+                                        {insight.skillName}
+                                      </span>
+                                      <Tag
+                                        variant="filled"
+                                        color="warning"
+                                        style={{ fontSize: 11 }}
+                                      >
+                                        {insight.laggingTools.length} 个工具未同步
+                                      </Tag>
+                                    </div>
+                                    <div className="skill-insight-card__info-bottom">
+                                      <span
+                                        className="skill-insight-card__leader"
+                                        data-tool={insight.leaderToolId}
+                                      >
+                                        {insight.leaderToolName}
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontSize: 11,
+                                          color: 'var(--muted-text)',
+                                        }}
+                                      >
+                                        {formatTime(insight.leaderUpdatedAt)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    type="primary"
+                                    size="small"
+                                    icon={<SyncOutlined />}
+                                    style={{ borderRadius: 999 }}
+                                    onClick={() => {
+                                      setSyncTargetToolIds(
+                                        insight.laggingTools.map((lag) => lag.toolId),
+                                      )
+                                      setSyncSelectedSkillIds([insight.skillName])
+                                      setSyncModalOpen(true)
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <Empty
+                              image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              description="暂无变动洞察"
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1677,40 +1690,43 @@ function App() {
 
                 <div className="sync-skill-scroll">
                   {filteredSyncSkills.map((skill) => (
-                    <label key={skill.id} className="skill-item">
-                      <Checkbox
-                        checked={syncSelectedSkillIds.includes(skill.id)}
-                        onChange={(event) => {
-                          setSyncSelectedSkillIds((current) =>
-                            event.target.checked
-                              ? [...new Set([...current, skill.id])]
-                              : current.filter((skillId) => skillId !== skill.id),
-                          )
-                        }}
-                      />
+                    <label
+                      key={skill.id}
+                      className={`skill-item ${syncSelectedSkillIds.includes(skill.id) ? 'is-selected' : ''}`}
+                    >
+                      <div className="skill-item__checkbox">
+                        <Checkbox
+                          checked={syncSelectedSkillIds.includes(skill.id)}
+                          onChange={(event) => {
+                            setSyncSelectedSkillIds((current) =>
+                              event.target.checked
+                                ? [...new Set([...current, skill.id])]
+                                : current.filter((skillId) => skillId !== skill.id),
+                            )
+                          }}
+                        />
+                      </div>
                       <div className="skill-item__body">
                         <div className="skill-item__top">
                           <span className="skill-item__name" title={skill.name}>
                             {skill.name}
                           </span>
-                          <div className="skill-item__tags">
-                            {skill.isSymlink ? (
-                              <Tag variant="filled" color="gold">
-                                软链接
-                              </Tag>
-                            ) : null}
-                            {skill.updatedAt ? (
-                              <span className="skill-item__time">
-                                {formatTime(skill.updatedAt)}
-                              </span>
-                            ) : null}
-                          </div>
+                          {skill.updatedAt ? (
+                            <span className="skill-item__time">{formatTime(skill.updatedAt)}</span>
+                          ) : null}
                         </div>
                         {(skill.summary ?? skill.description) ? (
                           <Text className="skill-item__desc">
                             {skill.summary ?? skill.description}
                           </Text>
                         ) : null}
+                        {skill.isSymlink && (
+                          <div className="skill-item__tags">
+                            <Tag variant="filled" color="gold">
+                              软链接
+                            </Tag>
+                          </div>
+                        )}
                         {skill.path ? <Text className="skill-item__path">{skill.path}</Text> : null}
                       </div>
                     </label>
