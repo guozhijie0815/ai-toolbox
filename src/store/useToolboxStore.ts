@@ -79,6 +79,7 @@ interface ToolboxStore {
   isPresetsLoading: boolean
   refreshPresets: () => Promise<void>
   createPreset: (name: string, skills: string[]) => Promise<void>
+  updatePreset: (id: string, name: string, skills: string[]) => Promise<void>
   removePreset: (id: string) => Promise<void>
   applyPreset: (presetId: string, targetToolIds: string[]) => Promise<void>
 }
@@ -502,6 +503,20 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
     } catch (error) {
       set({
         feedback: buildFeedback('error', '创建预设失败', getErrorMessage(error)),
+      })
+    }
+  },
+
+  updatePreset: async (id, name, skills) => {
+    try {
+      await savePreset(name, skills, id)
+      await get().refreshPresets()
+      set({
+        feedback: buildFeedback('success', '预设已更新'),
+      })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '更新预设失败', getErrorMessage(error)),
       })
     }
   },

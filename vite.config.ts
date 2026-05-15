@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
@@ -13,10 +13,16 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          antd: ['antd', '@ant-design/icons'],
-          editor: ['monaco-editor', '@monaco-editor/react'],
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor'
+          }
+          if (id.includes('node_modules/antd') || id.includes('node_modules/@ant-design/icons')) {
+            return 'antd'
+          }
+          if (id.includes('node_modules/monaco-editor') || id.includes('node_modules/@monaco-editor/react')) {
+            return 'editor'
+          }
         },
       },
     },

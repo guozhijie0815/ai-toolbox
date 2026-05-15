@@ -1154,6 +1154,8 @@ fn list_center_skills() -> Result<Vec<central_repo::CenterSkillInfo>, String> {
 
         skill.source_type = match db_source_type.as_deref() {
             Some("git") => "git".to_string(),
+            Some("system") => "system".to_string(),
+            Some("custom") => "custom".to_string(),
             Some("imported") => {
                 let exists_in_tools = tools
                     .iter()
@@ -1181,6 +1183,9 @@ fn list_center_skills() -> Result<Vec<central_repo::CenterSkillInfo>, String> {
 
 #[tauri::command]
 fn set_skill_category(skill_name: String, category: String) -> Result<(), String> {
+    if !matches!(category.as_str(), "custom" | "git" | "system") {
+        return Err(format!("不支持的技能来源分类: {}", category));
+    }
     let db = get_db()?;
     store::center_skill_store::set_skill_source_type(db, &skill_name, &category)
 }
