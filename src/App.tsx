@@ -7,7 +7,6 @@ import CenterRepoPanel from './components/CenterRepoPanel'
 import ClaudeConfigSyncPanel from './components/ClaudeConfigSyncPanel'
 import CommandPalette from './components/CommandPalette'
 import PresetManager from './components/PresetManager'
-import ProjectSpacePanel from './components/ProjectSpacePanel'
 import SkillDetailDrawer from './components/SkillDetailDrawer'
 import TagFilter from './components/TagFilter'
 import {
@@ -168,7 +167,6 @@ function App() {
   const [editingConfigFiles, setEditingConfigFiles] = useState<ToolRegistryConfigFile[]>([])
   const [editorMode, setEditorMode] = useState(false)
   const [centerRepoOpen, setCenterRepoOpen] = useState(false)
-  const [projectSpaceOpen, setProjectSpaceOpen] = useState(false)
   const [middleTab, setMiddleTab] = useState<'skills' | 'editor' | 'sync'>('skills')
 
   const tools = useToolboxStore((state) => state.tools)
@@ -744,9 +742,6 @@ function App() {
                 </Button>
                 <Button icon={<CloudOutlined />} onClick={() => setCenterRepoOpen(true)}>
                   中央仓库
-                </Button>
-                <Button icon={<FolderOpenOutlined />} onClick={() => setProjectSpaceOpen(true)}>
-                  项目空间
                 </Button>
               </div>
             </div>
@@ -1839,15 +1834,6 @@ function App() {
         syncMode={syncMode}
         conflictStrategy={conflictStrategy}
         onClose={() => setCenterRepoOpen(false)}
-        onSyncComplete={() => void refreshTools()}
-      />
-
-      <ProjectSpacePanel
-        open={projectSpaceOpen}
-        tools={tools}
-        syncMode={syncMode}
-        conflictStrategy={conflictStrategy}
-        onClose={() => setProjectSpaceOpen(false)}
         onSyncComplete={() => void refreshTools()}
       />
     </ConfigProvider>

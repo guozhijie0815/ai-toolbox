@@ -795,61 +795,6 @@ export async function updateSkillTags(
 }
 
 // ============================================================================
-// Project space
-// ============================================================================
-
-export interface ProjectSkillInfo {
-  name: string
-  path: string
-  description?: string
-  hasSkillMd: boolean
-  updatedAt?: number
-}
-
-export interface ProjectSpaceInfo {
-  projectPath: string
-  skills: ProjectSkillInfo[]
-  globalOnlySkills: string[]
-  projectOnlySkills: string[]
-  sharedSkills: string[]
-}
-
-export async function scanProjectSkills(projectPath: string): Promise<ProjectSpaceInfo> {
-  return invoke('scan_project_skills', { projectPath })
-}
-
-export async function importSkillToProject(
-  skillName: string,
-  projectPath: string,
-  sourceToolId: string,
-): Promise<string> {
-  return invoke('import_skill_to_project', { skillName, projectPath, sourceToolId })
-}
-
-export async function exportSkillFromProject(
-  skillName: string,
-  projectPath: string,
-): Promise<string> {
-  return invoke('export_skill_from_project', { skillName, projectPath })
-}
-
-export async function syncSkillFromProjectToTool(
-  skillName: string,
-  projectPath: string,
-  targetToolId: string,
-  mode: string,
-  conflictPolicy: string,
-): Promise<SyncOutcome> {
-  return invoke('sync_skill_from_project_to_tool', {
-    skillName,
-    projectPath,
-    targetToolId,
-    mode,
-    conflictPolicy,
-  })
-}
-
-// ============================================================================
 // Git backup & version management
 // ============================================================================
 

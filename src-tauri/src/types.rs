@@ -166,7 +166,7 @@ pub struct SkillDetailPayload {
 }
 
 // ============================================================================
-// Project Workspace
+// Git Version Management
 // ============================================================================
 
 #[derive(Clone, Serialize)]

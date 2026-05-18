@@ -158,23 +158,6 @@ export interface PresetApplicationStatus {
   totalCount: number
 }
 
-export interface ProjectSkillEntry {
-  name: string
-  path: string
-  description?: string
-  hasSkillMd: boolean
-  updatedAt?: number
-  tags?: string[]
-}
-
-export interface ProjectSpaceState {
-  projectPath: string
-  skills: ProjectSkillEntry[]
-  globalSkills: string[]
-  projectOnlySkills: string[]
-  sharedSkills: string[]
-}
-
 export interface GitCommitEntry {
   hash: string
   message: string

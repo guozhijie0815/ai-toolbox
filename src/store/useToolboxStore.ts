@@ -15,10 +15,6 @@ import {
   syncSkills,
   toggleSkillEnabled as toggleSkillEnabledApi,
   updateSkillTags,
-  scanProjectSkills,
-  importSkillToProject,
-  exportSkillFromProject,
-  syncSkillFromProjectToTool,
   initCenterGitRepo,
   commitCenterSnapshot,
   getCenterGitHistory,
@@ -35,7 +31,6 @@ import type {
   OperationFeedback,
   PresetApplicationStatus,
   PresetEntry,
-  ProjectSpaceState,
   SkillDetailPayload,
   SkillInsightEntry,
   SkillUpdateStatus,
@@ -104,17 +99,6 @@ interface ToolboxStore {
   selectedTags: string[]
   setSelectedTags: (tags: string[]) => void
   updateSkillTags: (toolId: string, skillName: string, tags: string[]) => Promise<void>
-
-  projectSpace: ProjectSpaceState | null
-  isProjectSpaceLoading: boolean
-  loadProjectSpace: (projectPath: string) => Promise<void>
-  importToProject: (skillName: string, projectPath: string, sourceToolId: string) => Promise<void>
-  exportFromProject: (skillName: string, projectPath: string) => Promise<void>
-  syncFromProjectToTool: (
-    skillName: string,
-    projectPath: string,
-    targetToolId: string,
-  ) => Promise<void>
 
   gitRepo: GitRepoState | null
   isGitLoading: boolean
@@ -675,80 +659,18 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
   updateSkillTags: async (toolId, skillName, tags) => {
     try {
       await updateSkillTags(toolId, skillName, tags)
-      await get().refreshTools()
-      set({
+      set((state) => ({
+        tools: state.tools.map((tool) => ({
+          ...tool,
+          skills: tool.skills.map((skill) =>
+            skill.name !== skillName ? skill : { ...skill, tags },
+          ),
+        })),
         feedback: buildFeedback('success', '标签已更新'),
-      })
+      }))
     } catch (error) {
       set({
         feedback: buildFeedback('error', '更新标签失败', getErrorMessage(error)),
-      })
-    }
-  },
-
-  projectSpace: null,
-  isProjectSpaceLoading: false,
-
-  loadProjectSpace: async (projectPath: string) => {
-    set({ isProjectSpaceLoading: true })
-    try {
-      const info = await scanProjectSkills(projectPath)
-      set({
-        projectSpace: {
-          projectPath,
-          skills: info.skills || [],
-          globalSkills: info.globalOnlySkills || [],
-          projectOnlySkills: info.projectOnlySkills || [],
-          sharedSkills: info.sharedSkills || [],
-        },
-      })
-    } catch (error) {
-      set({
-        feedback: buildFeedback('error', '加载项目空间失败', getErrorMessage(error)),
-      })
-    } finally {
-      set({ isProjectSpaceLoading: false })
-    }
-  },
-
-  importToProject: async (skillName, projectPath, sourceToolId) => {
-    try {
-      await importSkillToProject(skillName, projectPath, sourceToolId)
-      await get().loadProjectSpace(projectPath)
-      set({ feedback: buildFeedback('success', '技能已导入项目') })
-    } catch (error) {
-      set({
-        feedback: buildFeedback('error', '导入项目失败', getErrorMessage(error)),
-      })
-    }
-  },
-
-  exportFromProject: async (skillName, projectPath) => {
-    try {
-      await exportSkillFromProject(skillName, projectPath)
-      await get().loadProjectSpace(projectPath)
-      set({ feedback: buildFeedback('success', '技能已导出到中央仓库') })
-    } catch (error) {
-      set({
-        feedback: buildFeedback('error', '导出失败', getErrorMessage(error)),
-      })
-    }
-  },
-
-  syncFromProjectToTool: async (skillName, projectPath, targetToolId) => {
-    try {
-      await syncSkillFromProjectToTool(
-        skillName,
-        projectPath,
-        targetToolId,
-        get().syncMode,
-        get().conflictStrategy,
-      )
-      await get().refreshTools()
-      set({ feedback: buildFeedback('success', '技能已同步到工具') })
-    } catch (error) {
-      set({
-        feedback: buildFeedback('error', '同步失败', getErrorMessage(error)),
       })
     }
   },

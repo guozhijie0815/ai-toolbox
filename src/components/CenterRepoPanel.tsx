@@ -30,6 +30,7 @@ import {
   batchImportToCenter,
   batchSyncFromCenter,
   deleteCenterSkill,
+  deleteSkill,
   discoverCenterSkills,
   installSkillFromGitToCenter,
   listCenterSkills,
