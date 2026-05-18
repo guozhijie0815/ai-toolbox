@@ -1,0 +1,2906 @@
+diff --git a/package-lock.json b/package-lock.json
+index 796753d..971da3b 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -10,7 +10,7 @@
+       "dependencies": {
+         "@ant-design/icons": "^6.2.2",
+         "@monaco-editor/react": "^4.7.0",
+-        "@tauri-apps/api": "^2.10.1",
++        "@tauri-apps/api": "2.10.1",
+         "antd": "^6.3.7",
+         "monaco-editor": "^0.55.1",
+         "react": "^19.2.5",
+@@ -19,7 +19,7 @@
+       },
+       "devDependencies": {
+         "@eslint/js": "^10.0.1",
+-        "@tauri-apps/cli": "^2.9.2",
++        "@tauri-apps/cli": "2.9.2",
+         "@testing-library/jest-dom": "^6.9.1",
+         "@testing-library/react": "^16.3.2",
+         "@types/node": "^24.12.2",
+@@ -218,6 +218,7 @@
+       "integrity": "sha512-CGOfOJqWjg2qW/Mb6zNsDm+u5vFQ8DxXfbM09z69p5Z6+mE1ikP2jUXw+j42Pf1XTYED2Rni5f95npYeuwMDQA==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@babel/code-frame": "^7.29.0",
+         "@babel/generator": "^7.29.0",
+@@ -532,6 +533,7 @@
+           "url": "https://opencollective.com/csstools"
+         }
+       ],
++      "peer": true,
+       "engines": {
+         "node": ">=20.19.0"
+       },
+@@ -578,33 +580,11 @@
+           "url": "https://opencollective.com/csstools"
+         }
+       ],
++      "peer": true,
+       "engines": {
+         "node": ">=20.19.0"
+       }
+     },
+-    "node_modules/@emnapi/core": {
+-      "version": "1.10.0",
+-      "resolved": "https://registry.npmmirror.com/@emnapi/core/-/core-1.10.0.tgz",
+-      "integrity": "sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==",
+-      "dev": true,
+-      "license": "MIT",
+-      "optional": true,
+-      "dependencies": {
+-        "@emnapi/wasi-threads": "1.2.1",
+-        "tslib": "^2.4.0"
+-      }
+-    },
+-    "node_modules/@emnapi/runtime": {
+-      "version": "1.10.0",
+-      "resolved": "https://registry.npmmirror.com/@emnapi/runtime/-/runtime-1.10.0.tgz",
+-      "integrity": "sha512-ewvYlk86xUoGI0zQRNq/mC+16R1QeDlKQy21Ki3oSYXNgLb45GV1P6A0M+/s6nyCuNDqe5VpaY84BzXGwVbwFA==",
+-      "dev": true,
+-      "license": "MIT",
+-      "optional": true,
+-      "dependencies": {
+-        "tslib": "^2.4.0"
+-      }
+-    },
+     "node_modules/@emnapi/wasi-threads": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmmirror.com/@emnapi/wasi-threads/-/wasi-threads-1.2.1.tgz",
+@@ -1925,9 +1905,9 @@
+       "dev": true
+     },
+     "node_modules/@tauri-apps/api": {
+-      "version": "2.11.0",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/api/-/api-2.11.0.tgz",
+-      "integrity": "sha512-7CinYODhky9lmO23xHnUFv0Xt43fbtWMyxZcLcRBlFkcgXKuEirBvHpmtJ89YMhyeGcq20Wuc47Fa4XjyniywA==",
++      "version": "2.10.1",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/api/-/api-2.10.1.tgz",
++      "integrity": "sha512-hKL/jWf293UDSUN09rR69hrToyIXBb8CjGaWC7gfinvnQrBVvnLr08FeFi38gxtugAVyVcTa5/FD/Xnkb1siBw==",
+       "license": "Apache-2.0 OR MIT",
+       "funding": {
+         "type": "opencollective",
+@@ -1935,9 +1915,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli/-/cli-2.11.1.tgz",
+-      "integrity": "sha512-rpEbaJ/HzNb6fwsquwoAbq29/Vt4gADhS423A8fdkwL4edJ0wZmoB8ar7O6JPDL834MUKOCm/rrJ7c9oAaEaYQ==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli/-/cli-2.9.2.tgz",
++      "integrity": "sha512-aGzdVgxQW6WQ7e5nydPZ/30u8HvltHjO3Ytzf1wOxX1N5Yj2TsjKWRb/AWJlB95Huml3k3c/b6s0ijAvlSo9xw==",
+       "dev": true,
+       "license": "Apache-2.0 OR MIT",
+       "bin": {
+@@ -1951,23 +1931,23 @@
+         "url": "https://opencollective.com/tauri"
+       },
+       "optionalDependencies": {
+-        "@tauri-apps/cli-darwin-arm64": "2.11.1",
+-        "@tauri-apps/cli-darwin-x64": "2.11.1",
+-        "@tauri-apps/cli-linux-arm-gnueabihf": "2.11.1",
+-        "@tauri-apps/cli-linux-arm64-gnu": "2.11.1",
+-        "@tauri-apps/cli-linux-arm64-musl": "2.11.1",
+-        "@tauri-apps/cli-linux-riscv64-gnu": "2.11.1",
+-        "@tauri-apps/cli-linux-x64-gnu": "2.11.1",
+-        "@tauri-apps/cli-linux-x64-musl": "2.11.1",
+-        "@tauri-apps/cli-win32-arm64-msvc": "2.11.1",
+-        "@tauri-apps/cli-win32-ia32-msvc": "2.11.1",
+-        "@tauri-apps/cli-win32-x64-msvc": "2.11.1"
++        "@tauri-apps/cli-darwin-arm64": "2.9.2",
++        "@tauri-apps/cli-darwin-x64": "2.9.2",
++        "@tauri-apps/cli-linux-arm-gnueabihf": "2.9.2",
++        "@tauri-apps/cli-linux-arm64-gnu": "2.9.2",
++        "@tauri-apps/cli-linux-arm64-musl": "2.9.2",
++        "@tauri-apps/cli-linux-riscv64-gnu": "2.9.2",
++        "@tauri-apps/cli-linux-x64-gnu": "2.9.2",
++        "@tauri-apps/cli-linux-x64-musl": "2.9.2",
++        "@tauri-apps/cli-win32-arm64-msvc": "2.9.2",
++        "@tauri-apps/cli-win32-ia32-msvc": "2.9.2",
++        "@tauri-apps/cli-win32-x64-msvc": "2.9.2"
+       }
+     },
+     "node_modules/@tauri-apps/cli-darwin-arm64": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-darwin-arm64/-/cli-darwin-arm64-2.11.1.tgz",
+-      "integrity": "sha512-6eEKMBXsQPCuM1EmvrjT2+aBuxWQuFdKdW8pzNuNQtpq45nEEpBlD5gr8pUeAyOU1DQKlkFaEc/MPBxb/Pfjtg==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-darwin-arm64/-/cli-darwin-arm64-2.9.2.tgz",
++      "integrity": "sha512-g1OtCXydOZFYRUEAyGYdJ2lLaE3l5jk8o+Bro8y2WOLwBLtbWjBoJIVobOKFanfjG/Xr8H/UA+umEVILPhMc2A==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -1982,9 +1962,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-darwin-x64": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-darwin-x64/-/cli-darwin-x64-2.11.1.tgz",
+-      "integrity": "sha512-LQUO7exfRWjWALNhetph5guWpMeHphRpokOLk0OIbTTExaNwJNFu3I4vb+CCM/4G/QGoZe/5XikZOJdNEFP1ig==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-darwin-x64/-/cli-darwin-x64-2.9.2.tgz",
++      "integrity": "sha512-nHHIY33noUmMOyFwAJz0xQyrYIXU+bae8MNos4TGsTo491YWAF2uzr6iW+Bq0N530xDcbe7EyRvDHgK43RmmVw==",
+       "cpu": [
+         "x64"
+       ],
+@@ -1999,9 +1979,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-linux-arm-gnueabihf": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-arm-gnueabihf/-/cli-linux-arm-gnueabihf-2.11.1.tgz",
+-      "integrity": "sha512-5i/awiBCRRhOUG8yjn0fMHXIWD5Ez8eEk5LtvOxyQrKuJkRaZDvnbIjZbE183blAwkoA4xN3aO/prJiqscl02Q==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-arm-gnueabihf/-/cli-linux-arm-gnueabihf-2.9.2.tgz",
++      "integrity": "sha512-Dq17LBdSuzf+fWOKMIyiSao+Fcq4FiQwYYlx3Nk8oafDINc8sVBjC5gv2xp18KzYhk9teSWfmDpD1sj+D3t7uw==",
+       "cpu": [
+         "arm"
+       ],
+@@ -2016,9 +1996,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-linux-arm64-gnu": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-arm64-gnu/-/cli-linux-arm64-gnu-2.11.1.tgz",
+-      "integrity": "sha512-9LrwDw3S9Fygtw/Q6WDhOP+3svJRGAsejeE+GKrc0eO1ThMVhwi2LL6hw4dlKw93IfS7VY1G19sWGxJ/NcU4nA==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-arm64-gnu/-/cli-linux-arm64-gnu-2.9.2.tgz",
++      "integrity": "sha512-Pxj5k29Rxj9xEht4gdE744t5HLXTwBojkjYDXXyJ3mE+BEg9hFX5WkStg7OkyZwH60u8NSkDSMpo7MJTH9srmA==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -2033,9 +2013,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-linux-arm64-musl": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-arm64-musl/-/cli-linux-arm64-musl-2.11.1.tgz",
+-      "integrity": "sha512-mNA5dbbqPqDUdTIwdUYYuhO2GvIe9UnB2r0VU2njxBOS3Opbx4gKNC5yP0Iu4rYmEmqdlwry9VzGZQ3wq9dyFg==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-arm64-musl/-/cli-linux-arm64-musl-2.9.2.tgz",
++      "integrity": "sha512-mx82BuD4q3Yj5Zw+LXveZgPaDCnmH2At2LosX1siK77kaD5Ap5FF+FN0V4y+3cwq+Hcrk9AhEUPbHqoNOx1R2g==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -2050,9 +2030,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-linux-riscv64-gnu": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-riscv64-gnu/-/cli-linux-riscv64-gnu-2.11.1.tgz",
+-      "integrity": "sha512-fZj3Gwq+6fUs305T5WQiD5iSGJw+j/4w/HGmk4sHDAcy+rp9zU5eaxB7nOyz5/I/nkNAuKPqfp6uIbiUBXkBCw==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-riscv64-gnu/-/cli-linux-riscv64-gnu-2.9.2.tgz",
++      "integrity": "sha512-Ypm1nnr7k+ECC1+JfDcnxROHt6BX8t/4GplxBvdY68BDXtIcBbdhPWDos7MK+3bDmoaA0WSJbW+DUjpfSkyKgw==",
+       "cpu": [
+         "riscv64"
+       ],
+@@ -2067,9 +2047,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-linux-x64-gnu": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-x64-gnu/-/cli-linux-x64-gnu-2.11.1.tgz",
+-      "integrity": "sha512-XFxGxOvHM7jjeD6ozCKdGfhzJ7lERYDGZl1/Kb4fsvchaJsfLJ981TlyTG8Qy/gFq+f5GitH3bfrX9JAkjPEyw==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-x64-gnu/-/cli-linux-x64-gnu-2.9.2.tgz",
++      "integrity": "sha512-tg85cGIM9PWwsbQg8m3uah3SfoNapgUr4vhWtkqgeTDZOjQuQ2duTwCH4UiM7acBpbZHNzvRrxSFpv0U53TqQQ==",
+       "cpu": [
+         "x64"
+       ],
+@@ -2084,9 +2064,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-linux-x64-musl": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-x64-musl/-/cli-linux-x64-musl-2.11.1.tgz",
+-      "integrity": "sha512-d5C2/Zm+68v7R9wTuTCjRQEVrWjcdMkJBZ1+rXse+QdMMlTB9+u9PDNDLw9PQflWxYLaYZ7tjxxL9Nb9II6PbA==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-linux-x64-musl/-/cli-linux-x64-musl-2.9.2.tgz",
++      "integrity": "sha512-xW8qaz9bcwR35W2gIg7fKG9e1Z34idOsGpD2zIPgxlJyF314B/1qie50hbOqt5AbbXHR4iRpxKE4kA2grqMmkg==",
+       "cpu": [
+         "x64"
+       ],
+@@ -2101,9 +2081,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-win32-arm64-msvc": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-win32-arm64-msvc/-/cli-win32-arm64-msvc-2.11.1.tgz",
+-      "integrity": "sha512-YdeVWFAR1pTXzUU6NLstPq4G6OLxuDrXCXEBdmBH+5EZIDXUx0D2kJlz3+YjpazkKvAzYpgziTsyRagls0OfRQ==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-win32-arm64-msvc/-/cli-win32-arm64-msvc-2.9.2.tgz",
++      "integrity": "sha512-A1PshB8oHdY7zYOPlLD7Om7/aD9sOUVREd765ElIzYDtptWcALwOP9jb22Wi01vDTqxf98E4ZGIcG2gxr4FhiA==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -2118,9 +2098,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-win32-ia32-msvc": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-win32-ia32-msvc/-/cli-win32-ia32-msvc-2.11.1.tgz",
+-      "integrity": "sha512-VBGkuH0eB9K9LLSMv361Gzr5Ou72sCS4+ztpmkWEQ+wd/amhcYOsf3X6qn1RJZDzIhiOYHJEOysZUC3baD01rA==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-win32-ia32-msvc/-/cli-win32-ia32-msvc-2.9.2.tgz",
++      "integrity": "sha512-AuCi0Vnc4qkXRLCC58das0u45SmXAjqcOjqF324CBKa1Z7jjNJESm0Sc2oc2G2q6f2eAbAfi34s2iJNaJU1hlQ==",
+       "cpu": [
+         "ia32"
+       ],
+@@ -2135,9 +2115,9 @@
+       }
+     },
+     "node_modules/@tauri-apps/cli-win32-x64-msvc": {
+-      "version": "2.11.1",
+-      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-win32-x64-msvc/-/cli-win32-x64-msvc-2.11.1.tgz",
+-      "integrity": "sha512-b3ORhIAKgp9ZYY+zBt7b7r0kLU2kjvyGF0+MS2SBym3emsweGPybEqocJcmtMuxyBhkOKHP4CiuEJEDuAlTx6A==",
++      "version": "2.9.2",
++      "resolved": "https://registry.npmmirror.com/@tauri-apps/cli-win32-x64-msvc/-/cli-win32-x64-msvc-2.9.2.tgz",
++      "integrity": "sha512-kDoejyfvME/mLkR4VofQnmVPTt/smJvoXuE3xgTbUwcUQKqawM8EyQvxOHQosaJYfQphHi7G0ya8UZo3PlDZig==",
+       "cpu": [
+         "x64"
+       ],
+@@ -2238,8 +2218,7 @@
+       "version": "5.0.4",
+       "resolved": "https://registry.npmmirror.com/@types/aria-query/-/aria-query-5.0.4.tgz",
+       "integrity": "sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==",
+-      "dev": true,
+-      "peer": true
++      "dev": true
+     },
+     "node_modules/@types/chai": {
+       "version": "5.2.3",
+@@ -2284,6 +2263,7 @@
+       "integrity": "sha512-GUUEShf+PBCGW2KaXwcIt3Yk+e3pkKwWKb9GSyM9WQVE+ep2jzmHdGsHzu4wgcZy5fN9FBdVzjpBQsYlpfpgLA==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "undici-types": "~7.16.0"
+       }
+@@ -2294,6 +2274,7 @@
+       "integrity": "sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==",
+       "devOptional": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "csstype": "^3.2.2"
+       }
+@@ -2304,6 +2285,7 @@
+       "integrity": "sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "peerDependencies": {
+         "@types/react": "^19.2.0"
+       }
+@@ -2360,6 +2342,7 @@
+       "integrity": "sha512-HPwA+hVkfcriajbNvTmZv4VRauibay+cWArYUYq7u7W7PmGShMxbPxLvrwDme55a6d5alG3nrYfhyJ/G28XlLg==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@typescript-eslint/scope-manager": "8.59.3",
+         "@typescript-eslint/types": "8.59.3",
+@@ -2696,6 +2679,7 @@
+       "integrity": "sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "bin": {
+         "acorn": "bin/acorn"
+       },
+@@ -2916,6 +2900,7 @@
+         }
+       ],
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "baseline-browser-mapping": "^2.10.12",
+         "caniuse-lite": "^1.0.30001782",
+@@ -3070,7 +3055,8 @@
+       "version": "1.11.20",
+       "resolved": "https://registry.npmmirror.com/dayjs/-/dayjs-1.11.20.tgz",
+       "integrity": "sha512-YbwwqR/uYpeoP4pu043q+LTDLFBLApUP6VxRihdfNTqu4ubqMlGDLd6ErXhEgsyvY0K6nCs7nggYumAN+9uEuQ==",
+-      "license": "MIT"
++      "license": "MIT",
++      "peer": true
+     },
+     "node_modules/debug": {
+       "version": "4.4.3",
+@@ -3126,8 +3112,7 @@
+       "version": "0.5.16",
+       "resolved": "https://registry.npmmirror.com/dom-accessibility-api/-/dom-accessibility-api-0.5.16.tgz",
+       "integrity": "sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==",
+-      "dev": true,
+-      "peer": true
++      "dev": true
+     },
+     "node_modules/dompurify": {
+       "version": "3.2.7",
+@@ -3210,6 +3195,7 @@
+       "integrity": "sha512-XbEXaRva5cF0ZQB8w6MluHA0kZZfV2DuCMJ3ozyEOHLwDpZX2Lmm/7Pp0xdJmI0GL1W05VH5VwIFHEm1Vcw2gw==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@eslint-community/eslint-utils": "^4.8.0",
+         "@eslint-community/regexpp": "^4.12.2",
+@@ -4245,7 +4231,6 @@
+       "resolved": "https://registry.npmmirror.com/lz-string/-/lz-string-1.5.0.tgz",
+       "integrity": "sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==",
+       "dev": true,
+-      "peer": true,
+       "bin": {
+         "lz-string": "bin/bin.js"
+       }
+@@ -4319,6 +4304,7 @@
+       "resolved": "https://registry.npmmirror.com/monaco-editor/-/monaco-editor-0.55.1.tgz",
+       "integrity": "sha512-jz4x+TJNFHwHtwuV9vA9rMujcZRb0CEilTEwG2rRSpe/A7Jdkuj8xPKttCgOh+v/lkHy7HsZ64oj+q3xoAFl9A==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "dompurify": "3.2.7",
+         "marked": "14.0.0"
+@@ -4556,7 +4542,6 @@
+       "resolved": "https://registry.npmmirror.com/pretty-format/-/pretty-format-27.5.1.tgz",
+       "integrity": "sha512-Qb1gy5OrP5+zDf2Bvnzdl3jsTf1qXVMazbvCoKhtKqVs4/YK4ozX4gKQJJVyNe+cajNPn0KoC0MC3FUmaHWEmQ==",
+       "dev": true,
+-      "peer": true,
+       "dependencies": {
+         "ansi-regex": "^5.0.1",
+         "ansi-styles": "^5.0.0",
+@@ -4571,7 +4556,6 @@
+       "resolved": "https://registry.npmmirror.com/ansi-regex/-/ansi-regex-5.0.1.tgz",
+       "integrity": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+       "dev": true,
+-      "peer": true,
+       "engines": {
+         "node": ">=8"
+       }
+@@ -4581,7 +4565,6 @@
+       "resolved": "https://registry.npmmirror.com/ansi-styles/-/ansi-styles-5.2.0.tgz",
+       "integrity": "sha512-Cxwpt2SfTzTtXcfOlzGEee8O+c+MmUgGrNiBcXnuWxuFJHe6a5Hz7qwhwe5OgaSYI0IJvkLqWX1ASG+cJOkEiA==",
+       "dev": true,
+-      "peer": true,
+       "engines": {
+         "node": ">=10"
+       },
+@@ -4593,8 +4576,7 @@
+       "version": "17.0.2",
+       "resolved": "https://registry.npmmirror.com/react-is/-/react-is-17.0.2.tgz",
+       "integrity": "sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==",
+-      "dev": true,
+-      "peer": true
++      "dev": true
+     },
+     "node_modules/punycode": {
+       "version": "2.3.1",
+@@ -4611,6 +4593,7 @@
+       "resolved": "https://registry.npmmirror.com/react/-/react-19.2.6.tgz",
+       "integrity": "sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q==",
+       "license": "MIT",
++      "peer": true,
+       "engines": {
+         "node": ">=0.10.0"
+       }
+@@ -4620,6 +4603,7 @@
+       "resolved": "https://registry.npmmirror.com/react-dom/-/react-dom-19.2.6.tgz",
+       "integrity": "sha512-0prMI+hvBbPjsWnxDLxlCGyM8PN6UuWjEUCYmZhO67xIV9Xasa/r/vDnq+Xyq4Lo27g8QSbO5YzARu0D1Sps3g==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "scheduler": "^0.27.0"
+       },
+@@ -5042,6 +5026,7 @@
+       "integrity": "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==",
+       "dev": true,
+       "license": "Apache-2.0",
++      "peer": true,
+       "bin": {
+         "tsc": "bin/tsc",
+         "tsserver": "bin/tsserver"
+@@ -5137,6 +5122,7 @@
+       "integrity": "sha512-w2dDofOWv2QB09ZITZBsvKTVAlYvPR4IAmrY/v0ir9KvLs0xybR7i48wxhM1/oyBWO34wPns+bPGw5ZrZqDpZg==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "lightningcss": "^1.32.0",
+         "picomatch": "^4.0.4",
+@@ -5458,6 +5444,7 @@
+       "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "funding": {
+         "url": "https://github.com/sponsors/colinhacks"
+       }
+diff --git a/package.json b/package.json
+index fb59641..15bab78 100644
+--- a/package.json
++++ b/package.json
+@@ -29,7 +29,7 @@
+   "dependencies": {
+     "@ant-design/icons": "^6.2.2",
+     "@monaco-editor/react": "^4.7.0",
+-    "@tauri-apps/api": "^2.10.1",
++    "@tauri-apps/api": "2.10.1",
+     "antd": "^6.3.7",
+     "monaco-editor": "^0.55.1",
+     "react": "^19.2.5",
+@@ -38,7 +38,7 @@
+   },
+   "devDependencies": {
+     "@eslint/js": "^10.0.1",
+-    "@tauri-apps/cli": "^2.9.2",
++    "@tauri-apps/cli": "2.9.2",
+     "@testing-library/jest-dom": "^6.9.1",
+     "@testing-library/react": "^16.3.2",
+     "@types/node": "^24.12.2",
+diff --git a/src-tauri/src/db.rs b/src-tauri/src/db.rs
+index 138419d..bcaae23 100644
+--- a/src-tauri/src/db.rs
++++ b/src-tauri/src/db.rs
+@@ -1,4 +1,4 @@
+-use rusqlite::{Connection, Result as SqlResult};
++use rusqlite::{Connection, OpenFlags, Result as SqlResult};
+ use std::path::PathBuf;
+ use std::sync::{Mutex, OnceLock};
+ 
+@@ -8,7 +8,14 @@ pub struct DbPool {
+ 
+ impl DbPool {
+     pub fn new(path: PathBuf) -> Result<Self, String> {
+-        let conn = Connection::open(&path).map_err(|e| e.to_string())?;
++        if let Some(parent) = path.parent() {
++            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
++        }
++        
++        let conn = Connection::open_with_flags(
++            &path,
++            OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_FULL_MUTEX,
++        ).map_err(|e| e.to_string())?;
+         let pool = Self {
+             conn: Mutex::new(conn),
+         };
+@@ -212,7 +219,29 @@ static DB_POOL: OnceLock<DbPool> = OnceLock::new();
+ pub fn init_db_pool() -> Result<(), String> {
+     let dir = crate::utils::get_home_dir()?.join(".ai-toolbox");
+     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+-    let pool = DbPool::new(dir.join("toolbox.db"))?;
++    
++    let db_path = dir.join("ai-toolbox.db");
++    
++    if db_path.exists() {
++        let test_conn = Connection::open_with_flags(
++            &db_path,
++            OpenFlags::SQLITE_OPEN_READ_WRITE,
++        );
++        
++        match test_conn {
++            Ok(conn) => {
++                drop(conn);
++                std::fs::remove_file(&db_path).map_err(|e| e.to_string())?;
++                eprintln!("删除了旧的只读数据库文件");
++            }
++            Err(_) => {
++                eprintln!("数据库文件无法以读写模式打开，将创建新数据库");
++                std::fs::remove_file(&db_path).map_err(|e| e.to_string())?;
++            }
++        }
++    }
++    
++    let pool = DbPool::new(db_path)?;
+     DB_POOL.set(pool).map_err(|_| "数据库已初始化".to_string())
+ }
+ 
+diff --git a/src-tauri/tauri.conf.json b/src-tauri/tauri.conf.json
+index d1b0932..dc57c76 100644
+--- a/src-tauri/tauri.conf.json
++++ b/src-tauri/tauri.conf.json
+@@ -6,7 +6,7 @@
+   "build": {
+     "frontendDist": "../dist",
+     "devUrl": "http://localhost:1420",
+-    "beforeDevCommand": "npm run dev -- --host 0.0.0.0 --port 1420",
++    "beforeDevCommand": "npm run dev -- --host 0.0.0.0 --port 1420 --strictPort",
+     "beforeBuildCommand": "npm run build"
+   },
+   "app": {
+@@ -14,10 +14,10 @@
+     "windows": [
+       {
+         "title": "AI Toolbox",
+-        "width": 1600,
+-        "height": 980,
+-        "minWidth": 1320,
+-        "minHeight": 820,
++        "width": 1400,
++        "height": 850,
++        "minWidth": 1100,
++        "minHeight": 700,
+         "decorations": false,
+         "transparent": true,
+         "resizable": true,
+diff --git a/src/App.css b/src/App.css
+index b2d73fa..b643610 100644
+--- a/src/App.css
++++ b/src/App.css
+@@ -175,7 +175,7 @@ body {
+ .app-header {
+   display: flex;
+   flex-direction: column;
+-  gap: 10px;
++  gap: 8px;
+   margin-top: 0;
+   margin-bottom: 0;
+   padding: 14px 20px;
+@@ -287,7 +287,7 @@ body {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+-  gap: 20px;
++  gap: 16px;
+ }
+ 
+ .header-brand {
+@@ -331,7 +331,7 @@ body {
+ .field-label {
+   display: inline-flex;
+   font-family: var(--font-display);
+-  font-size: 10px;
++  font-size: 11px;
+   font-weight: 600;
+   line-height: 1;
+   letter-spacing: 0.2em;
+@@ -363,7 +363,7 @@ body {
+   max-width: 600px;
+   margin-top: 4px;
+   color: var(--secondary-text);
+-  font-size: 14px;
++  font-size: 13px;
+ }
+ 
+ .header-meta-bar {
+@@ -378,15 +378,15 @@ body {
+   flex-wrap: wrap;
+   align-items: center;
+   justify-content: flex-end;
+-  gap: 10px;
++  gap: 8px;
+   flex-shrink: 0;
+ }
+ 
+ .current-tool-label {
+   display: flex;
+   align-items: center;
+-  gap: 6px;
+-  font-size: 14px;
++  gap: 8px;
++  font-size: 13px;
+   font-weight: 500;
+   color: var(--secondary-text);
+   margin-right: 8px;
+@@ -396,11 +396,11 @@ body {
+ .tool-indicator {
+   display: flex;
+   align-items: center;
+-  gap: 6px;
++  gap: 8px;
+   padding: 6px 12px;
+   background: var(--chip-bg);
+   border-radius: 8px;
+-  font-size: 14px;
++  font-size: 13px;
+   font-weight: 600;
+   color: var(--primary-text);
+   border: 1px solid var(--chip-border);
+@@ -408,7 +408,7 @@ body {
+ 
+ .header-tool-name {
+   font-family: var(--font-display);
+-  font-size: 14px;
++  font-size: 13px;
+   font-weight: 600;
+   color: var(--primary-text);
+ }
+@@ -443,7 +443,7 @@ body {
+ .app-grid {
+   flex: 1 1 auto;
+   display: grid;
+-  grid-template-columns: 320px minmax(0, 1fr) 320px;
++  grid-template-columns: 300px minmax(0, 1fr) 380px;
+   gap: 0;
+   height: auto;
+   min-height: 0;
+@@ -451,7 +451,7 @@ body {
+ }
+ 
+ .app-grid--edit {
+-  grid-template-columns: 320px minmax(0, 1fr) 320px;
++  grid-template-columns: 300px minmax(0, 1fr) 380px;
+ }
+ 
+ /* ---- 面板（统一表面设计，内部用分割线） ---- */
+@@ -624,10 +624,22 @@ body {
+ }
+ 
+ /* ---- 右侧面板内容切换 ---- */
++.panel--insights {
++  display: flex;
++  flex-direction: column;
++}
++
++.panel--insights__container {
++  flex: 1;
++  display: flex;
++  overflow: hidden;
++  min-height: 0;
++}
++
+ .panel--insights .insights-content,
+ .panel--insights .skills-overlay {
+-  position: absolute;
+-  inset: 0;
++  flex-shrink: 0;
++  width: 100%;
+   display: flex;
+   flex-direction: column;
+   padding: 12px 16px;
+@@ -639,30 +651,28 @@ body {
+ 
+ .panel--insights .insights-content {
+   opacity: 1;
+-  transform: translateX(0) scale(1);
+-  pointer-events: auto;
+-  visibility: visible;
++  transform: translateX(0);
+ }
+ 
+ .panel--insights .skills-overlay {
+   opacity: 0;
+-  transform: translateX(40px) scale(0.97);
++  transform: translateX(100%);
++  position: absolute;
+   pointer-events: none;
+-  visibility: hidden;
+ }
+ 
+ .app-grid--edit .panel--insights .insights-content {
+   opacity: 0;
+-  transform: translateX(-40px) scale(0.97);
++  transform: translateX(-100%);
++  position: absolute;
+   pointer-events: none;
+-  visibility: hidden;
+ }
+ 
+ .app-grid--edit .panel--insights .skills-overlay {
+   opacity: 1;
+-  transform: translateX(0) scale(1);
++  transform: translateX(0);
++  position: static;
+   pointer-events: auto;
+-  visibility: visible;
+ }
+ 
+ /* ---- 编辑模式：右侧面板双块布局 ---- */
+@@ -750,7 +760,7 @@ body {
+ .skill-view-list {
+   display: flex;
+   flex-direction: column;
+-  gap: 10px;
++  gap: 8px;
+ }
+ 
+ /* ---- 卡片基础 ---- */
+@@ -775,7 +785,7 @@ body {
+ /* ---- 工具项 ---- */
+ .tool-item {
+   width: 100%;
+-  padding: 14px 16px;
++  padding: 12px;
+ }
+ 
+ .tool-item:hover,
+@@ -790,12 +800,18 @@ body {
+ }
+ 
+ .skill-entry.is-disabled {
+-  opacity: 0.5;
++  opacity: 0.7;
+   background: var(--panel-bg-soft);
++  border-color: var(--panel-border);
+ }
+ 
+ .skill-entry.is-disabled .skill-entry__name {
+   color: var(--muted-text);
++  text-decoration: line-through;
++}
++
++.skill-entry.is-disabled .skill-entry__desc {
++  color: var(--muted-text);
+ }
+ 
+ .tool-item:hover,
+@@ -811,6 +827,7 @@ body {
+   box-shadow:
+     0 0 24px var(--accent-glow),
+     inset 0 0 0 1px var(--accent-soft);
++  border-left: 3px solid var(--accent);
+ }
+ 
+ .tool-item__title {
+@@ -851,10 +868,14 @@ body {
+ 
+ .tool-item__desc,
+ .backup-empty {
+-  display: block;
+-  margin-top: 6px;
++  display: -webkit-box;
++  margin-top: 8px;
+   color: var(--secondary-text);
+-  font-size: 13px;
++  font-size: 12px;
++  line-height: 1.5;
++  -webkit-box-orient: vertical;
++  -webkit-line-clamp: 2;
++  overflow: hidden;
+ }
+ 
+ .tool-item__meta {
+@@ -890,7 +911,7 @@ body {
+ .tool-config-file {
+   display: flex;
+   align-items: center;
+-  gap: 6px;
++  gap: 8px;
+   padding: 6px 10px;
+   background: var(--panel-bg-soft);
+   border: 1px solid var(--chip-border);
+@@ -907,7 +928,7 @@ body {
+ }
+ 
+ .tool-config-file .config-icon {
+-  font-size: 10px;
++  font-size: 11px;
+   flex-shrink: 0;
+ }
+ 
+@@ -920,7 +941,7 @@ body {
+ }
+ 
+ .tool-config-file .config-type {
+-  font-size: 10px;
++  font-size: 11px;
+   padding: 1px 6px;
+   background: var(--chip-bg);
+   border-radius: var(--radius-sm);
+@@ -944,18 +965,36 @@ body {
+ /* ---- 配置标签 ---- */
+ .config-strip {
+   display: flex;
+-  flex-wrap: wrap;
+-  gap: 10px;
++  gap: 8px;
+   margin-bottom: 12px;
++  overflow-x: auto;
++  overflow-y: hidden;
++  padding-bottom: 4px;
++  scrollbar-width: thin;
++}
++
++.config-strip::-webkit-scrollbar {
++  height: 6px;
++}
++
++.config-strip::-webkit-scrollbar-track {
++  background: var(--panel-bg-soft);
++  border-radius: 3px;
++}
++
++.config-strip::-webkit-scrollbar-thumb {
++  background: var(--muted-text);
++  border-radius: 3px;
+ }
+ 
+ .config-tab {
+   justify-content: space-between;
+-  gap: 14px;
++  gap: 12px;
+   min-width: 0;
+   padding: 12px 14px;
+-  max-width: 220px;
+-  flex: 0 1 auto;
++  min-width: 180px;
++  max-width: 240px;
++  flex: 0 0 auto;
+ }
+ 
+ .config-tab__name {
+@@ -986,7 +1025,7 @@ body {
+   display: grid;
+   grid-template-columns: auto minmax(0, 1fr);
+   justify-content: space-between;
+-  gap: 10px;
++  gap: 8px;
+   margin-bottom: 12px;
+ }
+ 
+@@ -1022,7 +1061,7 @@ body {
+ .backup-list {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+-  gap: 10px;
++  gap: 8px;
+ }
+ 
+ .backup-item {
+@@ -1087,13 +1126,13 @@ body {
+ }
+ 
+ .skill-entry {
+-  padding: 14px;
++  padding: 12px;
+   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+ }
+ 
+ .skill-entry__meta {
+   flex-wrap: wrap;
+-  gap: 6px;
++  gap: 8px;
+   justify-content: flex-end;
+ }
+ 
+@@ -1151,10 +1190,21 @@ body {
+   flex-shrink: 0;
+ }
+ 
++.skill-entry__tags {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 8px;
++  margin-top: 8px;
++}
++
++.skill-entry__tags .ant-tag {
++  margin: 0 !important;
++}
++
+ .skill-entry__desc,
+ .skill-item__desc {
+   display: -webkit-box;
+-  margin-top: 6px;
++  margin-top: 8px;
+   overflow: hidden;
+   color: var(--secondary-text);
+   font-size: 12px;
+@@ -1166,10 +1216,10 @@ body {
+ .skill-entry__path,
+ .skill-item__path {
+   display: block;
+-  margin-top: 4px;
++  margin-top: 8px;
+   color: var(--muted-text);
+   font-family: var(--font-mono);
+-  font-size: 10px;
++  font-size: 11px;
+   line-height: 1.4;
+   word-break: break-all;
+ }
+@@ -1178,7 +1228,7 @@ body {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+-  margin-top: 4px;
++  margin-top: 8px;
+ }
+ 
+ .skill-entry__path--no-margin {
+@@ -1311,7 +1361,7 @@ body {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+-  font-size: 16px;
++  font-size: 15px;
+   line-height: 1;
+ }
+ 
+@@ -1361,7 +1411,7 @@ body {
+   align-self: stretch;
+   min-height: 0;
+   flex-direction: column;
+-  gap: 14px;
++  gap: 16px;
+   padding: 16px;
+   overflow: hidden;
+ }
+@@ -1369,7 +1419,7 @@ body {
+ .sync-control-group {
+   display: flex;
+   flex-direction: column;
+-  gap: 8px;
++  gap: 12px;
+ }
+ 
+ .sync-control-group .ant-segmented {
+@@ -1412,7 +1462,7 @@ body {
+   color: var(--primary-text);
+   background: var(--item-bg);
+   font-family: var(--font-display);
+-  font-size: 14px;
++  font-size: 13px;
+   font-weight: 600;
+ }
+ 
+@@ -1429,8 +1479,26 @@ body {
+ }
+ 
+ .quick-actions {
++  display: flex;
+   gap: 8px;
+-  margin-top: 8px;
++  margin-top: 12px;
++}
++
++.quick-actions .ant-btn {
++  font-size: 12px;
++  padding: 4px 10px;
++  height: auto;
++  border-radius: 4px;
++  background: transparent;
++  border-color: transparent;
++  color: var(--accent);
++  transition: all 0.2s ease;
++}
++
++.quick-actions .ant-btn:hover {
++  background: var(--accent-soft);
++  border-color: var(--accent);
++  color: var(--accent);
+ }
+ 
+ .sync-skill-scroll {
+@@ -1440,7 +1508,7 @@ body {
+   height: 0;
+   max-height: none;
+   flex-direction: column;
+-  gap: 10px;
++  gap: 8px;
+   padding: 12px;
+   border: 1px solid var(--panel-border);
+   border-radius: var(--radius-md);
+@@ -1459,10 +1527,11 @@ body {
+   align-items: flex-start;
+   width: 100%;
+   margin-inline-end: 0 !important;
+-  min-height: 72px;
++  min-height: 80px;
+   padding: 12px 14px;
+   overflow: hidden;
+   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
++  cursor: pointer;
+ }
+ 
+ .skill-item:hover {
+@@ -1471,24 +1540,47 @@ body {
+   box-shadow: 0 2px 12px var(--accent-glow);
+ }
+ 
++.skill-item.is-selected {
++  border-color: var(--accent);
++  background: var(--active-bg);
++  box-shadow: 0 0 16px var(--accent-glow);
++}
++
++.skill-item__checkbox {
++  padding-top: 2px;
++}
++
+ .skill-item__body {
+   min-width: 0;
++  display: flex;
++  flex-direction: column;
++  gap: 6px;
+ }
+ 
+ .skill-item__top {
+   display: flex;
+   justify-content: space-between;
+-  gap: 12px;
++  align-items: flex-start;
++  gap: 8px;
+ }
+ 
+ .skill-item__name {
+-  display: block;
++  flex: 1;
+   min-width: 0;
+   font-family: var(--font-display);
+   font-size: 13px;
+   font-weight: 600;
+   line-height: 1.3;
+-  word-break: break-word;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++
++.skill-item__meta {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  flex-shrink: 0;
+ }
+ 
+ .skill-item__tags {
+@@ -1496,7 +1588,6 @@ body {
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 6px;
+-  flex-shrink: 0;
+ }
+ 
+ .skill-item__time {
+@@ -1504,6 +1595,28 @@ body {
+   font-size: 11px;
+   color: var(--muted-text);
+   white-space: nowrap;
++  flex-shrink: 0;
++}
++
++.skill-item__desc {
++  display: -webkit-box;
++  overflow: hidden;
++  color: var(--secondary-text);
++  font-size: 12px;
++  line-height: 1.5;
++  -webkit-box-orient: vertical;
++  -webkit-line-clamp: 2;
++  order: 2;
++}
++
++.skill-item__path {
++  display: block;
++  color: var(--muted-text);
++  font-family: var(--font-mono);
++  font-size: 11px;
++  line-height: 1.4;
++  word-break: break-all;
++  order: 3;
+ }
+ 
+ /* ---- 工具管理布局 ---- */
+@@ -1530,7 +1643,7 @@ body {
+ .tool-manager-list {
+   display: flex;
+   flex-direction: column;
+-  gap: 12px;
++  gap: 16px;
+ }
+ 
+ .tool-manager-list .ant-table-wrapper {
+@@ -1555,7 +1668,7 @@ body {
+ .tool-manager-form .ant-form {
+   display: flex;
+   flex-direction: column;
+-  gap: 10px;
++  gap: 8px;
+   min-height: 100%;
+ }
+ 
+@@ -1571,7 +1684,7 @@ body {
+ .tool-form-row {
+   display: grid;
+   grid-template-columns: 1fr 1fr auto;
+-  gap: 10px;
++  gap: 8px;
+ }
+ 
+ .tool-form-row .ant-form-item {
+@@ -1581,7 +1694,7 @@ body {
+ .tool-config-list {
+   display: flex;
+   flex-direction: column;
+-  gap: 10px;
++  gap: 8px;
+   min-height: 120px;
+   max-height: 260px;
+   padding: 6px;
+@@ -1590,22 +1703,33 @@ body {
+ 
+ .tool-config-item {
+   display: grid;
+-  grid-template-columns: 160px minmax(0, 1fr) 130px 42px;
+-  gap: 10px;
++  grid-template-columns: 140px minmax(0, 1fr) 80px 36px;
++  gap: 8px;
++  align-items: center;
++  padding: 8px 10px;
++  border: 1px solid var(--chip-border);
++  border-radius: var(--radius-sm);
++  background: var(--item-bg);
++  transition: all 0.2s ease;
++}
++
++.tool-config-item:hover {
++  border-color: var(--panel-border-hover);
++  background: var(--item-hover);
+ }
+ 
+ .tool-manager-actions {
+   margin-top: 16px;
+   display: flex;
+   justify-content: flex-end;
+-  gap: 10px;
++  gap: 8px;
+ }
+ 
+ /* ---- 危险确认 ---- */
+ .danger-confirm-content {
+   display: flex;
+   flex-direction: column;
+-  gap: 10px;
++  gap: 8px;
+ }
+ 
+ .danger-confirm-path {
+@@ -1629,7 +1753,7 @@ body {
+ .toolbox-shell .ant-tag {
+   border-radius: var(--radius-sm);
+   font-family: var(--font-mono);
+-  font-size: 10px;
++  font-size: 11px;
+   font-weight: 500;
+   letter-spacing: 0.02em;
+ }
+@@ -1762,7 +1886,7 @@ body {
+ .tool-manager-modal .ant-tag {
+   border-radius: var(--radius-sm);
+   font-family: var(--font-mono);
+-  font-size: 10px;
++  font-size: 11px;
+   font-weight: 500;
+   letter-spacing: 0.02em;
+ }
+@@ -1897,6 +2021,11 @@ body {
+   }
+ }
+ 
++.center-repo-discover-item__desc {
++  font-size: 12px;
++  line-height: 1.5;
++}
++
+ /* ---- 工具颜色工具类 ---- */
+ .tool-color-codex {
+   --tool-color: var(--tool-codex);
+@@ -1921,7 +2050,7 @@ body {
+ .skill-insights {
+   display: flex;
+   flex-direction: column;
+-  gap: 10px;
++  gap: 8px;
+   margin-bottom: 12px;
+   padding: 12px;
+   border: 1px solid var(--panel-border);
+@@ -1939,7 +2068,7 @@ body {
+ .skill-insights__title {
+   display: inline-flex;
+   align-items: center;
+-  gap: 6px;
++  gap: 8px;
+   font-family: var(--font-display);
+   font-size: 11px;
+   font-weight: 600;
+@@ -1975,7 +2104,7 @@ body {
+ .skill-insight-card__row {
+   display: flex;
+   align-items: center;
+-  gap: 10px;
++  gap: 8px;
+ }
+ 
+ .skill-insight-card__info {
+@@ -2033,7 +2162,7 @@ body {
+   background: var(--accent-soft);
+   color: var(--accent);
+   font-family: var(--font-mono);
+-  font-size: 10px;
++  font-size: 11px;
+   font-weight: 600;
+ }
+ 
+@@ -2095,7 +2224,7 @@ body {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+-  font-size: 10px;
++  font-size: 11px;
+   font-weight: 700;
+   flex-shrink: 0;
+ }
+@@ -2126,13 +2255,13 @@ body {
+ 
+ .diff-tool {
+   color: var(--muted-text);
+-  font-size: 10px;
++  font-size: 11px;
+   flex-shrink: 0;
+ }
+ 
+ .diff-more {
+   color: var(--muted-text);
+-  font-size: 10px;
++  font-size: 11px;
+   text-align: center;
+   margin-top: 4px;
+   padding-top: 4px;
+@@ -2150,7 +2279,7 @@ body {
+ .skill-insight-card__laggers {
+   display: flex;
+   flex-direction: column;
+-  gap: 6px;
++  gap: 8px;
+ }
+ 
+ .skill-insight-card__lagger {
+@@ -2234,11 +2363,11 @@ body {
+ /* ---- 响应式 ---- */
+ @media (max-width: 1480px) {
+   .app-grid {
+-    grid-template-columns: 280px minmax(0, 1fr) 280px;
++    grid-template-columns: 260px minmax(0, 1fr) 320px;
+   }
+ 
+   .app-grid--edit {
+-    grid-template-columns: 280px minmax(0, 1fr) 280px;
++    grid-template-columns: 260px minmax(0, 1fr) 320px;
+   }
+ }
+ 
+@@ -2325,13 +2454,13 @@ body {
+ .command-palette__search {
+   display: flex;
+   align-items: center;
+-  gap: 10px;
++  gap: 8px;
+   padding: 12px 16px;
+   border-bottom: 1px solid var(--panel-border);
+ }
+ 
+ .command-palette__search-icon {
+-  font-size: 16px;
++  font-size: 15px;
+   color: var(--muted-text);
+   flex-shrink: 0;
+ }
+@@ -2437,3 +2566,566 @@ body {
+   font-size: 11px;
+   color: var(--muted-text);
+ }
++
++/* ---- 中央仓库面板 (方案一) ---- */
++.cr-drawer {
++  overflow: hidden;
++}
++
++.cr-drawer .ant-drawer-content-wrapper {
++  border-radius: 20px 0 0 20px !important;
++  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.12);
++  overflow: hidden;
++}
++
++.cr-drawer .ant-drawer-content-wrapper::before {
++  display: none;
++}
++
++.cr-drawer .ant-drawer-content {
++  border-radius: 20px 0 0 20px;
++  overflow: hidden;
++  background: var(--panel-bg-solid);
++}
++
++.cr-drawer .ant-drawer-header {
++  border-radius: 20px 0 0 0;
++  background: linear-gradient(135deg, var(--panel-bg) 0%, var(--panel-bg-soft) 100%);
++  border-bottom: 1px solid var(--panel-border);
++  overflow: hidden;
++  padding: 16px 20px;
++}
++
++.cr-drawer .ant-drawer-body {
++  border-radius: 0 0 0 20px;
++  overflow: hidden;
++  padding: 0;
++}
++
++.cr-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  width: 100%;
++}
++
++.cr-header__title {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++}
++
++.cr-header__actions {
++  display: flex;
++  gap: 8px;
++}
++
++.cr-btn {
++  border-radius: var(--radius-sm);
++  font-size: 12px;
++  padding: 6px 12px;
++  background: var(--chip-bg);
++  border-color: var(--chip-border);
++  color: var(--secondary-text);
++  transition: all 0.2s ease;
++}
++
++.cr-btn:hover {
++  background: var(--item-hover);
++  border-color: var(--panel-border-hover);
++  color: var(--primary-text);
++}
++
++.cr-btn--primary {
++  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
++  border: none;
++  color: white;
++  box-shadow: 0 4px 16px var(--accent-glow);
++}
++
++.cr-btn--primary:hover {
++  background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent) 100%) !important;
++  box-shadow: 0 6px 24px var(--accent-glow);
++  color: white;
++}
++
++.cr-container {
++  padding: 16px;
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++  max-height: calc(100vh - 120px);
++  overflow-y: auto;
++}
++
++.cr-search-card {
++  background: var(--panel-bg-soft);
++  border-radius: var(--radius-md);
++  padding: 12px;
++  border: 1px solid var(--chip-border);
++}
++
++.cr-search {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 8px 12px;
++  background: var(--item-bg);
++  border-radius: var(--radius-sm);
++  border: 1px solid var(--chip-border);
++  transition: all 0.2s ease;
++}
++
++.cr-search:focus-within {
++  border-color: var(--accent);
++  box-shadow: 0 0 0 2px var(--accent-soft);
++}
++
++.cr-search__icon {
++  color: var(--muted-text);
++  font-size: 14px;
++}
++
++.cr-search__input {
++  flex: 1;
++  border: none;
++  background: transparent;
++  box-shadow: none;
++}
++
++.cr-search__input:focus {
++  box-shadow: none;
++}
++
++.cr-filter-card {
++  background: var(--panel-bg-soft);
++  border-radius: var(--radius-md);
++  padding: 14px;
++  border: 1px solid var(--chip-border);
++}
++
++.cr-filter-row {
++  margin-bottom: 0;
++}
++
++.cr-filter-group {
++  display: flex;
++  flex-direction: column;
++  gap: 8px;
++}
++
++.cr-filter-group__label {
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  font-size: 12px;
++  font-weight: 600;
++  color: var(--secondary-text);
++}
++
++.cr-filter-group__icon {
++  font-size: 12px;
++}
++
++.cr-filter-group__buttons {
++  display: flex;
++  gap: 8px;
++  flex-wrap: wrap;
++}
++
++.cr-filter-btn {
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  padding: 6px 12px;
++  background: var(--item-bg);
++  border: 1px solid var(--chip-border);
++  border-radius: var(--radius-sm);
++  font-size: 12px;
++  color: var(--secondary-text);
++  cursor: pointer;
++  transition: all 0.2s ease;
++}
++
++.cr-filter-btn:hover {
++  border-color: var(--panel-border-hover);
++  background: var(--item-hover);
++}
++
++.cr-filter-btn.is-active {
++  background: var(--accent-soft);
++  border-color: var(--accent);
++  color: var(--accent);
++  box-shadow: 0 0 12px var(--accent-glow);
++}
++
++.cr-filter-btn__icon {
++  font-size: 12px;
++}
++
++.cr-filter-btn__count {
++  padding: 2px 6px;
++  background: var(--chip-bg);
++  border-radius: 4px;
++  font-size: 11px;
++  font-weight: 600;
++  color: var(--muted-text);
++}
++
++.cr-filter-btn.is-active .cr-filter-btn__count {
++  background: rgba(255, 255, 255, 0.2);
++  color: var(--accent);
++}
++
++.cr-filter-divider {
++  margin: 12px 0 !important;
++  border-color: var(--panel-border);
++}
++
++.cr-batch-card {
++  background: var(--accent-soft);
++  border-radius: var(--radius-md);
++  padding: 12px;
++  border: 1px solid var(--accent);
++}
++
++.cr-batch-bar {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  gap: 12px;
++}
++
++.cr-batch-bar__info {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  font-size: 13px;
++  font-weight: 500;
++  color: var(--accent);
++}
++
++.cr-batch-bar__actions {
++  display: flex;
++  gap: 6px;
++}
++
++.cr-list-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  padding: 0 4px;
++}
++
++.cr-list-header__title {
++  font-family: var(--font-display);
++  font-size: 13px;
++  font-weight: 600;
++  color: var(--primary-text);
++}
++
++.cr-loading {
++  display: flex;
++  justify-content: center;
++  align-items: center;
++  padding: 60px 0;
++}
++
++.cr-empty-card {
++  background: var(--panel-bg-soft);
++  border-radius: var(--radius-md);
++  border: 1px solid var(--chip-border);
++}
++
++.cr-drawer .ant-list {
++  display: flex;
++  flex-direction: column;
++  gap: 12px !important;
++}
++
++.cr-drawer .ant-list-item {
++  margin-bottom: 0 !important;
++  padding: 0 !important;
++  border: none !important;
++}
++
++.cr-skill-card {
++  background: var(--item-bg);
++  border: 1px solid var(--chip-border);
++  border-radius: var(--radius-md);
++  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
++}
++
++.cr-skill-card:hover {
++  border-color: var(--panel-border-hover);
++  background: var(--item-hover);
++  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
++}
++
++.cr-skill-card.is-selected {
++  border-color: var(--accent);
++  background: var(--active-bg);
++  box-shadow: 0 0 16px var(--accent-glow);
++}
++
++.cr-skill-card__body {
++  display: flex;
++  gap: 12px;
++  padding: 14px;
++}
++
++.cr-skill-card__checkbox {
++  display: flex;
++  align-items: flex-start;
++  padding-top: 2px;
++  flex-shrink: 0;
++}
++
++.cr-skill-card__content {
++  flex: 1;
++  min-width: 0;
++}
++
++.cr-skill-card__header {
++  margin-bottom: 10px;
++}
++
++.cr-skill-card__name {
++  font-family: var(--font-display);
++  font-size: 15px;
++  font-weight: 600;
++  color: var(--primary-text);
++  margin: 0 0 8px 0;
++}
++
++.cr-skill-card__meta {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  flex-wrap: wrap;
++}
++
++.cr-skill-card__category {
++  width: 76px;
++}
++
++.cr-skill-card__tag {
++  font-size: 11px;
++  font-weight: 500;
++  border: none;
++}
++
++.cr-skill-card__tag--doc {
++  background: rgba(74, 222, 128, 0.15);
++  color: var(--positive);
++}
++
++.cr-skill-card__tag--unsynced {
++  background: rgba(251, 191, 36, 0.15);
++  color: var(--warning);
++}
++
++.cr-skill-card__tag--partial {
++  background: rgba(34, 211, 238, 0.15);
++  color: #22d3ee;
++}
++
++.cr-skill-card__tag--fullySynced {
++  background: rgba(74, 222, 128, 0.15);
++  color: var(--positive);
++}
++
++.cr-skill-card__desc {
++  margin: 0 0 10px 0;
++  font-size: 13px;
++  color: var(--secondary-text);
++  line-height: 1.5;
++  display: -webkit-box;
++  -webkit-box-orient: vertical;
++  -webkit-line-clamp: 2;
++  overflow: hidden;
++}
++
++.cr-skill-card__sync {
++  display: flex;
++  flex-wrap: wrap;
++  align-items: center;
++  gap: 8px;
++  margin-bottom: 12px;
++}
++
++.cr-skill-card__sync-label {
++  font-size: 11px;
++  color: var(--muted-text);
++  flex-shrink: 0;
++}
++
++.cr-skill-card__sync-items {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++}
++
++.cr-skill-card__sync-item {
++  padding: 4px 8px;
++  background: var(--chip-bg);
++  border-radius: 4px;
++  font-size: 11px;
++  color: var(--muted-text);
++}
++
++.cr-skill-card__sync-item.is-synced {
++  background: rgba(74, 222, 128, 0.15);
++  color: var(--positive);
++}
++
++.cr-skill-card__sync-more {
++  font-size: 11px;
++  color: var(--muted-text);
++}
++
++.cr-skill-card__actions {
++  display: flex;
++  gap: 6px;
++  flex-shrink: 0;
++}
++
++.cr-skill-card__action-btn {
++  width: 28px;
++  height: 28px;
++  padding: 0;
++  border-radius: var(--radius-sm);
++  background: var(--chip-bg);
++  border-color: var(--chip-border);
++  color: var(--secondary-text);
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  transition: all 0.2s ease;
++}
++
++.cr-skill-card__action-btn:hover {
++  background: var(--accent-soft);
++  border-color: var(--accent);
++  color: var(--accent);
++  box-shadow: 0 0 12px var(--accent-glow);
++}
++
++.cr-skill-card__action-btn--danger:hover {
++  background: rgba(248, 113, 113, 0.1);
++  border-color: var(--error);
++  color: var(--error);
++  box-shadow: 0 0 12px rgba(248, 113, 113, 0.2);
++}
++
++.cr-modal {
++  border-radius: var(--radius-lg);
++}
++
++.cr-modal .ant-modal-content {
++  background: var(--panel-bg-solid);
++  border-radius: var(--radius-lg);
++  border: 1px solid var(--panel-border);
++}
++
++.cr-modal .ant-modal-header {
++  background: var(--panel-bg-soft);
++  border-bottom: 1px solid var(--panel-border);
++}
++
++.cr-modal__label {
++  font-size: 13px;
++  font-weight: 600;
++  color: var(--primary-text);
++}
++
++.cr-modal__input {
++  border-radius: var(--radius-sm);
++  background: var(--panel-bg-soft);
++  border-color: var(--chip-border);
++}
++
++.cr-modal__select {
++  border-radius: var(--radius-sm);
++}
++
++.cr-modal__hint {
++  font-size: 12px;
++}
++
++.cr-modal__info {
++  display: flex;
++  gap: 16px;
++  font-size: 12px;
++}
++
++.cr-modal__selected-list {
++  margin-top: 8px;
++}
++
++.cr-modal__selected-label {
++  display: block;
++  margin-bottom: 8px;
++}
++
++.cr-modal__selected-items {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++}
++
++.cr-modal__selected-tag {
++  font-size: 11px;
++  background: var(--chip-bg);
++  border-color: var(--chip-border);
++}
++
++.cr-discover-header {
++  margin-bottom: 16px;
++}
++
++.cr-discover-item {
++  background: var(--item-bg);
++  border: 1px solid var(--chip-border);
++  border-radius: var(--radius-md);
++  transition: all 0.2s ease;
++}
++
++.cr-discover-item:hover {
++  border-color: var(--panel-border-hover);
++  background: var(--item-hover);
++}
++
++.cr-discover-item.is-selected {
++  border-color: var(--accent);
++  background: var(--active-bg);
++}
++
++.cr-discover-item__body {
++  display: flex;
++  gap: 12px;
++  padding: 12px;
++}
++
++.cr-discover-item__content {
++  flex: 1;
++}
++
++.cr-discover-item__header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  gap: 12px;
++  margin-bottom: 6px;
++}
++
++.cr-discover-item__source {
++  font-size: 11px;
++  background: var(--chip-bg);
++  border-color: var(--chip-border);
++}
++
++.cr-discover-item__desc {
++  font-size: 12px;
++  line-height: 1.5;
++}
+diff --git a/src/App.tsx b/src/App.tsx
+index 464b106..e135da5 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -295,7 +295,7 @@ function App() {
+   }, [sortedSkills, syncKeyword])
+ 
+   const syncTargetOptions = useMemo(() => {
+-    const selectedSkillDir = normalizeFsPath(selectedTool?.skillDir)
++    const selectedSkillDir = normalizeFsPath(_homeDir, selectedTool?.skillDir)
+     return visibleTools
+       .filter((tool) => {
+         if (tool.id === selectedTool?.id) return false
+@@ -926,8 +926,6 @@ function App() {
+                                     {skill.name}
+                                   </span>
+                                   <div className="skill-entry__actions">
+-                                    {(skill.tags?.length ?? 0) > 0 &&
+-                                      skill.tags!.map((tag) => <Tag key={tag}>{tag}</Tag>)}
+                                     {skill.updatedAt ? (
+                                       <span className="skill-entry__time">
+                                         {formatTime(skill.updatedAt)}
+@@ -977,6 +975,13 @@ function App() {
+                                   </div>
+                                 </div>
+                                 {renderSkillDescription(skill)}
++                                {(skill.tags?.length ?? 0) > 0 && (
++                                  <div className="skill-entry__tags">
++                                    {skill.tags!.map((tag) => (
++                                      <Tag key={tag}>{tag}</Tag>
++                                    ))}
++                                  </div>
++                                )}
+                                 {skill.path ? (
+                                   <div className="skill-entry__path-row">
+                                     <Text
+@@ -1127,7 +1132,8 @@ function App() {
+ 
+               {/* 右侧：变动洞察（普通）/ 技能列表+洞察（编辑） */}
+               <aside className="panel panel--insights">
+-                <div className="insights-content">
++                <div className="panel--insights__container">
++                  <div className="insights-content">
+                   <div className="panel-header">
+                     <div>
+                       <Text className="panel-kicker">Insights</Text>
+@@ -1358,6 +1364,7 @@ function App() {
+                     </div>
+                   </div>
+                 </div>
++                </div>
+               </aside>
+             </div>
+           </div>
+@@ -1677,40 +1684,45 @@ function App() {
+ 
+                 <div className="sync-skill-scroll">
+                   {filteredSyncSkills.map((skill) => (
+-                    <label key={skill.id} className="skill-item">
+-                      <Checkbox
+-                        checked={syncSelectedSkillIds.includes(skill.id)}
+-                        onChange={(event) => {
+-                          setSyncSelectedSkillIds((current) =>
+-                            event.target.checked
+-                              ? [...new Set([...current, skill.id])]
+-                              : current.filter((skillId) => skillId !== skill.id),
+-                          )
+-                        }}
+-                      />
++                    <label
++                      key={skill.id}
++                      className={`skill-item ${syncSelectedSkillIds.includes(skill.id) ? 'is-selected' : ''}`}
++                    >
++                      <div className="skill-item__checkbox">
++                        <Checkbox
++                          checked={syncSelectedSkillIds.includes(skill.id)}
++                          onChange={(event) => {
++                            setSyncSelectedSkillIds((current) =>
++                              event.target.checked
++                                ? [...new Set([...current, skill.id])]
++                                : current.filter((skillId) => skillId !== skill.id),
++                            )
++                          }}
++                        />
++                      </div>
+                       <div className="skill-item__body">
+                         <div className="skill-item__top">
+                           <span className="skill-item__name" title={skill.name}>
+                             {skill.name}
+                           </span>
+-                          <div className="skill-item__tags">
+-                            {skill.isSymlink ? (
+-                              <Tag variant="filled" color="gold">
+-                                软链接
+-                              </Tag>
+-                            ) : null}
+-                            {skill.updatedAt ? (
+-                              <span className="skill-item__time">
+-                                {formatTime(skill.updatedAt)}
+-                              </span>
+-                            ) : null}
+-                          </div>
++                          {skill.updatedAt ? (
++                            <span className="skill-item__time">
++                              {formatTime(skill.updatedAt)}
++                            </span>
++                          ) : null}
+                         </div>
+                         {(skill.summary ?? skill.description) ? (
+                           <Text className="skill-item__desc">
+                             {skill.summary ?? skill.description}
+                           </Text>
+                         ) : null}
++                        {skill.isSymlink && (
++                          <div className="skill-item__tags">
++                            <Tag variant="filled" color="gold">
++                              软链接
++                            </Tag>
++                          </div>
++                        )}
+                         {skill.path ? <Text className="skill-item__path">{skill.path}</Text> : null}
+                       </div>
+                     </label>
+diff --git a/src/components/CenterRepoPanel.tsx b/src/components/CenterRepoPanel.tsx
+index 701b05e..a305b12 100644
+--- a/src/components/CenterRepoPanel.tsx
++++ b/src/components/CenterRepoPanel.tsx
+@@ -12,6 +12,10 @@ import {
+   Tag,
+   Tooltip,
+   Typography,
++  Checkbox,
++  Badge,
++  Card,
++  Divider,
+   message,
+ } from 'antd'
+ import {
+@@ -21,6 +25,13 @@ import {
+   ReloadOutlined,
+   ScanOutlined,
+   SyncOutlined,
++  SearchOutlined,
++  FolderOpenOutlined,
++  GitBranchOutlined,
++  DatabaseOutlined,
++  ClockCircleOutlined,
++  CheckCircleOutlined,
++  RefreshOutlined,
+ } from '@ant-design/icons'
+ import {
+   batchImportToCenter,
+@@ -86,7 +97,7 @@ export default function CenterRepoPanel({
+   const [filterType, setFilterType] = useState<'all' | 'unsynced' | 'partial' | 'fullySynced'>(
+     'all',
+   )
+-  const [sourceFilter, setSourceFilter] = useState<'all' | 'custom' | 'git'>('custom')
++  const [sourceFilter, setSourceFilter] = useState<'all' | 'custom' | 'git'>('all')
+   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set())
+   const [batchSyncOpen, setBatchSyncOpen] = useState(false)
+   const [batchSyncTargetToolId, setBatchSyncTargetToolId] = useState('')
+@@ -110,11 +121,10 @@ export default function CenterRepoPanel({
+ 
+   useEffect(() => {
+     if (open) {
+-      // eslint-disable-next-line react-hooks/set-state-in-effect -- 打开时加载数据并重置筛选状态
+       void loadSkills()
+       setKeyword('')
+       setFilterType('all')
+-      setSourceFilter('custom')
++      setSourceFilter('all')
+       setSelectedSkills(new Set())
+     }
+   }, [open, loadSkills])
+@@ -317,6 +327,14 @@ export default function CenterRepoPanel({
+     })
+   }
+ 
++  const toggleSelectAll = () => {
++    if (selectedSkills.size === filteredSkills.length) {
++      setSelectedSkills(new Set())
++    } else {
++      setSelectedSkills(new Set(filteredSkills.map((s) => s.name)))
++    }
++  }
++
+   const openBatchSyncModal = () => {
+     if (selectedSkills.size === 0) {
+       message.warning('请至少选择一个技能')
+@@ -394,7 +412,7 @@ export default function CenterRepoPanel({
+       setSelectedSkills(new Set())
+       await loadSkills()
+     } catch (error) {
+-      message.error(getErrorMessage(error, '批量标记失败'))
++      message.error(error instanceof Error ? error.message : '批量标记失败')
+     } finally {
+       setSettingCategory(false)
+     }
+@@ -405,253 +423,307 @@ export default function CenterRepoPanel({
+   const categoryOptions = [
+     { label: '自定义', value: 'custom' },
+     { label: '市场', value: 'git' },
+-    { label: '系统', value: 'system' },
+   ]
+ 
++  const customCount = skills.filter((s) => s.sourceType === 'custom').length
++  const gitCount = skills.filter((s) => s.sourceType === 'git').length
++  const unsyncedCount = skills.filter((s) => getSkillFilterStatus(s) === 'unsynced').length
++  const partialCount = skills.filter((s) => getSkillFilterStatus(s) === 'partial').length
++  const fullySyncedCount = skills.filter((s) => getSkillFilterStatus(s) === 'fullySynced').length
++
+   return (
+     <>
+       <Drawer
+         title={
+-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+-            <Title level={5} style={{ margin: 0 }}>
+-              中央仓库
+-            </Title>
+-            <Tag variant="filled" color="blue">
+-              {skills.length} 个技能
+-            </Tag>
++          <div className="cr-header">
++            <div className="cr-header__title">
++              <Title level={5} style={{ margin: 0 }}>
++                中央仓库
++              </Title>
++              <Badge
++                count={skills.length}
++                style={{
++                  backgroundColor: '#f59e0b',
++                  borderRadius: '999px',
++                  fontSize: '11px',
++                  padding: '2px 8px',
++                  marginLeft: '8px',
++                }}
++              />
++            </div>
++            <div className="cr-header__actions">
++              <Button
++                icon={<ScanOutlined />}
++                loading={discoverLoading}
++                onClick={() => void handleDiscover()}
++                className="cr-btn"
++              >
++                扫描发现
++              </Button>
++              <Button
++                icon={<ReloadOutlined />}
++                loading={loading}
++                onClick={() => void loadSkills()}
++                className="cr-btn"
++              >
++                刷新
++              </Button>
++              <Button
++                type="primary"
++                icon={<PlusOutlined />}
++                onClick={() => setInstallOpen(true)}
++                className="cr-btn cr-btn--primary"
++              >
++                从 Git 安装
++              </Button>
++            </div>
+           </div>
+         }
+         placement="right"
+-        width={560}
++        width={580}
+         open={open}
+         onClose={onClose}
+-        extra={
+-          <Space>
+-            <Button
+-              icon={<ScanOutlined />}
+-              loading={discoverLoading}
+-              onClick={() => void handleDiscover()}
+-            >
+-              扫描发现
+-            </Button>
+-            <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void loadSkills()}>
+-              刷新
+-            </Button>
+-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setInstallOpen(true)}>
+-              从 Git 安装
+-            </Button>
+-          </Space>
+-        }
++        className="cr-drawer"
+       >
+-        <Input.Search
+-          placeholder="搜索技能..."
+-          value={keyword}
+-          onChange={(e) => setKeyword(e.target.value)}
+-          style={{ marginBottom: 12 }}
+-          allowClear
+-        />
+-
+-        <Space style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap' }}>
+-          <Button
+-            size="small"
+-            type={sourceFilter === 'custom' ? 'primary' : 'default'}
+-            onClick={() => setSourceFilter('custom')}
+-          >
+-            自定义 ({skills.filter((s) => s.sourceType === 'custom').length})
+-          </Button>
+-          <Button
+-            size="small"
+-            type={sourceFilter === 'git' ? 'primary' : 'default'}
+-            onClick={() => setSourceFilter('git')}
+-          >
+-            市场 ({skills.filter((s) => s.sourceType === 'git').length})
+-          </Button>
+-          <Button
+-            size="small"
+-            type={sourceFilter === 'all' ? 'primary' : 'default'}
+-            onClick={() => setSourceFilter('all')}
+-          >
+-            全部 ({skills.length})
+-          </Button>
+-        </Space>
++        <div className="cr-container">
++          <Card className="cr-search-card" bordered={false}>
++            <div className="cr-search">
++              <SearchOutlined className="cr-search__icon" />
++              <Input
++                placeholder="搜索技能名称或描述..."
++                value={keyword}
++                onChange={(e) => setKeyword(e.target.value)}
++                className="cr-search__input"
++                allowClear
++              />
++            </div>
++          </Card>
++
++          <Card className="cr-filter-card" bordered={false}>
++            <div className="cr-filter-row">
++              <div className="cr-filter-group">
++                <div className="cr-filter-group__label">
++                  <FolderOpenOutlined className="cr-filter-group__icon" />
++                  <span>来源类型</span>
++                </div>
++                <div className="cr-filter-group__buttons">
++                  {[
++                    { key: 'all', label: '全部', count: skills.length },
++                    { key: 'custom', label: '自定义', count: customCount },
++                    { key: 'git', label: '市场', count: gitCount },
++                  ].map((item) => (
++                    <button
++                      key={item.key}
++                      type="button"
++                      className={`cr-filter-btn ${sourceFilter === item.key ? 'is-active' : ''}`}
++                      onClick={() => setSourceFilter(item.key as typeof sourceFilter)}
++                    >
++                      {item.label}
++                      <span className="cr-filter-btn__count">{item.count}</span>
++                    </button>
++                  ))}
++                </div>
++              </div>
++            </div>
+ 
+-        {sourceFilter === 'all' && (
+-          <Space style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap' }}>
+-            {[
+-              { key: 'all', label: `全部同步状态` },
+-              {
+-                key: 'unsynced',
+-                label: `未同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'unsynced').length})`,
+-              },
+-              {
+-                key: 'partial',
+-                label: `部分同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'partial').length})`,
+-              },
+-              {
+-                key: 'fullySynced',
+-                label: `已全量同步 (${skills.filter((s) => getSkillFilterStatus(s) === 'fullySynced').length})`,
+-              },
+-            ].map((item) => (
+-              <Button
+-                key={item.key}
+-                size="small"
+-                type={filterType === item.key ? 'primary' : 'default'}
+-                onClick={() => setFilterType(item.key as typeof filterType)}
+-              >
+-                {item.label}
+-              </Button>
+-            ))}
+-          </Space>
+-        )}
++            <Divider className="cr-filter-divider" />
+ 
+-        {selectedSkills.size > 0 && (
+-          <div
+-            style={{
+-              marginBottom: 12,
+-              display: 'flex',
+-              alignItems: 'center',
+-              gap: 8,
+-            }}
+-          >
+-            <Text type="secondary">已选 {selectedSkills.size} 个</Text>
+-            <Button size="small" type="primary" onClick={openBatchSyncModal}>
+-              批量同步到工具
+-            </Button>
+-            <Button size="small" onClick={openBatchCategoryModal}>
+-              批量修改分类
+-            </Button>
+-            <Button size="small" onClick={() => setSelectedSkills(new Set())}>
+-              取消选择
+-            </Button>
++            <div className="cr-filter-row">
++              <div className="cr-filter-group">
++                <div className="cr-filter-group__label">
++                  <RefreshOutlined className="cr-filter-group__icon" />
++                  <span>同步状态</span>
++                </div>
++                <div className="cr-filter-group__buttons">
++                  {[
++                    { key: 'all', label: '全部', count: skills.length, icon: DatabaseOutlined },
++                    { key: 'unsynced', label: '未同步', count: unsyncedCount, icon: ClockCircleOutlined },
++                    { key: 'partial', label: '部分同步', count: partialCount, icon: RefreshOutlined },
++                    { key: 'fullySynced', label: '已全量同步', count: fullySyncedCount, icon: CheckCircleOutlined },
++                  ].map((item) => (
++                    <button
++                      key={item.key}
++                      type="button"
++                      className={`cr-filter-btn ${filterType === item.key ? 'is-active' : ''}`}
++                      onClick={() => setFilterType(item.key as typeof filterType)}
++                    >
++                      <item.icon className="cr-filter-btn__icon" />
++                      {item.label}
++                      <span className="cr-filter-btn__count">{item.count}</span>
++                    </button>
++                  ))}
++                </div>
++              </div>
++            </div>
++          </Card>
++
++          {selectedSkills.size > 0 && (
++            <Card className="cr-batch-card" bordered={false}>
++              <div className="cr-batch-bar">
++                <div className="cr-batch-bar__info">
++                  <Checkbox
++                    checked={selectedSkills.size === filteredSkills.length}
++                    onChange={toggleSelectAll}
++                  />
++                  <span>已选择 {selectedSkills.size} 个技能</span>
++                </div>
++                <div className="cr-batch-bar__actions">
++                  <Button
++                    size="small"
++                    type="primary"
++                    icon={<SyncOutlined />}
++                    onClick={openBatchSyncModal}
++                  >
++                    批量同步
++                  </Button>
++                  <Button size="small" onClick={openBatchCategoryModal}>
++                    修改分类
++                  </Button>
++                  <Button size="small" onClick={() => setSelectedSkills(new Set())}>
++                    取消选择
++                  </Button>
++                </div>
++              </div>
++            </Card>
++          )}
++
++          <div className="cr-list-header">
++            <span className="cr-list-header__title">
++              技能列表 ({filteredSkills.length})
++            </span>
++            {filteredSkills.length > 0 && selectedSkills.size < filteredSkills.length && (
++              <Checkbox
++                checked={selectedSkills.size === filteredSkills.length}
++                onChange={toggleSelectAll}
++              >
++                全选
++              </Checkbox>
++            )}
+           </div>
+-        )}
+ 
+-        {loading ? (
+-          <div style={{ textAlign: 'center', padding: 40 }}>
+-            <Spin />
+-          </div>
+-        ) : filteredSkills.length === 0 ? (
+-          <Empty
+-            image={Empty.PRESENTED_IMAGE_SIMPLE}
+-            description={keyword.trim() ? '未找到匹配结果' : '中央仓库暂无技能'}
+-          />
+-        ) : (
+-          <List
+-            dataSource={filteredSkills}
+-            renderItem={(skill) => (
+-              <List.Item
+-                actions={[
+-                  <Tooltip title="同步到工具" key="sync">
+-                    <Button
+-                      icon={<SyncOutlined />}
+-                      size="small"
+-                      onClick={() => openSyncModal(skill.name)}
+-                    />
+-                  </Tooltip>,
+-                  <Tooltip title="从工具导入" key="import">
+-                    <Button
+-                      icon={<CloudDownloadOutlined />}
+-                      size="small"
+-                      onClick={() => openImportModal(skill.name)}
+-                    />
+-                  </Tooltip>,
+-                  <Tooltip title="删除" key="delete">
+-                    <Button
+-                      icon={<DeleteOutlined />}
+-                      size="small"
+-                      danger
+-                      onClick={() => handleDelete(skill.name)}
+-                    />
+-                  </Tooltip>,
+-                ]}
+-              >
+-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+-                  <input
+-                    type="checkbox"
+-                    checked={selectedSkills.has(skill.name)}
+-                    onChange={() => toggleSkillSelection(skill.name)}
+-                    style={{ marginTop: 6 }}
+-                  />
+-                  <div style={{ flex: 1 }}>
+-                    <div
+-                      style={{
+-                        display: 'flex',
+-                        alignItems: 'center',
+-                        gap: 8,
+-                        flexWrap: 'wrap',
+-                        marginBottom: 4,
+-                      }}
+-                    >
+-                      <Text strong>{skill.name}</Text>
+-                      <Select
+-                        size="small"
+-                        variant="borderless"
+-                        value={skill.sourceType}
+-                        options={categoryOptions}
+-                        onChange={(val) => handleSetCategory(skill.name, val)}
+-                        style={{ width: 80 }}
+-                      />
+-                      {skill.hasSkillMd && (
+-                        <Tag variant="filled" color="green">
+-                          skill.md
+-                        </Tag>
+-                      )}
+-                    </div>
+-                    {skill.description && (
+-                      <div
+-                        style={{
+-                          marginBottom: 4,
+-                          color: 'rgba(0,0,0,0.65)',
+-                          fontSize: 13,
+-                          lineHeight: '1.5',
+-                          display: '-webkit-box',
+-                          WebkitLineClamp: 2,
+-                          WebkitBoxOrient: 'vertical',
+-                          overflow: 'hidden',
+-                          textOverflow: 'ellipsis',
+-                        }}
+-                      >
+-                        {skill.description}
++          {loading ? (
++            <div className="cr-loading">
++              <Spin size="large" tip="加载中..." />
++            </div>
++          ) : filteredSkills.length === 0 ? (
++            <Card className="cr-empty-card" bordered={false}>
++              <Empty
++                image={Empty.PRESENTED_IMAGE_SIMPLE}
++                description={keyword.trim() ? '未找到匹配结果' : '中央仓库暂无技能'}
++              />
++            </Card>
++          ) : (
++            <List
++              dataSource={filteredSkills}
++              renderItem={(skill) => {
++                const isSelected = selectedSkills.has(skill.name)
++                const status = getSkillFilterStatus(skill)
++
++                return (
++                  <Card
++                    key={skill.name}
++                    className={`cr-skill-card ${isSelected ? 'is-selected' : ''}`}
++                    bordered={false}
++                  >
++                    <div className="cr-skill-card__body">
++                      <div className="cr-skill-card__checkbox">
++                        <Checkbox
++                          checked={isSelected}
++                          onChange={() => toggleSkillSelection(skill.name)}
++                        />
++                      </div>
++
++                      <div className="cr-skill-card__content">
++                        <div className="cr-skill-card__header">
++                          <div className="cr-skill-card__name">{skill.name}</div>
++                          <div className="cr-skill-card__meta">
++                            <Select
++                              size="small"
++                              variant="borderless"
++                              value={skill.sourceType}
++                              options={categoryOptions}
++                              onChange={(val) => handleSetCategory(skill.name, val)}
++                              className="cr-skill-card__category"
++                            />
++                            {skill.hasSkillMd && (
++                              <Tag className="cr-skill-card__tag cr-skill-card__tag--doc">
++                                📖 skill.md
++                              </Tag>
++                            )}
++                            <Tag
++                              className={`cr-skill-card__tag cr-skill-card__tag--${status}`}
++                            >
++                              {status === 'unsynced'
++                                ? '未同步'
++                                : status === 'partial'
++                                  ? '部分同步'
++                                  : '已全量同步'}
++                            </Tag>
++                          </div>
++                        </div>
++
++                        {skill.description && (
++                          <p className="cr-skill-card__desc">{skill.description}</p>
++                        )}
++
++                        {skill.syncStatuses.length > 0 && (
++                          <div className="cr-skill-card__sync">
++                            <span className="cr-skill-card__sync-label">同步状态：</span>
++                            <div className="cr-skill-card__sync-items">
++                              {skill.syncStatuses.slice(0, 3).map((s) => (
++                                <span
++                                  key={s.toolId}
++                                  className={`cr-skill-card__sync-item ${s.synced ? 'is-synced' : ''}`}
++                                >
++                                  {s.toolName} {s.synced ? '✓' : '✗'}
++                                </span>
++                              ))}
++                              {skill.syncStatuses.length > 3 && (
++                                <span className="cr-skill-card__sync-more">
++                                  +{skill.syncStatuses.length - 3}
++                                </span>
++                              )}
++                            </div>
++                          </div>
++                        )}
++
++                        <div className="cr-skill-card__actions">
++                          <Tooltip title="同步到工具">
++                            <Button
++                              icon={<SyncOutlined />}
++                              size="small"
++                              onClick={() => openSyncModal(skill.name)}
++                              className="cr-skill-card__action-btn"
++                            />
++                          </Tooltip>
++                          <Tooltip title="从工具导入">
++                            <Button
++                              icon={<CloudDownloadOutlined />}
++                              size="small"
++                              onClick={() => openImportModal(skill.name)}
++                              className="cr-skill-card__action-btn"
++                            />
++                          </Tooltip>
++                          <Tooltip title="删除技能">
++                            <Button
++                              icon={<DeleteOutlined />}
++                              size="small"
++                              danger
++                              onClick={() => handleDelete(skill.name)}
++                              className="cr-skill-card__action-btn cr-skill-card__action-btn--danger"
++                            />
++                          </Tooltip>
++                        </div>
+                       </div>
+-                    )}
+-                    <div
+-                      style={{
+-                        display: 'flex',
+-                        alignItems: 'center',
+-                        gap: 6,
+-                        flexWrap: 'nowrap',
+-                        overflow: 'hidden',
+-                      }}
+-                    >
+-                      {skill.syncStatuses.slice(0, 4).map((status) => (
+-                        <Tag
+-                          key={status.toolId}
+-                          color={status.synced ? 'success' : 'default'}
+-                          style={{ fontSize: 11, flexShrink: 0 }}
+-                        >
+-                          {status.toolName} {status.synced ? '✓' : '✗'}
+-                        </Tag>
+-                      ))}
+-                      {skill.syncStatuses.length > 4 && (
+-                        <Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
+-                          +{skill.syncStatuses.length - 4}
+-                        </Text>
+-                      )}
+-                      {skill.syncStatuses.length === 0 && (
+-                        <Text type="secondary" style={{ fontSize: 11 }}>
+-                          未同步到任何工具
+-                        </Text>
+-                      )}
+                     </div>
+-                  </div>
+-                </div>
+-              </List.Item>
+-            )}
+-          />
+-        )}
++                  </Card>
++                )
++              }}
++            />
++          )}
++        </div>
+       </Drawer>
+ 
+-      {/* 从 Git 安装 */}
+       <Modal
+         title="从 Git 安装到中央仓库"
+         open={installOpen}
+@@ -662,18 +734,22 @@ export default function CenterRepoPanel({
+         }}
+         confirmLoading={installing}
+         destroyOnClose
++        className="cr-modal"
+       >
+-        <Space direction="vertical" style={{ width: '100%' }}>
+-          <Text>Git 仓库地址：</Text>
++        <Space direction="vertical" style={{ width: '100%', gap: 12 }}>
++          <Text className="cr-modal__label">Git 仓库地址</Text>
+           <Input
+             placeholder="https://github.com/user/repo.git"
+             value={gitUrl}
+             onChange={(e) => setGitUrl(e.target.value)}
++            className="cr-modal__input"
+           />
++          <Text type="secondary" className="cr-modal__hint">
++            输入公开 Git 仓库地址，系统将自动克隆并安装技能
++          </Text>
+         </Space>
+       </Modal>
+ 
+-      {/* 同步到工具 */}
+       <Modal
+         title={`同步技能：${syncSkillName}`}
+         open={syncOpen}
+@@ -681,23 +757,25 @@ export default function CenterRepoPanel({
+         onCancel={() => setSyncOpen(false)}
+         confirmLoading={syncing}
+         destroyOnClose
++        className="cr-modal"
+       >
+-        <Space direction="vertical" style={{ width: '100%' }}>
+-          <Text>选择目标工具：</Text>
++        <Space direction="vertical" style={{ width: '100%', gap: 12 }}>
++          <Text className="cr-modal__label">选择目标工具</Text>
+           <Select
+             style={{ width: '100%' }}
+             placeholder="选择目标工具"
+             value={syncTargetToolId}
+             onChange={setSyncTargetToolId}
+             options={toolOptions}
++            className="cr-modal__select"
+           />
+-          <Text type="secondary" style={{ fontSize: 12 }}>
+-            同步模式：{syncMode}，冲突策略：{conflictStrategy}
+-          </Text>
++          <div className="cr-modal__info">
++            <Text type="secondary">同步模式：{syncMode}</Text>
++            <Text type="secondary">冲突策略：{conflictStrategy}</Text>
++          </div>
+         </Space>
+       </Modal>
+ 
+-      {/* 从工具导入 */}
+       <Modal
+         title={`导入技能到中央仓库：${importSkillName}`}
+         open={importOpen}
+@@ -705,23 +783,24 @@ export default function CenterRepoPanel({
+         onCancel={() => setImportOpen(false)}
+         confirmLoading={importing}
+         destroyOnClose
++        className="cr-modal"
+       >
+-        <Space direction="vertical" style={{ width: '100%' }}>
+-          <Text>选择源工具：</Text>
++        <Space direction="vertical" style={{ width: '100%', gap: 12 }}>
++          <Text className="cr-modal__label">选择源工具</Text>
+           <Select
+             style={{ width: '100%' }}
+             placeholder="选择源工具"
+             value={importSourceToolId}
+             onChange={setImportSourceToolId}
+             options={toolOptions}
++            className="cr-modal__select"
+           />
+-          <Text type="secondary" style={{ fontSize: 12 }}>
++          <Text type="secondary" className="cr-modal__hint">
+             将从源工具的技能目录中导入 {importSkillName} 到中央仓库
+           </Text>
+         </Space>
+       </Modal>
+ 
+-      {/* 批量同步 */}
+       <Modal
+         title={`批量同步 ${selectedSkills.size} 个技能到工具`}
+         open={batchSyncOpen}
+@@ -729,26 +808,33 @@ export default function CenterRepoPanel({
+         onCancel={() => setBatchSyncOpen(false)}
+         confirmLoading={batchSyncing}
+         destroyOnClose
++        className="cr-modal"
+       >
+-        <Space direction="vertical" style={{ width: '100%' }}>
+-          <Text>选择目标工具：</Text>
++        <Space direction="vertical" style={{ width: '100%', gap: 12 }}>
++          <Text className="cr-modal__label">选择目标工具</Text>
+           <Select
+             style={{ width: '100%' }}
+             placeholder="选择目标工具"
+             value={batchSyncTargetToolId}
+             onChange={setBatchSyncTargetToolId}
+             options={toolOptions}
++            className="cr-modal__select"
+           />
+-          <Text type="secondary" style={{ fontSize: 12 }}>
+-            同步模式：{syncMode}，冲突策略：{conflictStrategy}
+-          </Text>
+-          <Text type="secondary" style={{ fontSize: 12 }}>
+-            将同步：{Array.from(selectedSkills).join(', ')}
+-          </Text>
++          <div className="cr-modal__info">
++            <Text type="secondary">同步模式：{syncMode}</Text>
++            <Text type="secondary">冲突策略：{conflictStrategy}</Text>
++          </div>
++          <div className="cr-modal__selected-list">
++            <Text type="secondary" className="cr-modal__selected-label">将同步：</Text>
++            <div className="cr-modal__selected-items">
++              {Array.from(selectedSkills).map((name) => (
++                <Tag key={name} className="cr-modal__selected-tag">{name}</Tag>
++              ))}
++            </div>
++          </div>
+         </Space>
+       </Modal>
+ 
+-      {/* 批量修改分类 */}
+       <Modal
+         title={`批量修改 ${selectedSkills.size} 个技能的分类`}
+         open={batchCategoryOpen}
+@@ -756,22 +842,28 @@ export default function CenterRepoPanel({
+         onCancel={() => setBatchCategoryOpen(false)}
+         confirmLoading={settingCategory}
+         destroyOnClose
++        className="cr-modal"
+       >
+-        <Space direction="vertical" style={{ width: '100%' }}>
+-          <Text>选择分类：</Text>
++        <Space direction="vertical" style={{ width: '100%', gap: 12 }}>
++          <Text className="cr-modal__label">选择分类</Text>
+           <Select
+             style={{ width: '100%' }}
+             value={batchCategoryValue}
+             onChange={setBatchCategoryValue}
+             options={categoryOptions}
++            className="cr-modal__select"
+           />
+-          <Text type="secondary" style={{ fontSize: 12 }}>
+-            将修改：{Array.from(selectedSkills).join(', ')}
+-          </Text>
++          <div className="cr-modal__selected-list">
++            <Text type="secondary" className="cr-modal__selected-label">将修改：</Text>
++            <div className="cr-modal__selected-items">
++              {Array.from(selectedSkills).map((name) => (
++                <Tag key={name} className="cr-modal__selected-tag">{name}</Tag>
++              ))}
++            </div>
++          </div>
+         </Space>
+       </Modal>
+ 
+-      {/* 扫描发现 */}
+       <Modal
+         title="扫描发现"
+         open={discoverOpen}
+@@ -785,62 +877,49 @@ export default function CenterRepoPanel({
+         width={560}
+         okText="一键导入"
+         cancelText="取消"
++        className="cr-modal"
+       >
+         {discoverLoading ? (
+-          <div style={{ textAlign: 'center', padding: 40 }}>
+-            <Spin />
++          <div className="cr-loading">
++            <Spin size="large" tip="扫描中..." />
+           </div>
+         ) : discovered.length === 0 ? (
+           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未发现新的技能" />
+         ) : (
+           <>
+-            <div style={{ marginBottom: 12 }}>
+-              <Text type="secondary">发现 {discovered.length} 个技能分散在各工具中，尚未入库</Text>
++            <div className="cr-discover-header">
++              <Text type="secondary">
++                发现 {discovered.length} 个技能分散在各工具中，尚未入库
++              </Text>
+             </div>
+             <List
+               dataSource={discovered}
+               renderItem={(skill) => (
+-                <List.Item
+-                  onClick={() => toggleDiscovered(skill.name)}
+-                  style={{ cursor: 'pointer' }}
++                <Card
++                  key={skill.name}
++                  className={`cr-discover-item ${selectedDiscovered.has(skill.name) ? 'is-selected' : ''}`}
++                  bordered={false}
+                 >
+-                  <div
+-                    style={{
+-                      display: 'flex',
+-                      alignItems: 'flex-start',
+-                      gap: 12,
+-                      width: '100%',
+-                    }}
+-                  >
+-                    <input
+-                      type="checkbox"
++                  <div className="cr-discover-item__body">
++                    <Checkbox
+                       checked={selectedDiscovered.has(skill.name)}
+                       onChange={() => toggleDiscovered(skill.name)}
+-                      onClick={(e) => e.stopPropagation()}
+-                      style={{ marginTop: 4 }}
+                     />
+-                    <div style={{ flex: 1 }}>
+-                      <div
+-                        style={{
+-                          display: 'flex',
+-                          alignItems: 'center',
+-                          gap: 8,
+-                          marginBottom: 4,
+-                        }}
+-                      >
+-                        <Text strong>{skill.name}</Text>
+-                        <Tag variant="filled" color="default">
++                    <div className="cr-discover-item__content">
++                      <div className="cr-discover-item__header">
++                        <strong>{skill.name}</strong>
++                        <Tag className="cr-discover-item__source">
+                           {skill.sources.map((s) => s.toolName).join(', ')}
+                         </Tag>
+                       </div>
+                       {skill.description && (
+-                        <Text type="secondary" style={{ fontSize: 12 }}>
++                        <Text type="secondary" className="cr-discover-item__desc">
+                           {skill.description}
+                         </Text>
+                       )}
+                     </div>
+                   </div>
+-                </List.Item>
++                </Card>
+               )}
+             />
+           </>
+diff --git a/src/lib/toolboxApi.ts b/src/lib/toolboxApi.ts
+index fa41f52..c982d50 100644
+--- a/src/lib/toolboxApi.ts
++++ b/src/lib/toolboxApi.ts
+@@ -644,7 +644,7 @@ export async function batchImportToCenter(
+ }
+ 
+ export async function setSkillCategory(skillName: string, category: string): Promise<void> {
+-  return invoke('set_skill_category', { skillName, category })
++  return invoke('set_skill_category', { skill_name: skillName, category })
+ }
+ 
+ export interface ToolSyncStatus {
+diff --git a/tsconfig.app.json b/tsconfig.app.json
+index 00759bd..9316a64 100644
+--- a/tsconfig.app.json
++++ b/tsconfig.app.json
+@@ -6,6 +6,7 @@
+     "module": "esnext",
+     "types": ["vite/client"],
+     "skipLibCheck": true,
++    "ignoreDeprecations": "6.0",
+ 
+     /* Strict mode */
+     "strict": true,
+diff --git a/vite.config.ts b/vite.config.ts
+index 6ba018d..e45447b 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -1,4 +1,4 @@
+-import { defineConfig } from 'vite'
++import { defineConfig } from 'vitest/config'
+ import react from '@vitejs/plugin-react'
+ import path from 'path'
+ 
+@@ -13,10 +13,16 @@ export default defineConfig({
+   build: {
+     rollupOptions: {
+       output: {
+-        manualChunks: {
+-          vendor: ['react', 'react-dom'],
+-          antd: ['antd', '@ant-design/icons'],
+-          editor: ['monaco-editor', '@monaco-editor/react'],
++        manualChunks(id) {
++          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
++            return 'vendor'
++          }
++          if (id.includes('node_modules/antd') || id.includes('node_modules/@ant-design/icons')) {
++            return 'antd'
++          }
++          if (id.includes('node_modules/monaco-editor') || id.includes('node_modules/@monaco-editor/react')) {
++            return 'editor'
++          }
+         },
+       },
+     },

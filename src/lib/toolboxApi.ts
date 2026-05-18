@@ -781,3 +781,117 @@ export async function restoreCswitchDbFromBackup(backupPath: string): Promise<vo
 export async function getHomeDirPath(): Promise<string> {
   return invoke('get_home_dir_path')
 }
+
+// ============================================================================
+// Skill tags
+// ============================================================================
+
+export async function updateSkillTags(
+  toolId: string,
+  skillName: string,
+  tags: string[],
+): Promise<void> {
+  return invoke('update_skill_tags', { toolId, skillName, tags })
+}
+
+// ============================================================================
+// Project space
+// ============================================================================
+
+export interface ProjectSkillInfo {
+  name: string
+  path: string
+  description?: string
+  hasSkillMd: boolean
+  updatedAt?: number
+}
+
+export interface ProjectSpaceInfo {
+  projectPath: string
+  skills: ProjectSkillInfo[]
+  globalOnlySkills: string[]
+  projectOnlySkills: string[]
+  sharedSkills: string[]
+}
+
+export async function scanProjectSkills(projectPath: string): Promise<ProjectSpaceInfo> {
+  return invoke('scan_project_skills', { projectPath })
+}
+
+export async function importSkillToProject(
+  skillName: string,
+  projectPath: string,
+  sourceToolId: string,
+): Promise<string> {
+  return invoke('import_skill_to_project', { skillName, projectPath, sourceToolId })
+}
+
+export async function exportSkillFromProject(
+  skillName: string,
+  projectPath: string,
+): Promise<string> {
+  return invoke('export_skill_from_project', { skillName, projectPath })
+}
+
+export async function syncSkillFromProjectToTool(
+  skillName: string,
+  projectPath: string,
+  targetToolId: string,
+  mode: string,
+  conflictPolicy: string,
+): Promise<SyncOutcome> {
+  return invoke('sync_skill_from_project_to_tool', {
+    skillName,
+    projectPath,
+    targetToolId,
+    mode,
+    conflictPolicy,
+  })
+}
+
+// ============================================================================
+// Git backup & version management
+// ============================================================================
+
+export interface GitCommitInfo {
+  hash: string
+  message: string
+  author: string
+  timestamp: number
+}
+
+export async function initCenterGitRepo(): Promise<string> {
+  return invoke('init_center_git_repo')
+}
+
+export async function commitCenterSnapshot(message: string): Promise<string> {
+  return invoke('commit_center_snapshot', { message })
+}
+
+export async function getCenterGitHistory(): Promise<GitCommitInfo[]> {
+  return invoke('get_center_git_history')
+}
+
+export async function restoreCenterSnapshot(hash: string): Promise<string> {
+  return invoke('restore_center_snapshot', { hash })
+}
+
+// ============================================================================
+// Upstream update detection
+// ============================================================================
+
+export interface GitSkillUpdateInfo {
+  skillName: string
+  hasUpdate: boolean
+  localHash: string
+  remoteHash: string
+  lastCheckedAt?: number
+}
+
+export async function checkGitSkillUpdates(): Promise<GitSkillUpdateInfo[]> {
+  return invoke('check_git_skill_updates')
+}
+
+export async function updateGitSkill(skillName: string): Promise<string> {
+  return invoke('update_git_skill', { skillName })
+}

@@ -166,6 +166,58 @@ pub struct SkillDetailPayload {
 }
 
 // ============================================================================
+// Project Workspace
+// ============================================================================
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectSkillInfo {
+    pub name: String,
+    pub path: String,
+    pub description: Option<String>,
+    pub has_skill_md: bool,
+    pub updated_at: Option<u64>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectSpaceInfo {
+    pub project_path: String,
+    pub skills: Vec<ProjectSkillInfo>,
+    pub global_only_skills: Vec<String>,
+    pub project_only_skills: Vec<String>,
+    pub shared_skills: Vec<String>,
+}
+
+// ============================================================================
+// Git Version Management
+// ============================================================================
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitCommitInfo {
+    pub hash: String,
+    pub short_hash: String,
+    pub message: String,
+    pub author: String,
+    pub timestamp: u64,
+}
+
+// ============================================================================
+// Git Skill Update Detection
+// ============================================================================
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitSkillUpdateInfo {
+    pub skill_name: String,
+    pub has_update: bool,
+    pub local_hash: String,
+    pub remote_hash: String,
+    pub last_checked_at: Option<u64>,
+}
+
+// ============================================================================
 // 请求类型
 // ============================================================================
 
@@ -254,6 +306,37 @@ pub struct DeleteToolRequest {
 pub struct DetectToolPathsRequest {
     pub id: Option<String>,
     pub name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanProjectSkillsRequest {
+    pub project_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportSkillToProjectRequest {
+    pub skill_name: String,
+    pub project_path: String,
+    pub source_tool_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportSkillFromProjectRequest {
+    pub skill_name: String,
+    pub project_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncSkillFromProjectRequest {
+    pub skill_name: String,
+    pub project_path: String,
+    pub target_tool_id: String,
+    pub mode: String,
+    pub conflict_policy: String,
 }
 
 // ============================================================================

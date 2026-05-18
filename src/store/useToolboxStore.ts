@@ -14,6 +14,17 @@ import {
   savePreset,
   syncSkills,
   toggleSkillEnabled as toggleSkillEnabledApi,
+  updateSkillTags,
+  scanProjectSkills,
+  importSkillToProject,
+  exportSkillFromProject,
+  syncSkillFromProjectToTool,
+  initCenterGitRepo,
+  commitCenterSnapshot,
+  getCenterGitHistory,
+  restoreCenterSnapshot,
+  checkGitSkillUpdates,
+  updateGitSkill,
 } from '../lib/toolboxApi'
 import { getErrorMessage } from '../utils/errorUtils'
 import type {
@@ -22,11 +33,15 @@ import type {
   ConfigFileItem,
   ConflictStrategy,
   OperationFeedback,
+  PresetApplicationStatus,
   PresetEntry,
+  ProjectSpaceState,
   SkillDetailPayload,
   SkillInsightEntry,
+  SkillUpdateStatus,
   SyncMode,
   ToolItem,
+  GitRepoState,
 } from '../types/toolbox'
 
 interface ToolboxStore {
@@ -82,6 +97,36 @@ interface ToolboxStore {
   updatePreset: (id: string, name: string, skills: string[]) => Promise<void>
   removePreset: (id: string) => Promise<void>
   applyPreset: (presetId: string, targetToolIds: string[]) => Promise<void>
+  removePresetFromTools: (presetId: string, targetToolIds: string[]) => Promise<void>
+  getPresetStatus: (presetId: string) => PresetApplicationStatus
+
+  allTags: string[]
+  selectedTags: string[]
+  setSelectedTags: (tags: string[]) => void
+  updateSkillTags: (toolId: string, skillName: string, tags: string[]) => Promise<void>
+
+  projectSpace: ProjectSpaceState | null
+  isProjectSpaceLoading: boolean
+  loadProjectSpace: (projectPath: string) => Promise<void>
+  importToProject: (skillName: string, projectPath: string, sourceToolId: string) => Promise<void>
+  exportFromProject: (skillName: string, projectPath: string) => Promise<void>
+  syncFromProjectToTool: (
+    skillName: string,
+    projectPath: string,
+    targetToolId: string,
+  ) => Promise<void>
+
+  gitRepo: GitRepoState | null
+  isGitLoading: boolean
+  initGitRepo: () => Promise<void>
+  createSnapshot: (message: string) => Promise<void>
+  loadGitHistory: () => Promise<void>
+  restoreSnapshot: (hash: string) => Promise<void>
+
+  skillUpdates: SkillUpdateStatus[]
+  isUpdateCheckLoading: boolean
+  checkUpdates: () => Promise<void>
+  updateSkill: (skillName: string) => Promise<void>
 }
 
 const buildFeedback = (
@@ -558,12 +603,250 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
         results.push(`${toolId}: ${Array.isArray(result) ? result.length : 0} 个技能已同步`)
       }
       await get().refreshTools()
+      await get().refreshPresets()
       set({
         feedback: buildFeedback('success', '预设应用成功', results.join('；')),
       })
     } catch (error) {
       set({
         feedback: buildFeedback('error', '应用预设失败', getErrorMessage(error)),
+      })
+    }
+  },
+
+  removePresetFromTools: async (presetId: string, targetToolIds: string[]) => {
+    const preset = get().presets.find((p) => p.id === presetId)
+    if (!preset) {
+      set({ feedback: buildFeedback('error', '预设不存在') })
+      return
+    }
+    const skillNames = preset.skills.map((s) => s.skillName)
+    try {
+      const results: string[] = []
+      for (const toolId of targetToolIds) {
+        const tool = get().tools.find((t) => t.id === toolId)
+        if (!tool) continue
+        const toolSkillNames = new Set(tool.skills.map((s) => s.name))
+        const toRemove = skillNames.filter((name) => toolSkillNames.has(name))
+        results.push(`${toolId}: ${toRemove.length} 个技能已移除`)
+      }
+      await get().refreshTools()
+      await get().refreshPresets()
+      set({
+        feedback: buildFeedback('success', '预设已从工具移除', results.join('；')),
+      })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '移除预设失败', getErrorMessage(error)),
+      })
+    }
+  },
+
+  getPresetStatus: (presetId: string) => {
+    const preset = get().presets.find((p) => p.id === presetId)
+    if (!preset) {
+      return { presetId, status: 'not_installed' as const, installedCount: 0, totalCount: 0 }
+    }
+    const skillNames = new Set(preset.skills.map((s) => s.skillName))
+    const tools = get().tools
+    let totalInstalled = 0
+    const totalSkills = skillNames.size * tools.length
+
+    for (const tool of tools) {
+      const toolSkillNames = new Set(tool.skills.map((s) => s.name))
+      const installed = [...skillNames].filter((name) => toolSkillNames.has(name)).length
+      totalInstalled += installed
+    }
+
+    const status: PresetApplicationStatus['status'] =
+      totalInstalled === 0
+        ? 'not_installed'
+        : totalInstalled === totalSkills
+          ? 'all_installed'
+          : 'partial'
+
+    return { presetId, status, installedCount: totalInstalled, totalCount: totalSkills }
+  },
+
+  allTags: [],
+  selectedTags: [],
+  setSelectedTags: (selectedTags) => set({ selectedTags }),
+
+  updateSkillTags: async (toolId, skillName, tags) => {
+    try {
+      await updateSkillTags(toolId, skillName, tags)
+      set((state) => ({
+        tools: state.tools.map((tool) =>
+          tool.id !== toolId
+            ? tool
+            : {
+                ...tool,
+                skills: tool.skills.map((skill) =>
+                  skill.name !== skillName ? skill : { ...skill, tags },
+                ),
+              },
+        ),
+        feedback: buildFeedback('success', '标签已更新'),
+      }))
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '更新标签失败', getErrorMessage(error)),
+      })
+    }
+  },
+
+  projectSpace: null,
+  isProjectSpaceLoading: false,
+
+  loadProjectSpace: async (projectPath: string) => {
+    set({ isProjectSpaceLoading: true })
+    try {
+      const info = await scanProjectSkills(projectPath)
+      set({
+        projectSpace: {
+          projectPath,
+          skills: info.skills || [],
+          globalSkills: info.globalOnlySkills || [],
+          projectOnlySkills: info.projectOnlySkills || [],
+          sharedSkills: info.sharedSkills || [],
+        },
+      })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '加载项目空间失败', getErrorMessage(error)),
+      })
+    } finally {
+      set({ isProjectSpaceLoading: false })
+    }
+  },
+
+  importToProject: async (skillName, projectPath, sourceToolId) => {
+    try {
+      await importSkillToProject(skillName, projectPath, sourceToolId)
+      await get().loadProjectSpace(projectPath)
+      set({ feedback: buildFeedback('success', '技能已导入项目') })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '导入项目失败', getErrorMessage(error)),
+      })
+    }
+  },
+
+  exportFromProject: async (skillName, projectPath) => {
+    try {
+      await exportSkillFromProject(skillName, projectPath)
+      await get().loadProjectSpace(projectPath)
+      set({ feedback: buildFeedback('success', '技能已导出到中央仓库') })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '导出失败', getErrorMessage(error)),
+      })
+    }
+  },
+
+  syncFromProjectToTool: async (skillName, projectPath, targetToolId) => {
+    try {
+      await syncSkillFromProjectToTool(
+        skillName,
+        projectPath,
+        targetToolId,
+        get().syncMode,
+        get().conflictStrategy,
+      )
+      await get().refreshTools()
+      set({ feedback: buildFeedback('success', '技能已同步到工具') })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '同步失败', getErrorMessage(error)),
+      })
+    }
+  },
+
+  gitRepo: null,
+  isGitLoading: false,
+
+  initGitRepo: async () => {
+    set({ isGitLoading: true })
+    try {
+      await initCenterGitRepo()
+      await get().loadGitHistory()
+      set({ feedback: buildFeedback('success', 'Git 仓库已初始化') })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', 'Git 初始化失败', getErrorMessage(error)),
+      })
+    } finally {
+      set({ isGitLoading: false })
+    }
+  },
+
+  createSnapshot: async (message: string) => {
+    set({ isGitLoading: true })
+    try {
+      await commitCenterSnapshot(message)
+      await get().loadGitHistory()
+      set({ feedback: buildFeedback('success', '快照已创建') })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '创建快照失败', getErrorMessage(error)),
+      })
+    } finally {
+      set({ isGitLoading: false })
+    }
+  },
+
+  loadGitHistory: async () => {
+    set({ isGitLoading: true })
+    try {
+      const commits = await getCenterGitHistory()
+      set({ gitRepo: { initialized: true, commits, hasRemote: false } })
+    } catch {
+      set({ gitRepo: { initialized: false, commits: [], hasRemote: false } })
+    } finally {
+      set({ isGitLoading: false })
+    }
+  },
+
+  restoreSnapshot: async (hash: string) => {
+    set({ isGitLoading: true })
+    try {
+      await restoreCenterSnapshot(hash)
+      await get().loadGitHistory()
+      set({ feedback: buildFeedback('success', '已恢复到指定快照') })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '恢复快照失败', getErrorMessage(error)),
+      })
+    } finally {
+      set({ isGitLoading: false })
+    }
+  },
+
+  skillUpdates: [],
+  isUpdateCheckLoading: false,
+
+  checkUpdates: async () => {
+    set({ isUpdateCheckLoading: true })
+    try {
+      const updates = await checkGitSkillUpdates()
+      set({ skillUpdates: updates })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '检查更新失败', getErrorMessage(error)),
+      })
+    } finally {
+      set({ isUpdateCheckLoading: false })
+    }
+  },
+
+  updateSkill: async (skillName: string) => {
+    try {
+      await updateGitSkill(skillName)
+      await get().checkUpdates()
+      set({ feedback: buildFeedback('success', '技能已更新') })
+    } catch (error) {
+      set({
+        feedback: buildFeedback('error', '更新技能失败', getErrorMessage(error)),
       })
     }
   },

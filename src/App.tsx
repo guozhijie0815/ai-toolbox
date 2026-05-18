@@ -7,7 +7,9 @@ import CenterRepoPanel from './components/CenterRepoPanel'
 import ClaudeConfigSyncPanel from './components/ClaudeConfigSyncPanel'
 import CommandPalette from './components/CommandPalette'
 import PresetManager from './components/PresetManager'
+import ProjectSpacePanel from './components/ProjectSpacePanel'
 import SkillDetailDrawer from './components/SkillDetailDrawer'
+import TagFilter from './components/TagFilter'
 import {
   CloseOutlined,
   CloudOutlined,
@@ -166,6 +168,7 @@ function App() {
   const [editingConfigFiles, setEditingConfigFiles] = useState<ToolRegistryConfigFile[]>([])
   const [editorMode, setEditorMode] = useState(false)
   const [centerRepoOpen, setCenterRepoOpen] = useState(false)
+  const [projectSpaceOpen, setProjectSpaceOpen] = useState(false)
   const [middleTab, setMiddleTab] = useState<'skills' | 'editor' | 'sync'>('skills')
 
   const tools = useToolboxStore((state) => state.tools)
@@ -198,6 +201,12 @@ function App() {
   const updatePreset = useToolboxStore((state) => state.updatePreset)
   const removePreset = useToolboxStore((state) => state.removePreset)
   const applyPreset = useToolboxStore((state) => state.applyPreset)
+  const removePresetFromTools = useToolboxStore((state) => state.removePresetFromTools)
+  const getPresetStatus = useToolboxStore((state) => state.getPresetStatus)
+  const allTags = useToolboxStore((state) => state.allTags)
+  const selectedTags = useToolboxStore((state) => state.selectedTags)
+  const setSelectedTags = useToolboxStore((state) => state.setSelectedTags)
+  const updateSkillTags = useToolboxStore((state) => state.updateSkillTags)
   const toggleSkillEnabled = useToolboxStore((state) => state.toggleSkillEnabled)
 
   useEffect(() => {
@@ -272,15 +281,27 @@ function App() {
 
   const filteredCurrentSkills = useMemo(() => {
     const keyword = skillKeyword.trim().toLowerCase()
-    if (!keyword) return sortedSkills
-    return sortedSkills.filter((skill) => {
-      return (
-        skill.name.toLowerCase().includes(keyword) ||
-        (skill.description ?? '').toLowerCase().includes(keyword) ||
-        (skill.path ?? '').toLowerCase().includes(keyword)
-      )
-    })
-  }, [sortedSkills, skillKeyword])
+    let result = sortedSkills
+
+    if (keyword) {
+      result = result.filter((skill) => {
+        return (
+          skill.name.toLowerCase().includes(keyword) ||
+          (skill.description ?? '').toLowerCase().includes(keyword) ||
+          (skill.path ?? '').toLowerCase().includes(keyword)
+        )
+      })
+    }
+
+    if (selectedTags.length > 0) {
+      result = result.filter((skill) => {
+        const skillTags = skill.tags ?? []
+        return selectedTags.some((tag) => skillTags.includes(tag))
+      })
+    }
+
+    return result
+  }, [sortedSkills, skillKeyword, selectedTags])
 
   const filteredSyncSkills = useMemo(() => {
     const keyword = syncKeyword.trim().toLowerCase()
@@ -724,6 +745,9 @@ function App() {
                 <Button icon={<CloudOutlined />} onClick={() => setCenterRepoOpen(true)}>
                   中央仓库
                 </Button>
+                <Button icon={<FolderOpenOutlined />} onClick={() => setProjectSpaceOpen(true)}>
+                  项目空间
+                </Button>
               </div>
             </div>
           </header>
@@ -888,8 +912,20 @@ function App() {
                           onDelete={(presetId) => {
                             void removePreset(presetId)
                           }}
+                          onRemoveFromTools={(presetId, targetToolIds) => {
+                            void removePresetFromTools(presetId, targetToolIds)
+                          }}
+                          getPresetStatus={getPresetStatus}
                           isLoading={isPresetsLoading}
                         />
+
+                        {allTags.length > 0 && (
+                          <TagFilter
+                            allTags={allTags}
+                            selectedTags={selectedTags}
+                            onChange={setSelectedTags}
+                          />
+                        )}
 
                         <Input
                           allowClear
@@ -949,6 +985,36 @@ function App() {
                                                 loadSkillDetail(selectedTool.id, skill.name)
                                               }
                                             },
+                                          },
+                                          {
+                                            key: 'tags',
+                                            icon: null,
+                                            label: (
+                                              <div>
+                                                <div style={{ marginBottom: 4 }}>编辑标签</div>
+                                                <div
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  style={{ maxWidth: 200 }}
+                                                >
+                                                  <Select
+                                                    mode="tags"
+                                                    size="small"
+                                                    style={{ width: '100%' }}
+                                                    placeholder="输入标签"
+                                                    value={skill.tags || []}
+                                                    onChange={(tags: string[]) => {
+                                                      if (selectedTool) {
+                                                        updateSkillTags(
+                                                          selectedTool.id,
+                                                          skill.name,
+                                                          tags,
+                                                        )
+                                                      }
+                                                    }}
+                                                  />
+                                                </div>
+                                              </div>
+                                            ),
                                           },
                                           {
                                             key: 'delete',
@@ -1773,9 +1839,16 @@ function App() {
         syncMode={syncMode}
         conflictStrategy={conflictStrategy}
         onClose={() => setCenterRepoOpen(false)}
-        onSyncComplete={() => {
-          void refreshTools()
-        }}
+        onSyncComplete={() => void refreshTools()}
+      />
+
+      <ProjectSpacePanel
+        open={projectSpaceOpen}
+        tools={tools}
+        syncMode={syncMode}
+        conflictStrategy={conflictStrategy}
+        onClose={() => setProjectSpaceOpen(false)}
+        onSyncComplete={() => void refreshTools()}
       />
     </ConfigProvider>
   )

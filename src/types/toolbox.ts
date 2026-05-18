@@ -148,4 +148,50 @@ export interface PresetEntry {
   name: string
   icon?: string
   skills: PresetSkill[]
+  appliedToolIds?: string[]
+}
+
+export interface PresetApplicationStatus {
+  presetId: string
+  status: 'all_installed' | 'partial' | 'not_installed'
+  installedCount: number
+  totalCount: number
+}
+
+export interface ProjectSkillEntry {
+  name: string
+  path: string
+  description?: string
+  hasSkillMd: boolean
+  updatedAt?: number
+  tags?: string[]
+}
+
+export interface ProjectSpaceState {
+  projectPath: string
+  skills: ProjectSkillEntry[]
+  globalSkills: string[]
+  projectOnlySkills: string[]
+  sharedSkills: string[]
+}
+
+export interface GitCommitEntry {
+  hash: string
+  message: string
+  author: string
+  timestamp: number
+}
+
+export interface GitRepoState {
+  initialized: boolean
+  commits: GitCommitEntry[]
+  hasRemote: boolean
+}
+
+export interface SkillUpdateStatus {
+  skillName: string
+  hasUpdate: boolean
+  localHash: string
+  remoteHash: string
+  lastCheckedAt?: number
 }
