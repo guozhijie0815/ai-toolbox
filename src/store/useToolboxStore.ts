@@ -675,19 +675,10 @@ export const useToolboxStore = create<ToolboxStore>((set, get) => ({
   updateSkillTags: async (toolId, skillName, tags) => {
     try {
       await updateSkillTags(toolId, skillName, tags)
-      set((state) => ({
-        tools: state.tools.map((tool) =>
-          tool.id !== toolId
-            ? tool
-            : {
-                ...tool,
-                skills: tool.skills.map((skill) =>
-                  skill.name !== skillName ? skill : { ...skill, tags },
-                ),
-              },
-        ),
+      await get().refreshTools()
+      set({
         feedback: buildFeedback('success', '标签已更新'),
-      }))
+      })
     } catch (error) {
       set({
         feedback: buildFeedback('error', '更新标签失败', getErrorMessage(error)),

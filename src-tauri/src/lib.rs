@@ -1068,6 +1068,12 @@ fn set_skill_tags_command(request: SkillTagsRequest) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn update_skill_tags(toolId: String, skillName: String, tags: Vec<String>) -> Result<(), String> {
+    let _ = toolId;
+    set_skill_tags(&skillName, tags)
+}
+
+#[tauri::command]
 fn get_skill_detail(tool_id: String, skill_name: String) -> Result<SkillDetailPayload, String> {
     let registry = load_tool_registry()?;
     let tool = registry
@@ -1392,6 +1398,7 @@ pub fn run() {
             toggle_skill_enabled,
             get_skill_tags_command,
             set_skill_tags_command,
+            update_skill_tags,
             get_skill_detail,
             list_presets_command,
             save_preset_command,

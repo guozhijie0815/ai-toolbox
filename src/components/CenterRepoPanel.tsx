@@ -380,6 +380,51 @@ export default function CenterRepoPanel({
     }
   }
 
+  const handleToolBadgeClick = async (skillName: string, toolId: string, isSynced: boolean) => {
+    if (isSynced) {
+      Modal.confirm({
+        title: '移除同步',
+        content: `确定要从 ${toolId} 移除技能 ${skillName}？`,
+        okText: '移除',
+        okType: 'danger',
+        cancelText: '取消',
+        onOk: async () => {
+          try {
+            const tool = tools.find((t) => t.id === toolId)
+            if (tool) {
+              await deleteSkill({ toolId, skillName })
+              message.success(`已从 ${tool.name} 移除 ${skillName}`)
+              await loadSkills()
+              onSyncComplete()
+            }
+          } catch {
+            message.error('移除失败')
+          }
+        },
+      })
+    } else {
+      try {
+        const outcomes: SyncOutcome[] = await batchSyncFromCenter(
+          [skillName],
+          toolId,
+          syncMode,
+          conflictStrategy,
+        )
+        const outcome = outcomes[0]
+        if (outcome?.status === 'success') {
+          const tool = tools.find((t) => t.id === toolId)
+          message.success(`已同步到 ${tool?.name ?? toolId}`)
+          await loadSkills()
+          onSyncComplete()
+        } else {
+          message.warning(outcome?.message ?? '同步失败')
+        }
+      } catch {
+        message.error('同步失败')
+      }
+    }
+  }
+
   const openBatchCategoryModal = () => {
     if (selectedSkills.size === 0) {
       message.warning('请至少选择一个技能')
@@ -604,22 +649,37 @@ export default function CenterRepoPanel({
                         <p className="center-repo-card__description">{skill.description}</p>
                       )}
 
-                      <div className="center-repo-card__sync">
+                      <div className="center-repo-card__tools">
                         {skill.syncStatuses.length === 0 ? (
                           <Text className="center-repo-card__sync-empty">未同步到任何工具</Text>
                         ) : (
                           <>
-                            {skill.syncStatuses.slice(0, 4).map((syncStatus) => (
-                              <Tag
+                            {skill.syncStatuses.slice(0, 6).map((syncStatus) => (
+                              <Tooltip
                                 key={syncStatus.toolId}
-                                className={`center-repo-card__tool-tag ${syncStatus.synced ? 'is-synced' : ''}`}
+                                title={
+                                  syncStatus.synced
+                                    ? `已同步到 ${syncStatus.toolName}，点击移除`
+                                    : `未同步到 ${syncStatus.toolName}，点击安装`
+                                }
                               >
-                                {syncStatus.toolName} {syncStatus.synced ? '✓' : '×'}
-                              </Tag>
+                                <Tag
+                                  className={`tool-badge ${syncStatus.synced ? 'is-synced' : 'is-unsynced'}`}
+                                  onClick={() =>
+                                    handleToolBadgeClick(
+                                      skill.name,
+                                      syncStatus.toolId,
+                                      syncStatus.synced,
+                                    )
+                                  }
+                                >
+                                  {syncStatus.toolName} {syncStatus.synced ? '✓' : '+'}
+                                </Tag>
+                              </Tooltip>
                             ))}
-                            {skill.syncStatuses.length > 4 && (
+                            {skill.syncStatuses.length > 6 && (
                               <Text className="center-repo-card__more">
-                                +{skill.syncStatuses.length - 4}
+                                +{skill.syncStatuses.length - 6}
                               </Text>
                             )}
                           </>
