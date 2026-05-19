@@ -305,10 +305,10 @@ export default function PresetManager({
             const status = getPresetStatus(preset.id)
             const statusIcon =
               status.status === 'all_installed' ? (
-                <CheckOutlined style={{ color: '#52c41a', fontSize: 12 }} />
+                <CheckOutlined style={{ color: 'var(--positive)', fontSize: 12 }} />
               ) : status.status === 'partial' ? (
                 <Tag
-                  color="orange"
+                  className="preset-status-tag"
                   style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px', margin: 0 }}
                 >
                   {status.installedCount}/{status.totalCount}
@@ -375,7 +375,16 @@ export default function PresetManager({
                 >
                   {statusIcon && <span className="preset-pill__status">{statusIcon}</span>}
                   <span className="preset-pill__name">{preset.name}</span>
-                  <Tag className="preset-pill__count">{preset.skills.length} 个技能</Tag>
+                  <Tag
+                    className="preset-pill__count"
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid var(--panel-border)',
+                      color: 'var(--secondary-text)',
+                    }}
+                  >
+                    {preset.skills.length} 个技能
+                  </Tag>
                   <MoreOutlined className="preset-pill__more" />
                 </button>
               </Dropdown>

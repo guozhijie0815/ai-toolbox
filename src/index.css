@@ -24,22 +24,22 @@
 }
 
 :root[data-theme='dark'] {
-  --page-bg: #101416;
+  --page-bg: #0b1120;
   --page-scrollbar: rgba(245, 239, 231, 0.28);
   --page-scrollbar-track: rgba(245, 239, 231, 0.08);
-  --panel-bg: #18201f;
-  --panel-bg-soft: #121918;
-  --panel-border: #2f3a37;
-  --primary-text: #f2eee5;
-  --secondary-text: #bac3bc;
-  --muted-text: #818b86;
-  --accent: #ff8a48;
-  --accent-strong: #ff9c67;
-  --chip-bg: #202927;
-  --chip-border: #36423f;
-  --item-bg: #1e2725;
-  --item-hover: #2b2a22;
-  color: #f5efe7;
+  --panel-bg: #111827;
+  --panel-bg-soft: #1f2937;
+  --panel-border: #374151;
+  --primary-text: #f1f5f9;
+  --secondary-text: #cbd5e1;
+  --muted-text: #94a3b8;
+  --accent: #22d3ee;
+  --accent-strong: #06b6d4;
+  --chip-bg: #1f2937;
+  --chip-border: #374151;
+  --item-bg: #111827;
+  --item-hover: #1e293b;
+  color: #f1f5f9;
 }
 
 * {

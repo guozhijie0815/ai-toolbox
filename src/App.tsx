@@ -24,6 +24,8 @@ import {
   SearchOutlined,
   SettingOutlined,
   SyncOutlined,
+  SunOutlined,
+  MoonOutlined,
 } from '@ant-design/icons'
 import {
   App as AntdApp,
@@ -637,8 +639,8 @@ function App() {
                 colorSuccess: '#4ade80',
                 colorWarning: '#fbbf24',
                 colorError: '#f87171',
-                colorBgBase: '#060914',
-                colorTextBase: '#e2e8f0',
+                colorBgBase: '#0b1120',
+                colorTextBase: '#f1f5f9',
                 borderRadius: 10,
                 fontFamily: '"Plus Jakarta Sans", "PingFang SC", "Hiragino Sans GB", sans-serif',
               }
@@ -731,18 +733,18 @@ function App() {
                 />
               </div>
               <div className="header-actions">
-                <Segmented
-                  size="small"
-                  options={themeOptions}
-                  value={themeMode}
-                  onChange={(value) => setThemeMode(value as ThemeMode)}
-                />
                 <Button icon={<SettingOutlined />} onClick={() => void openManager()}>
                   管理工具
                 </Button>
                 <Button icon={<CloudOutlined />} onClick={() => setCenterRepoOpen(true)}>
                   中央仓库
                 </Button>
+                <Button
+                  type="text"
+                  icon={resolvedTheme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+                  onClick={() => setThemeMode(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                  style={{ color: 'var(--color-text-secondary)' }}
+                />
               </div>
             </div>
           </header>

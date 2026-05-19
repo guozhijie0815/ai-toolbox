@@ -86,19 +86,19 @@ body {
 /* ---- 深色主题变量 ---- */
 [data-theme='dark'] {
   /* 核心色彩 */
-  --page-bg: #060914;
-  --page-bg-elevated: #0b0f1a;
-  --panel-bg: rgba(15, 23, 42, 0.6);
-  --panel-bg-solid: #0f172a;
-  --panel-bg-soft: rgba(30, 41, 59, 0.4);
-  --panel-border: rgba(34, 211, 238, 0.08);
-  --panel-border-hover: rgba(34, 211, 238, 0.2);
+  --page-bg: #0b1120;
+  --page-bg-elevated: #111827;
+  --panel-bg: rgba(17, 24, 39, 0.85);
+  --panel-bg-solid: #111827;
+  --panel-bg-soft: rgba(31, 41, 55, 0.7);
+  --panel-border: rgba(75, 85, 99, 0.4);
+  --panel-border-hover: rgba(75, 85, 99, 0.6);
   --panel-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 
-  /* 文字色彩 */
-  --primary-text: #e2e8f0;
-  --secondary-text: #94a3b8;
-  --muted-text: #64748b;
+  /* 文字色彩（提升对比度） */
+  --primary-text: #f1f5f9;
+  --secondary-text: #cbd5e1;
+  --muted-text: #94a3b8;
   --primary-text-inverse: #0f172a;
 
   /* 霓虹点缀 */
@@ -1362,7 +1362,7 @@ body {
 .sync-modal__card {
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.48);
+  background: var(--panel-bg-soft);
   backdrop-filter: none;
   min-height: 0;
 }
@@ -1421,7 +1421,7 @@ body {
   border: 1px solid var(--chip-border);
   border-radius: var(--radius-md);
   color: var(--primary-text);
-  background: #fff;
+  background: var(--item-bg);
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 600;
@@ -1533,7 +1533,7 @@ body {
   flex-direction: column;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.48);
+  background: var(--panel-bg-soft);
   backdrop-filter: none;
   padding: 16px;
   min-height: 0;
@@ -1767,10 +1767,42 @@ body {
 .sync-modal .ant-input,
 .tool-manager-modal .ant-input,
 .sync-modal .ant-select-selector,
-.tool-manager-modal .ant-select-selector,
-.sync-modal .ant-segmented,
-.tool-manager-modal .ant-segmented {
-  border-radius: var(--radius-sm) !important;
+.tool-manager-modal .ant-select-selector {
+  border-color: var(--chip-border) !important;
+  background: var(--item-bg) !important;
+  color: var(--primary-text) !important;
+}
+
+.sync-modal .ant-select-selector .ant-select-selection-placeholder,
+.tool-manager-modal .ant-select-selector .ant-select-selection-placeholder {
+  color: var(--muted-text) !important;
+}
+
+.sync-modal .ant-select-selector .ant-select-selection-item,
+.tool-manager-modal .ant-select-selector .ant-select-selection-item {
+  color: var(--primary-text) !important;
+}
+
+/* Select 下拉菜单深色模式适配 */
+.sync-modal .ant-select-dropdown,
+.tool-manager-modal .ant-select-dropdown {
+  background: var(--panel-bg-solid) !important;
+  border-color: var(--panel-border) !important;
+}
+
+.sync-modal .ant-select-item,
+.tool-manager-modal .ant-select-item {
+  color: var(--primary-text) !important;
+}
+
+.sync-modal .ant-select-item-option-selected,
+.tool-manager-modal .ant-select-item-option-selected {
+  background: var(--active-bg) !important;
+}
+
+.sync-modal .ant-select-item-option-active,
+.tool-manager-modal .ant-select-item-option-active {
+  background: var(--item-hover) !important;
 }
 
 .sync-modal .ant-tag,
@@ -2567,15 +2599,19 @@ body {
   line-height: 18px;
 }
 
+[data-theme='dark'] .center-repo-filter-count {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .center-repo-filter-row .ant-btn-default .center-repo-filter-count {
   background: var(--chip-bg);
   color: var(--secondary-text);
 }
 
 .center-repo-selection {
-  border: 1px solid rgba(216, 105, 51, 0.18);
+  border: 1px solid var(--accent-soft);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--panel-bg-soft);
 }
 
 .center-repo-selection .ant-card-body {
@@ -2624,7 +2660,7 @@ body {
   min-height: 240px;
   border: 1px dashed var(--panel-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--panel-bg-soft);
 }
 
 .center-repo-list {
@@ -2636,7 +2672,7 @@ body {
 .center-repo-card {
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--item-bg);
   box-shadow: 0 1px 0 rgba(31, 45, 55, 0.04);
   transition:
     border-color 0.18s ease,
@@ -2644,15 +2680,23 @@ body {
     box-shadow 0.18s ease;
 }
 
+[data-theme='dark'] .center-repo-card {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
 .center-repo-card:hover {
   border-color: var(--panel-border-hover);
-  background: #fff;
+  background: var(--item-hover);
   box-shadow: 0 6px 18px rgba(43, 52, 58, 0.08);
 }
 
+[data-theme='dark'] .center-repo-card:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
 .center-repo-card.is-selected {
-  border-color: rgba(216, 105, 51, 0.42);
-  background: rgba(216, 105, 51, 0.06);
+  border-color: var(--accent);
+  background: var(--active-bg);
 }
 
 .center-repo-card .ant-card-body {
@@ -2779,6 +2823,72 @@ body {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
+}
+
+/* ---- 预设胶囊 (preset-pill) ---- */
+.preset-manager__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preset-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--item-bg);
+  border: 1px solid var(--chip-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-pill:hover {
+  border-color: var(--panel-border-hover);
+  background: var(--item-hover);
+}
+
+.preset-pill__status {
+  display: inline-flex;
+  align-items: center;
+}
+
+.preset-pill__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-text);
+}
+
+.preset-pill__count {
+  font-size: 11px;
+}
+
+.preset-pill__more {
+  color: var(--muted-text);
+  font-size: 14px;
+  margin-left: 2px;
+}
+
+.preset-pill__more:hover {
+  color: var(--accent);
+}
+
+/* 预设状态标签深色模式适配 */
+.preset-status-tag {
+  background: rgba(194, 138, 26, 0.1);
+  border-color: rgba(194, 138, 26, 0.2);
+  color: var(--warning);
+}
+
+[data-theme='dark'] .preset-status-tag {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--warning);
+}
+
+[data-theme='dark'] .preset-pill .ant-tag {
+  border-color: var(--chip-border);
 }
 
 @media (max-width: 860px) {
