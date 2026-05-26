@@ -140,41 +140,4 @@ pub fn delete_preset(db: &DbPool, id: &str) -> Result<(), String> {
     })
 }
 
-pub fn get_preset_by_id(db: &DbPool, id: &str) -> Result<Option<PresetEntry>, String> {
-    db.with_conn(|conn| {
-        let preset_row: Option<(String, String, Option<String>)> = conn
-            .query_row(
-                "SELECT id, name, icon FROM presets WHERE id = ?1",
-                [id],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-            )
-            .ok();
 
-        let Some((id, name, icon)) = preset_row else {
-            return Ok(None);
-        };
-
-        let mut skill_stmt = conn
-            .prepare("SELECT skill_name FROM preset_skills WHERE preset_id = ?1 ORDER BY skill_name")
-            .map_err(|e| e.to_string())?;
-
-        let skill_iter = skill_stmt
-            .query_map([&id], |row| {
-                let skill_name: String = row.get(0)?;
-                Ok(PresetSkill { skill_name })
-            })
-            .map_err(|e| e.to_string())?;
-
-        let mut skills = Vec::new();
-        for skill in skill_iter {
-            skills.push(skill.map_err(|e| e.to_string())?);
-        }
-
-        Ok(Some(PresetEntry {
-            id,
-            name,
-            icon,
-            skills,
-        }))
-    })
-}

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // ============================================================================
@@ -166,58 +166,6 @@ pub struct SkillDetailPayload {
 }
 
 // ============================================================================
-// Git Version Management
-// ============================================================================
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectSkillInfo {
-    pub name: String,
-    pub path: String,
-    pub description: Option<String>,
-    pub has_skill_md: bool,
-    pub updated_at: Option<u64>,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectSpaceInfo {
-    pub project_path: String,
-    pub skills: Vec<ProjectSkillInfo>,
-    pub global_only_skills: Vec<String>,
-    pub project_only_skills: Vec<String>,
-    pub shared_skills: Vec<String>,
-}
-
-// ============================================================================
-// Git Version Management
-// ============================================================================
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitCommitInfo {
-    pub hash: String,
-    pub short_hash: String,
-    pub message: String,
-    pub author: String,
-    pub timestamp: u64,
-}
-
-// ============================================================================
-// Git Skill Update Detection
-// ============================================================================
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitSkillUpdateInfo {
-    pub skill_name: String,
-    pub has_update: bool,
-    pub local_hash: String,
-    pub remote_hash: String,
-    pub last_checked_at: Option<u64>,
-}
-
-// ============================================================================
 // 请求类型
 // ============================================================================
 
@@ -247,14 +195,6 @@ pub struct DeleteSkillRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SkillTagsRequest {
-    pub tool_id: String,
-    pub skill_name: String,
-    pub tags: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct UpsertPresetRequest {
     pub id: Option<String>,
     pub name: String,
@@ -266,23 +206,6 @@ pub struct UpsertPresetRequest {
 #[serde(rename_all = "camelCase")]
 pub struct DeletePresetRequest {
     pub id: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ApplyPresetRequest {
-    pub preset_id: String,
-    pub target_tool_ids: Vec<String>,
-    pub mode: String,
-    pub conflict_policy: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct InstallSkillFromGitRequest {
-    pub git_url: String,
-    pub target_tool_id: String,
-    pub skill_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -306,37 +229,6 @@ pub struct DeleteToolRequest {
 pub struct DetectToolPathsRequest {
     pub id: Option<String>,
     pub name: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScanProjectSkillsRequest {
-    pub project_path: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportSkillToProjectRequest {
-    pub skill_name: String,
-    pub project_path: String,
-    pub source_tool_id: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExportSkillFromProjectRequest {
-    pub skill_name: String,
-    pub project_path: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SyncSkillFromProjectRequest {
-    pub skill_name: String,
-    pub project_path: String,
-    pub target_tool_id: String,
-    pub mode: String,
-    pub conflict_policy: String,
 }
 
 // ============================================================================

@@ -6,7 +6,6 @@ use crate::types::{
 };
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 // ============================================================================
 // 类型定义
@@ -301,88 +300,6 @@ pub fn batch_import_skills_to_center(
 }
 
 // ============================================================================
-// 安装技能到中央仓库
-// ============================================================================
-
-pub fn install_skill_from_git(git_url: &str, skill_name: Option<&str>) -> Result<String, String> {
-    ensure_center_repo()?;
-
-    let skill_name = skill_name
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| {
-            git_url
-                .split('/')
-                .last()
-                .unwrap_or("skill")
-                .trim_end_matches(".git")
-                .to_string()
-        });
-
-    sanitize_skill_name(&skill_name)?;
-    let target_path = center_skill_path(&skill_name);
-
-    if target_path.exists() {
-        return Err(format!("技能 {} 已存在于中央仓库", skill_name));
-    }
-
-    let output = Command::new("git")
-        .args([
-            "clone",
-            "--depth",
-            "1",
-            git_url,
-            &path_to_string(&target_path),
-        ])
-        .output()
-        .map_err(|e| format!("git clone 失败: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("git clone 失败: {}", stderr));
-    }
-
-    Ok(format!(
-        "已从 {} 安装技能 {} 到中央仓库",
-        git_url, skill_name
-    ))
-}
-
-pub fn import_skill_from_local(
-    source_path: &str,
-    skill_name: Option<&str>,
-) -> Result<String, String> {
-    ensure_center_repo()?;
-
-    let source = Path::new(source_path);
-    if !source.exists() {
-        return Err(format!("源路径不存在: {}", source_path));
-    }
-
-    let skill_name = skill_name
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| {
-            source
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "skill".to_string())
-        });
-
-    sanitize_skill_name(&skill_name)?;
-    let target_path = center_skill_path(&skill_name);
-
-    if target_path.exists() {
-        return Err(format!("技能 {} 已存在于中央仓库", skill_name));
-    }
-
-    copy_dir_recursive(source, &target_path)?;
-
-    Ok(format!(
-        "已从 {} 导入技能 {} 到中央仓库",
-        source_path, skill_name
-    ))
-}
-
-// ============================================================================
 // 同步：中央仓库 → 工具
 // ============================================================================
 
@@ -657,69 +574,4 @@ fn build_renamed_path(path: &Path) -> PathBuf {
     unreachable!()
 }
 
-fn get_skill_file_hashes(path: &Path) -> Result<Vec<(String, String)>, String> {
-    use md5::{Digest, Md5};
-    use std::io::Read;
 
-    let mut files = Vec::new();
-    if !path.is_dir() {
-        return Ok(files);
-    }
-
-    for entry in walkdir(path)? {
-        let entry_path = entry.path();
-        if entry_path.is_file() {
-            let rel = entry_path
-                .strip_prefix(path)
-                .map_err(|e| e.to_string())?
-                .to_string_lossy()
-                .into_owned();
-            let hash = compute_file_md5(&entry_path)?;
-            files.push((rel, hash));
-        }
-    }
-
-    files.sort_by(|a, b| a.0.cmp(&b.0));
-    Ok(files)
-}
-
-fn walkdir(path: &Path) -> Result<Vec<std::fs::DirEntry>, String> {
-    let mut result = Vec::new();
-    let mut stack = vec![path.to_path_buf()];
-
-    while let Some(dir) = stack.pop() {
-        let entries: Vec<_> = fs::read_dir(&dir)
-            .map_err(|e| format!("读取 {} 失败: {}", dir.display(), e))?
-            .flatten()
-            .collect();
-
-        for entry in entries {
-            let path = entry.path();
-            if path.is_dir() {
-                stack.push(path);
-            }
-            result.push(entry);
-        }
-    }
-
-    Ok(result)
-}
-
-fn compute_file_md5(path: &Path) -> Result<String, String> {
-    use md5::{Digest, Md5};
-    use std::io::Read;
-
-    let mut file = fs::File::open(path).map_err(|e| e.to_string())?;
-    let mut hasher = Md5::new();
-    let mut buffer = [0u8; 8192];
-
-    loop {
-        let n = file.read(&mut buffer).map_err(|e| e.to_string())?;
-        if n == 0 {
-            break;
-        }
-        hasher.update(&buffer[..n]);
-    }
-
-    Ok(format!("{:x}", hasher.finalize()))
-}

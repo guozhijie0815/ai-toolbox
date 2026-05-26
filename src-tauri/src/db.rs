@@ -1,4 +1,4 @@
-use rusqlite::{Connection, Result as SqlResult};
+use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 
@@ -9,15 +9,6 @@ pub struct DbPool {
 impl DbPool {
     pub fn new(path: PathBuf) -> Result<Self, String> {
         let conn = Connection::open(&path).map_err(|e| e.to_string())?;
-        let pool = Self {
-            conn: Mutex::new(conn),
-        };
-        pool.init_schema()?;
-        Ok(pool)
-    }
-
-    pub fn in_memory() -> Result<Self, String> {
-        let conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
         let pool = Self {
             conn: Mutex::new(conn),
         };
@@ -147,18 +138,6 @@ CREATE INDEX IF NOT EXISTS idx_sync_records_skill ON sync_records(skill_name);
 "#;
 
 impl DbPool {
-    pub fn is_skill_disabled(&self, tool_id: &str, skill_name: &str) -> Result<bool, String> {
-        let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM skill_disabled WHERE tool_id = ?1 AND skill_name = ?2",
-                [tool_id, skill_name],
-                |row| row.get(0),
-            )
-            .map_err(|e| e.to_string())?;
-        Ok(count > 0)
-    }
-
     pub fn list_disabled_skills(&self, tool_id: &str) -> Result<Vec<String>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn

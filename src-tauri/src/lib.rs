@@ -4,7 +4,6 @@ mod store;
 mod central_repo;
 mod file_watcher;
 mod claude_config;
-mod toolbox;
 mod utils;
 mod commands;
 

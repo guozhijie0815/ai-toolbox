@@ -5,28 +5,6 @@ use rusqlite::params;
 // 技能标签 CRUD
 // ============================================================================
 
-pub fn get_all_tags(db: &DbPool) -> Result<Vec<String>, String> {
-    db.with_conn(|conn| {
-        let mut stmt = conn
-            .prepare("SELECT DISTINCT tag FROM skill_tags ORDER BY tag")
-            .map_err(|e| e.to_string())?;
-
-        let tag_iter = stmt
-            .query_map([], |row| {
-                let tag: String = row.get(0)?;
-                Ok(tag)
-            })
-            .map_err(|e| e.to_string())?;
-
-        let mut tags = Vec::new();
-        for tag in tag_iter {
-            tags.push(tag.map_err(|e| e.to_string())?);
-        }
-
-        Ok(tags)
-    })
-}
-
 pub fn get_skill_tags(db: &DbPool, skill_name: &str) -> Result<Vec<String>, String> {
     db.with_conn(|conn| {
         let mut stmt = conn

@@ -34,7 +34,6 @@ pub fn start_file_watcher(
     }
 
     // 创建 watcher
-    let app_for_event = app.clone();
     let app_for_debounce = app.clone();
     let watcher_handle = handle.clone();
 
@@ -95,24 +94,4 @@ pub fn start_file_watcher(
     Ok(())
 }
 
-/// 更新监控路径列表
-pub fn update_watch_paths(
-    handle: Arc<FileWatcherHandle>,
-    new_paths: Vec<PathBuf>,
-) -> Result<(), String> {
-    let mut paths = handle
-        .watched_paths
-        .lock()
-        .map_err(|e| e.to_string())?;
-    *paths = new_paths;
-    Ok(())
-}
 
-/// 获取当前监控的路径列表
-pub fn get_watched_paths(handle: Arc<FileWatcherHandle>) -> Result<Vec<PathBuf>, String> {
-    let paths = handle
-        .watched_paths
-        .lock()
-        .map_err(|e| e.to_string())?;
-    Ok(paths.clone())
-}
