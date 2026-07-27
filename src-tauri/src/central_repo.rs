@@ -4,6 +4,7 @@ use crate::types::{
     current_timestamp, metadata_mtime, path_to_string, read_skill_descriptions, sanitize_skill_name,
     UserToolSpec,
 };
+use crate::utils::expand_path;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -163,7 +164,9 @@ pub fn discover_skills_from_tools(tools: &[UserToolSpec]) -> Result<Vec<Discover
         let Some(skill_dir) = &tool.skill_dir else {
             continue;
         };
-        let path = Path::new(skill_dir);
+        let Ok(path) = expand_path(skill_dir) else {
+            continue;
+        };
         if !path.exists() || !path.is_dir() {
             continue;
         }
@@ -242,7 +245,7 @@ pub fn batch_import_skills_to_center(
             }
         };
 
-        let skill_dir = match tool.skill_dir.as_deref() {
+        let skill_dir = match tool.skill_dir.as_deref().and_then(|d| expand_path(d).ok()) {
             Some(d) => d,
             None => {
                 outcomes.push(ImportOutcome {
@@ -253,8 +256,9 @@ pub fn batch_import_skills_to_center(
                 continue;
             }
         };
+        let skill_dir_str = skill_dir.to_string_lossy();
 
-        match import_skill_from_tool(&item.skill_name, skill_dir) {
+        match import_skill_from_tool(&item.skill_name, &skill_dir_str) {
             Ok(message) => {
                 // 写入数据库
                 let now = current_timestamp();

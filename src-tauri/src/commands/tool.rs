@@ -5,8 +5,9 @@ use crate::types::{
     SkillInsightEntry, ToolEntry, ToolRegistryEntry, UpsertToolRequest, ConfigFile,
 };
 use crate::utils::{
-    build_tool_entry_from_user, compare_skill_folders, detect_tool_paths_from_name, get_home_dir,
-    load_tool_registry, sanitize_upsert_request, save_tool_registry,
+    build_tool_entry_from_user, compare_skill_folders, detect_tool_paths_from_name, expand_path,
+    get_home_dir, load_tool_registry, resolve_skill_dir, sanitize_upsert_request, save_tool_registry,
+    scan_skill_dir,
 };
 
 #[tauri::command]
@@ -97,29 +98,55 @@ pub fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
     Ok(insights)
 }
 
+fn registry_entry_from_spec(item: &crate::types::UserToolSpec) -> ToolRegistryEntry {
+    let config_files = item
+        .config_files
+        .iter()
+        .map(|file| {
+            let abs = expand_path(&file.path)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|_| file.path.clone());
+            ConfigFile {
+                label: file.label.clone(),
+                path: abs.clone(),
+                kind: file.kind.clone(),
+                exists: Path::new(&abs).exists(),
+            }
+        })
+        .collect();
+
+    let (skill_dir_exists, skill_count) = match item.skill_dir.as_deref() {
+        Some(raw) => match resolve_skill_dir(raw) {
+            Ok(abs) => {
+                let exists = abs.is_dir();
+                let count = if exists {
+                    scan_skill_dir(&abs, &item.id).len()
+                } else {
+                    0
+                };
+                (exists, count)
+            }
+            Err(_) => (false, 0),
+        },
+        None => (false, 0),
+    };
+
+    ToolRegistryEntry {
+        id: item.id.clone(),
+        name: item.name.clone(),
+        enabled: item.enabled,
+        config_files,
+        skill_dir: item.skill_dir.clone(),
+        skill_dir_exists,
+        skill_count,
+        is_system: item.is_system,
+    }
+}
+
 #[tauri::command]
 pub fn list_tool_registry() -> Result<Vec<ToolRegistryEntry>, String> {
     let items = load_tool_registry()?;
-    Ok(items
-        .iter()
-        .map(|item| ToolRegistryEntry {
-            id: item.id.clone(),
-            name: item.name.clone(),
-            enabled: item.enabled,
-            config_files: item
-                .config_files
-                .iter()
-                .map(|file| ConfigFile {
-                    label: file.label.clone(),
-                    path: file.path.clone(),
-                    kind: file.kind.clone(),
-                    exists: Path::new(&file.path).exists(),
-                })
-                .collect(),
-            skill_dir: item.skill_dir.clone(),
-            is_system: item.is_system,
-        })
-        .collect())
+    Ok(items.iter().map(registry_entry_from_spec).collect())
 }
 
 #[tauri::command]
@@ -138,23 +165,7 @@ pub fn upsert_tool_registry_item(request: UpsertToolRequest) -> Result<ToolRegis
         items.push(next.clone());
     }
     save_tool_registry(&items)?;
-    Ok(ToolRegistryEntry {
-        id: next.id,
-        name: next.name,
-        enabled: next.enabled,
-        config_files: next
-            .config_files
-            .iter()
-            .map(|file| ConfigFile {
-                label: file.label.clone(),
-                path: file.path.clone(),
-                kind: file.kind.clone(),
-                exists: Path::new(&file.path).exists(),
-            })
-            .collect(),
-        skill_dir: next.skill_dir,
-        is_system: false,
-    })
+    Ok(registry_entry_from_spec(&next))
 }
 
 #[tauri::command]

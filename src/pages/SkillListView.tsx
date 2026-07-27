@@ -15,6 +15,7 @@ import {
   FileTextOutlined,
   FolderOpenOutlined,
   MoreOutlined,
+  ReloadOutlined,
   SearchOutlined,
   SyncOutlined,
 } from '@ant-design/icons'
@@ -66,6 +67,16 @@ function SkillListView({
   const toggleSkillEnabled = useToolboxStore((state) => state.toggleSkillEnabled)
   const loadSkillDetail = useToolboxStore((state) => state.loadSkillDetail)
   const refreshTools = useToolboxStore((state) => state.refreshTools)
+  const isToolsLoading = useToolboxStore((state) => state.isToolsLoading)
+
+  const handleRefreshSkills = async () => {
+    try {
+      await refreshTools()
+      void messageApi.success('技能列表已刷新')
+    } catch {
+      void messageApi.error('刷新失败')
+    }
+  }
 
   const renderSkillMeta = (skill: SkillItem) => (
     <div className="skill-entry__meta">
@@ -119,6 +130,16 @@ function SkillListView({
           <Tag variant="filled" color="cyan">
             {filteredCurrentSkills.length}/{currentSkills.length}
           </Tag>
+          {selectedTool?.skillDir && selectedTool.skillDirExists === false ? (
+            <Tag color="warning">目录不存在</Tag>
+          ) : null}
+          <Button
+            icon={<ReloadOutlined />}
+            loading={isToolsLoading}
+            onClick={() => void handleRefreshSkills()}
+          >
+            刷新
+          </Button>
           <Button icon={<SyncOutlined />} onClick={onOpenSyncModal}>
             同步技能
           </Button>

@@ -197,6 +197,11 @@ const normalizeSkill = (value: unknown): SkillItem | null => {
     return null
   }
 
+  const tagsRaw = record.tags
+  const tags = Array.isArray(tagsRaw)
+    ? tagsRaw.filter((item): item is string => typeof item === 'string')
+    : undefined
+
   return {
     id,
     name,
@@ -211,6 +216,11 @@ const normalizeSkill = (value: unknown): SkillItem | null => {
       typeof (record.updatedAt ?? record.updated_at) === 'number'
         ? Number(record.updatedAt ?? record.updated_at)
         : undefined,
+    tags,
+    enabled:
+      record.enabled === undefined && record.is_enabled === undefined
+        ? undefined
+        : Boolean(record.enabled ?? record.is_enabled ?? true),
   }
 }
 
@@ -285,10 +295,12 @@ const normalizeTool = (value: unknown): ToolItem | null => {
     name,
     path: readString(record.path, record.root, record.directory),
     skillDir: readString(record.skillDir, record.skill_dir, record.skillsDir, record.skills_dir),
+    skillDirExists: Boolean(record.skillDirExists ?? record.skill_dir_exists),
     description: readString(record.description, record.desc),
     badge: readString(record.badge, record.kind, record.type),
     configFiles: uniqById(configFiles),
     skills: uniqById(skills),
+    isSystem: Boolean(record.isSystem ?? record.is_system),
   }
 }
 
@@ -317,6 +329,12 @@ const normalizeToolRegistryEntry = (value: unknown): ToolRegistryEntry | null =>
     enabled: Boolean(record.enabled ?? true),
     configFiles,
     skillDir: readString(record.skillDir, record.skill_dir),
+    skillDirExists: Boolean(record.skillDirExists ?? record.skill_dir_exists),
+    skillCount:
+      typeof (record.skillCount ?? record.skill_count) === 'number'
+        ? Number(record.skillCount ?? record.skill_count)
+        : undefined,
+    isSystem: Boolean(record.isSystem ?? record.is_system),
   }
 }
 

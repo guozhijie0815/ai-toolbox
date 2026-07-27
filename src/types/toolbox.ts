@@ -35,6 +35,7 @@ export interface ToolItem {
   name: string
   path?: string
   skillDir?: string
+  skillDirExists?: boolean
   description?: string
   badge?: string
   configFiles: ConfigFileItem[]
@@ -68,6 +69,8 @@ export interface ToolRegistryEntry {
   enabled: boolean
   configFiles: ToolRegistryConfigFile[]
   skillDir?: string
+  skillDirExists?: boolean
+  skillCount?: number
   isSystem?: boolean
 }
 

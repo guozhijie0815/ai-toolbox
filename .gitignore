@@ -25,3 +25,15 @@ dist-ssr
 *.sw?
 
 .claude/
+
+# 本地安装包（不入库）
+release/
+packages/
+*.dmg
+*.app
+*.exe
+*.msi
+*.AppImage
+*.deb
+*.rpm
+src-tauri/target/

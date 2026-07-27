@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::Path;
 
 use serde::Deserialize;
 
@@ -10,7 +9,7 @@ use crate::types::{
 };
 use crate::utils::{
     copy_dir_recursive, load_tool_registry, registry_tool_by_id, remove_existing_path,
-    resolve_source_dir, with_conflict_policy,
+    resolve_skill_dir, resolve_source_dir, with_conflict_policy,
 };
 
 #[tauri::command]
@@ -18,25 +17,25 @@ pub fn sync_skills(request: SyncSkillsRequest) -> Result<Vec<SyncSkillOutcome>, 
     let registry = load_tool_registry()?;
     let source_tool = registry_tool_by_id(&registry, &request.source_tool_id)
         .ok_or_else(|| format!("unknown source tool: {}", request.source_tool_id))?;
-    let source_root = Path::new(
+    let source_root = resolve_skill_dir(
         source_tool
             .skill_dir
             .as_deref()
             .ok_or_else(|| format!("tool {} has no skill directory", source_tool.id))?,
-    );
+    )?;
 
     let mut outcomes = Vec::new();
     for target_tool_id in &request.target_tool_ids {
         let target_tool = registry_tool_by_id(&registry, target_tool_id)
             .ok_or_else(|| format!("unknown target tool: {target_tool_id}"))?;
-        let target_root = Path::new(
+        let target_root = resolve_skill_dir(
             target_tool
                 .skill_dir
                 .as_deref()
                 .ok_or_else(|| format!("tool {} has no skill directory", target_tool.id))?,
-        );
+        )?;
 
-        fs::create_dir_all(target_root).map_err(|err| err.to_string())?;
+        fs::create_dir_all(&target_root).map_err(|err| err.to_string())?;
 
         for skill_name in &request.skill_names {
             let source_path = source_root.join(skill_name);
@@ -125,11 +124,11 @@ pub fn delete_skill(request: DeleteSkillRequest) -> Result<String, String> {
     let registry = load_tool_registry()?;
     let tool = registry_tool_by_id(&registry, &request.tool_id)
         .ok_or_else(|| format!("unknown tool: {}", request.tool_id))?;
-    let skill_root = Path::new(
+    let skill_root = resolve_skill_dir(
         tool.skill_dir
             .as_deref()
             .ok_or_else(|| format!("tool {} has no skill directory", tool.id))?,
-    );
+    )?;
     let skill_name = sanitize_skill_name(&request.skill_name)?;
     let skill_path = skill_root.join(&skill_name);
 
@@ -155,12 +154,12 @@ pub fn toggle_skill_enabled(request: ToggleSkillEnabledRequest) -> Result<(), St
     let registry = load_tool_registry()?;
     let tool = registry_tool_by_id(&registry, &request.tool_id)
         .ok_or_else(|| format!("unknown tool: {}", request.tool_id))?;
-    let skill_root = Path::new(
+    let skill_root = resolve_skill_dir(
         tool
             .skill_dir
             .as_deref()
             .ok_or_else(|| format!("tool {} has no skill directory", tool.id))?,
-    );
+    )?;
     let skill_name = sanitize_skill_name(&request.skill_name)?;
     let skill_path = skill_root.join(&skill_name);
 
@@ -184,11 +183,13 @@ pub fn get_skill_detail(tool_id: String, skill_name: String) -> Result<SkillDeta
         .iter()
         .find(|t| t.id == tool_id)
         .ok_or_else(|| format!("工具 {} 不存在", tool_id))?;
-    let skill_dir = tool
-        .skill_dir
-        .as_ref()
-        .ok_or_else(|| format!("工具 {} 没有技能目录", tool_id))?;
-    let skill_path = Path::new(skill_dir).join(&skill_name);
+    let skill_dir = resolve_skill_dir(
+        tool
+            .skill_dir
+            .as_deref()
+            .ok_or_else(|| format!("工具 {} 没有技能目录", tool_id))?,
+    )?;
+    let skill_path = skill_dir.join(&skill_name);
     if !skill_path.exists() {
         return Err(format!("技能 {} 不存在", skill_name));
     }

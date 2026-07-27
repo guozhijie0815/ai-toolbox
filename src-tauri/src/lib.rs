@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use db::init_db_pool;
-use utils::{cleanup_legacy_system_tools, get_home_dir, load_tool_registry};
+use utils::{cleanup_legacy_system_tools, expand_path, get_home_dir, load_tool_registry};
 
 use commands::center_repo_cmd::{
     batch_import_to_center, batch_sync_from_center, delete_center_skill_command,
@@ -62,7 +62,7 @@ pub fn run() {
                 let mut watch_paths: Vec<PathBuf> = tools
                     .into_iter()
                     .filter(|t| t.enabled)
-                    .filter_map(|t| t.skill_dir.map(PathBuf::from))
+                    .filter_map(|t| t.skill_dir.as_deref().and_then(|p| expand_path(p).ok()))
                     .filter(|p| p.exists())
                     .collect();
 

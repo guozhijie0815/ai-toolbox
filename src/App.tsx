@@ -125,6 +125,34 @@ function App() {
     })
   }, [initialize])
 
+  // 监听技能/配置目录变更，自动刷新列表
+  useEffect(() => {
+    if (!hasTauriRuntime()) return
+
+    let disposed = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let unlisten: (() => void) | undefined
+
+    const setup = async () => {
+      const { listen } = await import('@tauri-apps/api/event')
+      if (disposed) return
+      unlisten = await listen('app-files-changed', () => {
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(() => {
+          void refreshTools()
+        }, 300)
+      })
+    }
+
+    void setup()
+
+    return () => {
+      disposed = true
+      if (timer) clearTimeout(timer)
+      unlisten?.()
+    }
+  }, [refreshTools])
+
   // ---- 主题 ----
   useEffect(() => {
     if (typeof window === 'undefined') return

@@ -39,6 +39,8 @@ pub struct ToolEntry {
     pub name: String,
     pub config_files: Vec<ConfigFile>,
     pub skill_dir: Option<String>,
+    #[serde(default)]
+    pub skill_dir_exists: bool,
     pub skills: Vec<SkillEntry>,
     #[serde(default)]
     pub is_system: bool,
@@ -146,6 +148,10 @@ pub struct ToolRegistryEntry {
     pub enabled: bool,
     pub config_files: Vec<ConfigFile>,
     pub skill_dir: Option<String>,
+    #[serde(default)]
+    pub skill_dir_exists: bool,
+    #[serde(default)]
+    pub skill_count: usize,
     #[serde(default)]
     pub is_system: bool,
 }

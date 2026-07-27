@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::central_repo;
 use crate::db::get_db;
 use crate::store;
-use crate::utils::{load_tool_registry, registry_tool_by_id};
+use crate::utils::{expand_path, load_tool_registry, registry_tool_by_id, resolve_skill_dir};
 
 #[tauri::command]
 pub fn list_center_skills() -> Result<Vec<central_repo::CenterSkillInfo>, String> {
@@ -14,9 +14,11 @@ pub fn list_center_skills() -> Result<Vec<central_repo::CenterSkillInfo>, String
         .iter()
         .filter(|t| t.enabled)
         .filter_map(|t| {
-            t.skill_dir
-                .as_ref()
-                .map(|dir| (t.id.clone(), t.name.clone(), dir.clone()))
+            t.skill_dir.as_ref().and_then(|dir| {
+                expand_path(dir)
+                    .ok()
+                    .map(|abs| (t.id.clone(), t.name.clone(), abs.to_string_lossy().into_owned()))
+            })
         })
         .collect();
 
@@ -76,19 +78,22 @@ pub fn batch_sync_from_center(
     let registry = load_tool_registry()?;
     let tool = registry_tool_by_id(&registry, &target_tool_id)
         .ok_or_else(|| format!("未知工具: {}", target_tool_id))?;
-    let skill_dir = tool
-        .skill_dir
-        .as_deref()
-        .ok_or_else(|| format!("工具 {} 没有技能目录", target_tool_id))?;
+    let skill_dir = resolve_skill_dir(
+        tool
+            .skill_dir
+            .as_deref()
+            .ok_or_else(|| format!("工具 {} 没有技能目录", target_tool_id))?,
+    )?;
+    let skill_dir_str = skill_dir.to_string_lossy().into_owned();
 
     let mut outcomes = Vec::new();
     for skill_name in skill_names {
-        match central_repo::sync_skill_to_tool(&skill_name, skill_dir, &mode, &conflict_policy) {
+        match central_repo::sync_skill_to_tool(&skill_name, &skill_dir_str, &mode, &conflict_policy) {
             Ok(outcome) => outcomes.push(outcome),
             Err(e) => outcomes.push(central_repo::SyncOutcome {
                 skill_name,
                 target_tool_id: target_tool_id.clone(),
-                target_path: skill_dir.to_string(),
+                target_path: skill_dir_str.clone(),
                 status: "error".to_string(),
                 message: e,
             }),

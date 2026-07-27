@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { DeleteOutlined, EditOutlined, LockOutlined } from '@ant-design/icons'
 import {
@@ -37,12 +37,35 @@ function ToolManagerModal({ open, onClose }: ToolManagerModalProps) {
   const { message: messageApi } = AntdApp.useApp()
   const [toolForm] = Form.useForm()
   const refreshTools = useToolboxStore((state) => state.refreshTools)
+  const skillDirWatch = Form.useWatch('skillDir', toolForm)
 
   const [registryTools, setRegistryTools] = useState<ToolRegistryEntry[]>([])
   const [registryLoading, setRegistryLoading] = useState(false)
   const [registrySaving, setRegistrySaving] = useState(false)
   const [editingToolId, setEditingToolId] = useState<string>()
   const [editingConfigFiles, setEditingConfigFiles] = useState<ToolRegistryConfigFile[]>([])
+
+  const skillDirStatus = useMemo(() => {
+    const raw = typeof skillDirWatch === 'string' ? skillDirWatch.trim() : ''
+    if (!raw) return null
+    const matched = registryTools.find((item) => {
+      if (editingToolId && item.id === editingToolId) return true
+      return item.skillDir === raw
+    })
+    if (!matched || !matched.skillDir) {
+      return { exists: undefined as boolean | undefined, count: undefined as number | undefined }
+    }
+    const sameDir =
+      matched.skillDir === raw ||
+      matched.skillDir.replace(/^~(?=\/)/, '') === raw.replace(/^~(?=\/)/, '')
+    if (!sameDir && matched.id !== editingToolId) {
+      return { exists: undefined, count: undefined }
+    }
+    return {
+      exists: matched.skillDirExists,
+      count: matched.skillCount,
+    }
+  }, [editingToolId, registryTools, skillDirWatch])
 
   const loadRegistryTools = async () => {
     setRegistryLoading(true)
@@ -110,14 +133,20 @@ function ToolManagerModal({ open, onClose }: ToolManagerModalProps) {
     try {
       const values = await toolForm.validateFields()
       setRegistrySaving(true)
-      await upsertToolRegistryItem({
+      const saved = await upsertToolRegistryItem({
         id: values.id,
         name: values.name,
         enabled: values.enabled,
         configFiles: editingConfigFiles,
         skillDir: values.skillDir?.trim() || undefined,
       })
-      void messageApi.success(editingToolId ? '工具已更新' : '工具已新增')
+      const skillHint =
+        saved.skillDir == null
+          ? ''
+          : saved.skillDirExists === false
+            ? '（技能目录不存在）'
+            : `（已扫描 ${saved.skillCount ?? 0} 个技能）`
+      void messageApi.success(`${editingToolId ? '工具已更新' : '工具已新增'}${skillHint}`)
       await loadRegistryTools()
       await refreshTools()
       resetToolForm()
@@ -251,8 +280,31 @@ function ToolManagerModal({ open, onClose }: ToolManagerModalProps) {
               </Form.Item>
             </div>
 
-            <Form.Item label="技能目录" name="skillDir">
-              <Input placeholder="例如 /Users/you/.agents/skills" />
+            <Form.Item
+              label="技能目录"
+              name="skillDir"
+              extra={
+                skillDirStatus ? (
+                  <Space size={8} wrap>
+                    {skillDirStatus.exists === false ? (
+                      <Tag color="warning">目录不存在</Tag>
+                    ) : skillDirStatus.exists === true ? (
+                      <Tag color="success">目录存在</Tag>
+                    ) : (
+                      <Tag>保存后校验路径</Tag>
+                    )}
+                    {typeof skillDirStatus.count === 'number' ? (
+                      <Text type="secondary">已扫描 {skillDirStatus.count} 个技能</Text>
+                    ) : (
+                      <Text type="secondary">支持 ~/ 相对路径</Text>
+                    )}
+                  </Space>
+                ) : (
+                  <Text type="secondary">例如 ~/.agents/skills 或绝对路径</Text>
+                )
+              }
+            >
+              <Input placeholder="例如 ~/.agents/skills" />
             </Form.Item>
 
             <div className="tool-manager-toolbar">

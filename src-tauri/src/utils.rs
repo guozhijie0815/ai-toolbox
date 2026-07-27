@@ -19,10 +19,63 @@ pub fn home_path(relative: &str) -> Result<String, String> {
     Ok(path_to_string(&home.join(relative)))
 }
 
-/// 根据当前用户主目录动态生成默认工具配置
+/// 展开 `~` / 相对 home 路径为绝对路径
+pub fn expand_path(path: &str) -> Result<PathBuf, String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("路径为空".to_string());
+    }
+    if trimmed == "~" {
+        return get_home_dir();
+    }
+    if let Some(rest) = trimmed.strip_prefix("~/") {
+        return Ok(get_home_dir()?.join(rest));
+    }
+    if let Some(rest) = trimmed.strip_prefix("~\\") {
+        return Ok(get_home_dir()?.join(rest));
+    }
+    Ok(PathBuf::from(trimmed))
+}
+
+/// 将 home 下绝对路径转为可移植的 `~/...` 形式
+pub fn to_portable_path(path: &str) -> String {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    if trimmed == "~" || trimmed.starts_with("~/") || trimmed.starts_with("~\\") {
+        return trimmed.replace('\\', "/");
+    }
+
+    let Ok(home) = get_home_dir() else {
+        return trimmed.to_string();
+    };
+    let home_str = path_to_string(&home);
+    let abs = expand_path(trimmed)
+        .map(|p| path_to_string(&p))
+        .unwrap_or_else(|_| trimmed.to_string());
+
+    if abs == home_str {
+        return "~".to_string();
+    }
+    let unix_prefix = format!("{home_str}/");
+    let win_prefix = format!("{home_str}\\");
+    if let Some(rest) = abs.strip_prefix(&unix_prefix) {
+        return format!("~/{}", rest.replace('\\', "/"));
+    }
+    if let Some(rest) = abs.strip_prefix(&win_prefix) {
+        return format!("~/{}", rest.replace('\\', "/"));
+    }
+    abs
+}
+
+fn portable_home(rel: &str) -> String {
+    format!("~/{}", rel.trim_start_matches('/'))
+}
+
+/// 根据当前用户主目录动态生成默认工具配置（路径以 ~/ 可移植形式存储）
 pub fn default_tool_specs() -> Result<Vec<UserToolSpec>, String> {
-    let h = get_home_dir()?;
-    let p = |rel: &str| path_to_string(&h.join(rel));
+    let p = portable_home;
 
     #[cfg(target_os = "macos")]
     let specs = vec![
@@ -55,7 +108,7 @@ pub fn default_tool_specs() -> Result<Vec<UserToolSpec>, String> {
                 UserToolConfigFile { label: "mcp.json".into(), path: p(".cursor/mcp.json"), kind: "json".into() },
                 UserToolConfigFile { label: "hooks.json".into(), path: p(".cursor/hooks.json"), kind: "json".into() },
             ],
-            skill_dir: Some(p(".cursor/skills-cursor")),
+            skill_dir: Some(p(".cursor/skills")),
             is_system: false,
         },
         UserToolSpec {
@@ -130,7 +183,7 @@ pub fn default_tool_specs() -> Result<Vec<UserToolSpec>, String> {
                 UserToolConfigFile { label: "settings.json".into(), path: p("AppData/Roaming/Cursor/User/settings.json"), kind: "json".into() },
                 UserToolConfigFile { label: "mcp.json".into(), path: p(".cursor/mcp.json"), kind: "json".into() },
             ],
-            skill_dir: Some(p(".cursor/skills-cursor")),
+            skill_dir: Some(p(".cursor/skills")),
             is_system: false,
         },
         UserToolSpec {
@@ -217,17 +270,33 @@ pub fn load_tool_registry() -> Result<Vec<UserToolSpec>, String> {
     let mut items = serde_json::from_str::<Vec<UserToolSpec>>(&content).map_err(|err| err.to_string())?;
     items.retain(|item| !item.id.trim().is_empty() && !item.name.trim().is_empty());
 
-    // 迁移：旧版 codex 技能目录可能指向 ~/.codex/skills，需修正为 ~/.agents/skills
-    let agents_skills_dir = home_path(".agents/skills").ok();
-    let codex_old_dir = home_path(".codex/skills").ok();
+    // 将绝对 home 路径迁移为可移植 ~/ 形式；Cursor 旧默认目录迁到 ~/.cursor/skills
     let mut changed = false;
     for item in &mut items {
-        if item.id == "codex" {
-            if let (Some(ref old), Some(ref new_dir)) = (&codex_old_dir, &agents_skills_dir) {
-                if item.skill_dir.as_deref() == Some(old.as_str()) {
-                    item.skill_dir = Some(new_dir.clone());
-                    changed = true;
+        let mut config_changed = false;
+        for file in &mut item.config_files {
+            let portable = to_portable_path(&file.path);
+            if portable != file.path {
+                file.path = portable;
+                config_changed = true;
+            }
+        }
+        if config_changed {
+            changed = true;
+        }
+
+        if let Some(skill_dir) = item.skill_dir.clone() {
+            let mut next = to_portable_path(&skill_dir);
+            if item.id == "cursor" {
+                let expanded = expand_path(&next).ok();
+                let old_cursor = expand_path("~/.cursor/skills-cursor").ok();
+                if expanded.is_some() && expanded == old_cursor {
+                    next = "~/".to_string() + ".cursor/skills";
                 }
+            }
+            if next != skill_dir {
+                item.skill_dir = Some(next);
+                changed = true;
             }
         }
     }
@@ -247,30 +316,68 @@ pub fn registry_tool_by_id<'a>(items: &'a [UserToolSpec], id: &str) -> Option<&'
     items.iter().find(|item| item.id == id)
 }
 
+/// 解析工具 skill_dir 为绝对路径（支持 ~）
+pub fn resolve_skill_dir(skill_dir: &str) -> Result<PathBuf, String> {
+    expand_path(skill_dir)
+}
+
 pub fn build_tool_entry_from_user(spec: &UserToolSpec) -> ToolEntry {
     let config_files = spec
         .config_files
         .iter()
-        .map(|file| ConfigFile {
-            label: file.label.clone(),
-            path: file.path.clone(),
-            kind: file.kind.clone(),
-            exists: Path::new(&file.path).exists(),
+        .map(|file| {
+            let abs = expand_path(&file.path)
+                .map(|p| path_to_string(&p))
+                .unwrap_or_else(|_| file.path.clone());
+            ConfigFile {
+                label: file.label.clone(),
+                path: abs.clone(),
+                kind: file.kind.clone(),
+                exists: Path::new(&abs).exists(),
+            }
         })
         .collect::<Vec<_>>();
 
-    let skill_dir = spec.skill_dir.clone();
-    let skills = spec
-        .skill_dir
-        .as_ref()
-        .map(|path| scan_skill_dir(Path::new(path), &spec.id))
-        .unwrap_or_default();
+    let (skill_dir, skill_dir_exists, skills) = match spec.skill_dir.as_ref() {
+        Some(raw) => match expand_path(raw) {
+            Ok(abs) => {
+                let abs_str = path_to_string(&abs);
+                let exists = abs.is_dir();
+                let mut dirs = Vec::new();
+                if exists {
+                    dirs.push(abs);
+                }
+                // Cursor：同时扫描用户 skills 与内置 skills-cursor
+                if spec.id == "cursor" {
+                    if let Ok(extra) = expand_path("~/.cursor/skills-cursor") {
+                        if extra.is_dir() && !dirs.iter().any(|d| d == &extra) {
+                            dirs.push(extra);
+                        }
+                    }
+                    if let Ok(user_skills) = expand_path("~/.cursor/skills") {
+                        if user_skills.is_dir() && !dirs.iter().any(|d| d == &user_skills) {
+                            dirs.insert(0, user_skills);
+                        }
+                    }
+                }
+                let skills = if dirs.is_empty() {
+                    Vec::new()
+                } else {
+                    scan_skill_dirs(&dirs, &spec.id)
+                };
+                (Some(abs_str), exists, skills)
+            }
+            Err(_) => (Some(raw.clone()), false, Vec::new()),
+        },
+        None => (None, false, Vec::new()),
+    };
 
     ToolEntry {
         id: spec.id.clone(),
         name: spec.name.clone(),
         config_files,
         skill_dir,
+        skill_dir_exists,
         skills,
         is_system: spec.is_system,
     }
@@ -300,7 +407,7 @@ pub fn sanitize_upsert_request(request: UpsertToolRequest) -> Result<UserToolSpe
         };
         config_files.push(UserToolConfigFile {
             label: item.label.trim().to_string(),
-            path: item.path.trim().to_string(),
+            path: to_portable_path(item.path.trim()),
             kind,
         });
     }
@@ -310,9 +417,14 @@ pub fn sanitize_upsert_request(request: UpsertToolRequest) -> Result<UserToolSpe
         name: request.name.trim().to_string(),
         enabled: request.enabled,
         config_files,
-        skill_dir: request
-            .skill_dir
-            .and_then(|value| if value.trim().is_empty() { None } else { Some(value.trim().to_string()) }),
+        skill_dir: request.skill_dir.and_then(|value| {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(to_portable_path(trimmed))
+            }
+        }),
         is_system: false,
     })
 }
@@ -339,9 +451,8 @@ pub fn detect_tool_paths_from_name(input: &str) -> DetectToolPathsResult {
             }
         }
         if let Some(skills_path) = skills {
-            if skills_path.exists() {
-                *skill_out = Some(skills_path.to_string_lossy().to_string());
-            }
+            // 目录不存在也返回建议路径，便于用户一键填写
+            *skill_out = Some(path_to_string(&skills_path));
         }
     };
 
@@ -367,13 +478,23 @@ pub fn detect_tool_paths_from_name(input: &str) -> DetectToolPathsResult {
         #[cfg(target_os = "linux")]
         let settings_path = home.join(".config/Cursor/User/settings.json");
 
+        let cursor_skills = home.join(".cursor/skills");
+        let cursor_skills_builtin = home.join(".cursor/skills-cursor");
+        let preferred = if cursor_skills.is_dir() {
+            cursor_skills
+        } else if cursor_skills_builtin.is_dir() {
+            cursor_skills_builtin
+        } else {
+            cursor_skills
+        };
+
         apply(
             &[
                 ("settings.json", settings_path, "json"),
                 ("mcp.json", home.join(".cursor/mcp.json"), "json"),
                 ("hooks.json", home.join(".cursor/hooks.json"), "json"),
             ],
-            Some(home.join(".cursor/skills-cursor")),
+            Some(preferred),
             &mut config_files,
             &mut skill_dir,
         );
@@ -436,11 +557,13 @@ pub fn set_skill_tags(skill_name: &str, tags: Vec<String>) -> Result<(), String>
 }
 
 pub fn scan_skill_dir(skill_dir: &Path, tool_id: &str) -> Vec<SkillEntry> {
-    let mut items = Vec::new();
+    scan_skill_dirs(&[skill_dir.to_path_buf()], tool_id)
+}
 
-    let Ok(entries) = fs::read_dir(skill_dir) else {
-        return items;
-    };
+/// 扫描一个或多个技能目录，按技能名去重（先出现的优先）
+pub fn scan_skill_dirs(skill_dirs: &[PathBuf], tool_id: &str) -> Vec<SkillEntry> {
+    let mut items = Vec::new();
+    let mut seen = std::collections::HashSet::new();
 
     let disabled = match get_db() {
         Ok(db) => db.list_disabled_skills(tool_id).unwrap_or_default(),
@@ -448,56 +571,65 @@ pub fn scan_skill_dir(skill_dir: &Path, tool_id: &str) -> Vec<SkillEntry> {
     };
     let disabled_set: std::collections::HashSet<String> = disabled.into_iter().collect();
 
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let Ok(file_type) = entry.file_type() else {
+    for skill_dir in skill_dirs {
+        let Ok(entries) = fs::read_dir(skill_dir) else {
             continue;
         };
 
-        let is_dir = file_type.is_dir() || (file_type.is_symlink() && path.is_dir());
-        if !is_dir {
-            continue;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+
+            let is_dir = file_type.is_dir() || (file_type.is_symlink() && path.is_dir());
+            if !is_dir {
+                continue;
+            }
+
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if !seen.insert(name.clone()) {
+                continue;
+            }
+            let enabled = !disabled_set.contains(&name);
+
+            let skill_md = path.join("SKILL.md");
+            let (description, full_description, summary) = if skill_md.exists() {
+                read_skill_descriptions(&skill_md)
+            } else {
+                (None, None, None)
+            };
+            let link_target = if file_type.is_symlink() {
+                fs::read_link(&path)
+                    .ok()
+                    .map(|target| {
+                        if target.is_absolute() {
+                            target
+                        } else {
+                            path.parent().unwrap_or(skill_dir).join(target)
+                        }
+                    })
+                    .map(|target| path_to_string(&target))
+            } else {
+                None
+            };
+
+            let tags = get_skill_tags(&name).unwrap_or_default();
+
+            items.push(SkillEntry {
+                name,
+                description,
+                full_description,
+                summary,
+                path: path_to_string(&path),
+                has_skill_md: skill_md.exists(),
+                is_symlink: file_type.is_symlink(),
+                link_target,
+                updated_at: metadata_mtime(&path),
+                tags,
+                enabled,
+            });
         }
-
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let enabled = !disabled_set.contains(&name);
-
-        let skill_md = path.join("SKILL.md");
-        let (description, full_description, summary) = if skill_md.exists() {
-            read_skill_descriptions(&skill_md)
-        } else {
-            (None, None, None)
-        };
-        let link_target = if file_type.is_symlink() {
-            fs::read_link(&path)
-                .ok()
-                .map(|target| {
-                    if target.is_absolute() {
-                        target
-                    } else {
-                        path.parent().unwrap_or(skill_dir).join(target)
-                    }
-                })
-                .map(|target| path_to_string(&target))
-        } else {
-            None
-        };
-
-        let tags = get_skill_tags(&name).unwrap_or_default();
-
-        items.push(SkillEntry {
-            name,
-            description,
-            full_description,
-            summary,
-            path: path_to_string(&path),
-            has_skill_md: skill_md.exists(),
-            is_symlink: file_type.is_symlink(),
-            link_target,
-            updated_at: metadata_mtime(&path),
-            tags,
-            enabled,
-        });
     }
 
     items.sort_by(|left, right| left.name.cmp(&right.name));
