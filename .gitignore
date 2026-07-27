@@ -25,3 +25,16 @@ dist-ssr
 *.sw?
 
 .claude/
+
+# Local / generated / unused
+worktrees/
+release/
+prototype/
+.od-skills/
+.qoder/
+plugin-source/
+backup-*.patch
+src-tauri/target/
+*.dmg
+*.app
+image*.png

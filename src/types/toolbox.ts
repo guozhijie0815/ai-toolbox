@@ -28,6 +28,8 @@ export interface ConfigFileItem {
   originalContent?: string
   loaded?: boolean
   dirty?: boolean
+  /** 磁盘上是否已存在；不存在时可新建保存 */
+  exists?: boolean
 }
 
 export interface ToolItem {

@@ -58,10 +58,7 @@ export const createToolSlice: ToolboxSliceCreator<ToolSlice> = (set, get) => ({
         tools,
         ...selection,
       })
-
-      if (selection.selectedToolId && selection.selectedConfigId) {
-        await get().selectConfigFile(selection.selectedConfigId)
-      }
+      // 不在刷新时预读配置文件，进入「配置编辑」再加载，避免缺失文件刷屏报错
     } catch (error) {
       set({
         feedback: buildFeedback('error', '读取工具列表失败', getErrorMessage(error)),
@@ -93,10 +90,7 @@ export const createToolSlice: ToolboxSliceCreator<ToolSlice> = (set, get) => ({
         tool.skills.some((skill) => skill.id === skillId),
       ),
     })
-
-    if (selectedConfigId) {
-      await get().selectConfigFile(selectedConfigId)
-    }
+    // 仅记录选中配置 id，内容在进入编辑器时再读
   },
 
   setSelectedSkillIds: (selectedSkillIds) => set({ selectedSkillIds }),

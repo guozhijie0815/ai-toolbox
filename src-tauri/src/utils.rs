@@ -19,6 +19,24 @@ pub fn home_path(relative: &str) -> Result<String, String> {
     Ok(path_to_string(&home.join(relative)))
 }
 
+/// 展开 `~` / `~/...` 为绝对路径
+pub fn expand_path(path: &str) -> Result<PathBuf, String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("路径为空".to_string());
+    }
+    if trimmed == "~" {
+        return get_home_dir();
+    }
+    if let Some(rest) = trimmed.strip_prefix("~/") {
+        return Ok(get_home_dir()?.join(rest));
+    }
+    if let Some(rest) = trimmed.strip_prefix("~\\") {
+        return Ok(get_home_dir()?.join(rest));
+    }
+    Ok(PathBuf::from(trimmed))
+}
+
 /// 根据当前用户主目录动态生成默认工具配置
 pub fn default_tool_specs() -> Result<Vec<UserToolSpec>, String> {
     let h = get_home_dir()?;
@@ -251,20 +269,34 @@ pub fn build_tool_entry_from_user(spec: &UserToolSpec) -> ToolEntry {
     let config_files = spec
         .config_files
         .iter()
-        .map(|file| ConfigFile {
-            label: file.label.clone(),
-            path: file.path.clone(),
-            kind: file.kind.clone(),
-            exists: Path::new(&file.path).exists(),
+        .map(|file| {
+            let abs = expand_path(&file.path)
+                .map(|p| path_to_string(&p))
+                .unwrap_or_else(|_| file.path.clone());
+            ConfigFile {
+                label: file.label.clone(),
+                path: abs.clone(),
+                kind: file.kind.clone(),
+                exists: Path::new(&abs).exists(),
+            }
         })
         .collect::<Vec<_>>();
 
-    let skill_dir = spec.skill_dir.clone();
-    let skills = spec
-        .skill_dir
-        .as_ref()
-        .map(|path| scan_skill_dir(Path::new(path), &spec.id))
-        .unwrap_or_default();
+    let (skill_dir, skills) = match spec.skill_dir.as_ref() {
+        Some(raw) => match expand_path(raw) {
+            Ok(abs) => {
+                let abs_str = path_to_string(&abs);
+                let skills = if abs.is_dir() {
+                    scan_skill_dir(&abs, &spec.id)
+                } else {
+                    Vec::new()
+                };
+                (Some(abs_str), skills)
+            }
+            Err(_) => (Some(raw.clone()), Vec::new()),
+        },
+        None => (None, Vec::new()),
+    };
 
     ToolEntry {
         id: spec.id.clone(),

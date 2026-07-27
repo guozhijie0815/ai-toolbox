@@ -3,23 +3,22 @@ import { Empty, Tag, Typography } from 'antd'
 
 import { useToolboxStore } from '../store/useToolboxStore'
 import type { ToolItem } from '../types/toolbox'
+import type { ToolCapability } from './types'
 
 const { Text, Title } = Typography
 
 interface ToolListPanelProps {
   visibleTools: ToolItem[]
   selectedTool?: ToolItem
-  editorMode: boolean
-  setEditorMode: (next: boolean) => void
-  setMiddleTab: (next: 'skills' | 'editor' | 'sync') => void
+  capability: ToolCapability
+  onCapabilityChange: (next: ToolCapability) => void
 }
 
 function ToolListPanel({
   visibleTools,
   selectedTool,
-  editorMode,
-  setEditorMode,
-  setMiddleTab,
+  capability,
+  onCapabilityChange,
 }: ToolListPanelProps) {
   const isToolsLoading = useToolboxStore((state) => state.isToolsLoading)
   const selectedConfigId = useToolboxStore((state) => state.selectedConfigId)
@@ -69,37 +68,35 @@ function ToolListPanel({
                     />
                   ) : null}
                 </span>
-                {hasConfig && !tool.isSystem && (
+                {hasConfig && !tool.isSystem ? (
                   <span
                     className="tool-item__edit"
                     onClick={(event) => {
                       event.stopPropagation()
-                      if (editorMode) {
-                        // 如果已经在编辑模式，点击则关闭
-                        setEditorMode(false)
-                        setMiddleTab('skills')
-                      } else if (active) {
-                        setEditorMode(true)
-                        setMiddleTab('editor')
+                      if (capability === 'editor' && active) {
+                        onCapabilityChange('skills')
+                        return
+                      }
+                      const openEditor = () => {
+                        onCapabilityChange('editor')
                         if (!selectedConfigId && tool.configFiles[0]) {
                           void selectConfigFile(tool.configFiles[0].id)
+                        } else if (tool.configFiles[0] && tool.id !== selectedTool?.id) {
+                          void selectConfigFile(tool.configFiles[0].id)
                         }
+                      }
+                      if (active) {
+                        openEditor()
                       } else {
                         void selectTool(tool.id)
-                        setTimeout(() => {
-                          setEditorMode(true)
-                          setMiddleTab('editor')
-                          if (tool.configFiles[0]) {
-                            void selectConfigFile(tool.configFiles[0].id)
-                          }
-                        }, 50)
+                        window.setTimeout(openEditor, 50)
                       }
                     }}
                     title="编辑配置"
                   >
                     <FileTextOutlined />
                   </span>
-                )}
+                ) : null}
               </div>
               {tool.description ? (
                 <Text className="tool-item__desc">{tool.description}</Text>
@@ -107,6 +104,7 @@ function ToolListPanel({
               <div className="tool-item__meta">
                 <span>{tool.configFiles.length} configs</span>
                 <span>{tool.skills.length} skills</span>
+                {tool.id === 'opencode' ? <span>models</span> : null}
                 {dirtyCount > 0 ? <span>{dirtyCount} unsaved</span> : null}
               </div>
             </button>

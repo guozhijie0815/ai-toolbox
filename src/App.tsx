@@ -1,6 +1,6 @@
-import { startTransition, useEffect, useMemo, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react'
 
-import { App as AntdApp, ConfigProvider, Segmented, theme } from 'antd'
+import { App as AntdApp, ConfigProvider, Empty, theme } from 'antd'
 
 import CenterRepoPanel from './components/CenterRepoPanel'
 import ClaudeConfigSyncPanel from './components/ClaudeConfigSyncPanel'
@@ -9,14 +9,19 @@ import SkillDetailDrawer from './components/SkillDetailDrawer'
 
 import './App.css'
 import AppHeader from './pages/AppHeader'
+import CapabilityBar from './pages/CapabilityBar'
+import { getToolCapabilities } from './pages/capability'
 import ConfigEditorView from './pages/ConfigEditorView'
 import InsightsPanel from './pages/InsightsPanel'
+import ModelSyncPanel from './pages/ModelSyncPanel'
+import ModelSyncSidePanel from './pages/ModelSyncSidePanel'
+import type { ModelDiff } from './lib/modelSync'
 import SkillInsightsOverlay from './pages/SkillInsightsOverlay'
 import SkillListView from './pages/SkillListView'
 import ToolListPanel from './pages/ToolListPanel'
 import ToolManagerModal from './pages/modals/ToolManagerModal'
 import SyncSkillsModal from './pages/modals/SyncSkillsModal'
-import type { ThemeMode } from './pages/types'
+import type { ThemeMode, ToolCapability } from './pages/types'
 
 import { getHomeDirPath } from './lib/toolboxApi'
 import { useToolboxStore } from './store/useToolboxStore'
@@ -73,9 +78,9 @@ function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
   })
 
-  // 中间区域 tab + 编辑模式（跨左/中两区联动）
-  const [editorMode, setEditorMode] = useState(false)
-  const [middleTab, setMiddleTab] = useState<'skills' | 'editor' | 'sync'>('skills')
+  // 当前工具能力页（技能 / 配置 / 同步 / 模型）
+  const [capability, setCapability] = useState<ToolCapability>('skills')
+  const editorMode = capability === 'editor'
 
   // Modals
   const [managerOpen, setManagerOpen] = useState(false)
@@ -90,6 +95,34 @@ function App() {
 
   // SkillListView 的搜索关键字（同时影响 SkillInsightsOverlay 的过滤展示）
   const [skillKeyword, setSkillKeyword] = useState('')
+
+  // 模型同步右侧预览
+  const [modelSide, setModelSide] = useState<{
+    configPath?: string
+    providerKey: string
+    remoteCount: number
+    localCount: number
+    diff: ModelDiff
+    dirty: boolean
+    saving: boolean
+    onApply: () => void
+  } | null>(null)
+
+  const handleModelDiffChange = useCallback(
+    (payload: {
+      configPath?: string
+      providerKey: string
+      remoteCount: number
+      localCount: number
+      diff: ModelDiff
+      dirty: boolean
+      saving: boolean
+      onApply: () => void
+    }) => {
+      setModelSide(payload)
+    },
+    [],
+  )
 
   // store
   const tools = useToolboxStore((state) => state.tools)
@@ -221,13 +254,30 @@ function App() {
     setSyncTargetToolIds((current) => current.filter((toolId) => validTargetIds.has(toolId)))
   }, [syncTargetOptions])
 
-  // 切到非 Claude Code 工具时，若停在「配置同步」tab，自动回退到「技能」
+  // 切换工具时，若当前能力对该工具不可用，回退到技能
   useEffect(() => {
-    if (selectedTool?.id !== 'claude' && middleTab === 'sync') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- 联动 tab 重置
-      setMiddleTab('skills')
+    const allowed = new Set(getToolCapabilities(selectedTool).map((item) => item.key))
+    if (!allowed.has(capability)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 联动能力页重置
+      setCapability('skills')
     }
-  }, [selectedTool?.id, middleTab])
+  }, [selectedTool, capability])
+
+  const handleCapabilityChange = (next: ToolCapability) => {
+    setCapability(next)
+    if (next === 'editor' && selectedTool) {
+      const targetId = selectedConfigId ?? selectedTool.configFiles[0]?.id
+      if (targetId) {
+        void useToolboxStore.getState().selectConfigFile(targetId)
+      }
+    }
+  }
+
+  // 进入配置编辑时加载当前文件内容
+  useEffect(() => {
+    if (capability !== 'editor' || !selectedConfigId) return
+    void useToolboxStore.getState().selectConfigFile(selectedConfigId)
+  }, [capability, selectedConfigId, selectedTool?.id])
 
   const isPreview = typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)
 
@@ -287,50 +337,39 @@ function App() {
           />
 
           <div className="app-layout">
-            <div className={`app-grid${editorMode ? ' app-grid--edit' : ''}`}>
+            <div
+              className={`app-grid${editorMode ? ' app-grid--edit' : ''}${
+                capability === 'sync' ? ' app-grid--wide' : ''
+              }`}
+            >
               <ToolListPanel
                 visibleTools={visibleTools}
                 selectedTool={selectedTool}
-                editorMode={editorMode}
-                setEditorMode={setEditorMode}
-                setMiddleTab={setMiddleTab}
+                capability={capability}
+                onCapabilityChange={handleCapabilityChange}
               />
 
-              {/* 中间：技能列表 / 编辑器（push 滑动）/ Claude Code 配置同步 */}
+              {/* 中间：按工具能力切换 */}
               <main className="panel panel--skills">
-                {selectedTool ? (
-                  <div style={{ padding: '12px 16px 0 16px', flexShrink: 0 }}>
-                    <Segmented
-                      block
-                      options={[
-                        { label: '技能', value: 'skills' },
-                        { label: '配置编辑', value: 'editor' },
-                        ...(selectedTool.id === 'claude'
-                          ? [{ label: '配置同步', value: 'sync' }]
-                          : []),
-                      ]}
-                      value={middleTab}
-                      onChange={(value) => {
-                        const next = value as 'skills' | 'editor' | 'sync'
-                        setMiddleTab(next)
-                        setEditorMode(next === 'editor')
-                      }}
-                    />
-                  </div>
-                ) : null}
-                {selectedTool?.id === 'claude' && middleTab === 'sync' ? (
-                  <div
-                    style={{
-                      flex: 1,
-                      minHeight: 0,
-                      overflow: 'auto',
-                      padding: 16,
-                    }}
-                  >
+                <CapabilityBar
+                  selectedTool={selectedTool}
+                  active={capability}
+                  onChange={handleCapabilityChange}
+                />
+
+                {capability === 'sync' && selectedTool?.id === 'claude' ? (
+                  <div className="capability-content capability-content--scroll">
                     <ClaudeConfigSyncPanel monacoTheme={monacoTheme} />
                   </div>
+                ) : capability === 'models' && selectedTool?.id === 'opencode' ? (
+                  <div className="capability-content capability-content--scroll">
+                    <ModelSyncPanel
+                      selectedTool={selectedTool}
+                      onDiffChange={handleModelDiffChange}
+                    />
+                  </div>
                 ) : (
-                  <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                  <div className="capability-content">
                     <div className="panel-push-wrapper">
                       <SkillListView
                         selectedTool={selectedTool}
@@ -346,27 +385,43 @@ function App() {
                         selectedTool={selectedTool}
                         selectedFile={selectedFile}
                         monacoTheme={monacoTheme}
-                        setEditorMode={setEditorMode}
-                        setMiddleTab={setMiddleTab}
+                        onCloseEditor={() => setCapability('skills')}
                       />
                     </div>
                   </div>
                 )}
               </main>
 
-              {/* 右侧：变动洞察（普通）/ 技能列表+洞察（编辑） */}
-              <aside className="panel panel--insights">
-                <div className="panel--insights__container">
-                  <InsightsPanel selectedTool={selectedTool} onTriggerSync={handleTriggerSync} />
-                  <SkillInsightsOverlay
-                    selectedTool={selectedTool}
-                    currentSkills={currentSkills}
-                    filteredCurrentSkills={filteredCurrentSkills}
-                    onOpenSyncModal={openSyncModal}
-                    onTriggerSync={handleTriggerSync}
+              {/* 右侧：技能洞察 / 模型变更预览 */}
+              {capability === 'models' && selectedTool?.id === 'opencode' ? (
+                modelSide ? (
+                  <ModelSyncSidePanel
+                    remoteCount={modelSide.remoteCount}
+                    localCount={modelSide.localCount}
+                    diff={modelSide.diff}
+                    dirty={modelSide.dirty}
+                    saving={modelSide.saving}
+                    onApply={modelSide.onApply}
                   />
-                </div>
-              </aside>
+                ) : (
+                  <aside className="panel panel--insights">
+                    <Empty description="加载变更预览…" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  </aside>
+                )
+              ) : capability === 'skills' || capability === 'editor' ? (
+                <aside className="panel panel--insights">
+                  <div className="panel--insights__container">
+                    <InsightsPanel selectedTool={selectedTool} onTriggerSync={handleTriggerSync} />
+                    <SkillInsightsOverlay
+                      selectedTool={selectedTool}
+                      currentSkills={currentSkills}
+                      filteredCurrentSkills={filteredCurrentSkills}
+                      onOpenSyncModal={openSyncModal}
+                      onTriggerSync={handleTriggerSync}
+                    />
+                  </div>
+                </aside>
+              ) : null}
             </div>
           </div>
 
