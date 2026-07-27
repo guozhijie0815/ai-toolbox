@@ -3,40 +3,45 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::types::{
-    BackupEntry, ConfigPayload, SaveConfigRequest, SaveConfigResult, current_timestamp,
-    metadata_mtime, path_to_string,
+    metadata_mtime, path_to_string, BackupEntry, ConfigPayload, SaveConfigRequest, SaveConfigResult,
 };
-use crate::utils::ensure_parent_dir;
+use crate::utils::{ensure_parent_dir, expand_path};
 
 #[tauri::command]
 pub fn read_config_file(path: String) -> Result<ConfigPayload, String> {
-    let content = fs::read_to_string(&path).map_err(|err| err.to_string())?;
-    Ok(ConfigPayload { path, content })
+    let abs = expand_path(&path)?;
+    let abs_str = path_to_string(&abs);
+    if !abs.exists() {
+        // 文件尚未创建：返回空内容，允许用户新建保存
+        return Ok(ConfigPayload {
+            path: abs_str,
+            content: String::new(),
+        });
+    }
+    let content = fs::read_to_string(&abs).map_err(|err| err.to_string())?;
+    Ok(ConfigPayload {
+        path: abs_str,
+        content,
+    })
 }
 
 #[tauri::command]
 pub fn save_config_file(request: SaveConfigRequest) -> Result<SaveConfigResult, String> {
-    let path = PathBuf::from(&request.path);
+    let path = expand_path(&request.path)?;
+    let abs_str = path_to_string(&path);
     ensure_parent_dir(&path)?;
-
-    let backup_path = format!("{}.bak.{}", request.path, current_timestamp());
-    if path.exists() {
-        fs::copy(&path, &backup_path).map_err(|err| err.to_string())?;
-    } else {
-        fs::write(&backup_path, "").map_err(|err| err.to_string())?;
-    }
-
+    // 按产品要求：直接覆盖写入，不生成 .bak 备份文件
     fs::write(&path, request.content).map_err(|err| err.to_string())?;
 
     Ok(SaveConfigResult {
-        path: request.path,
-        backup_path,
+        path: abs_str,
+        backup_path: String::new(),
     })
 }
 
 #[tauri::command]
 pub fn list_config_backups(path: String) -> Result<Vec<BackupEntry>, String> {
-    let target = PathBuf::from(&path);
+    let target = expand_path(&path)?;
     let parent = target
         .parent()
         .ok_or_else(|| format!("missing parent directory for {}", path))?;
@@ -45,6 +50,10 @@ pub fn list_config_backups(path: String) -> Result<Vec<BackupEntry>, String> {
         .and_then(|name| name.to_str())
         .ok_or_else(|| format!("invalid file name for {}", path))?;
     let prefix = format!("{file_name}.bak.");
+
+    if !parent.exists() {
+        return Ok(Vec::new());
+    }
 
     let mut items = Vec::new();
     for entry in fs::read_dir(parent).map_err(|err| err.to_string())? {
@@ -68,7 +77,7 @@ pub fn list_config_backups(path: String) -> Result<Vec<BackupEntry>, String> {
 
 #[tauri::command]
 pub fn open_path_in_finder(path: String) -> Result<(), String> {
-    let target = PathBuf::from(&path);
+    let target = expand_path(&path).unwrap_or_else(|_| PathBuf::from(&path));
     let mut command = Command::new("open");
 
     if target.exists() && target.is_file() {
@@ -79,14 +88,21 @@ pub fn open_path_in_finder(path: String) -> Result<(), String> {
         let parent = target
             .parent()
             .ok_or_else(|| format!("missing parent directory for {}", path))?;
-        command.arg(parent);
+        if parent.exists() {
+            command.arg(parent);
+        } else {
+            return Err(format!("路径不存在: {}", path));
+        }
     }
 
-    command.status().map_err(|err| err.to_string()).and_then(|status| {
-        if status.success() {
-            Ok(())
-        } else {
-            Err(format!("failed to open finder for {}", path))
-        }
-    })
+    command
+        .status()
+        .map_err(|err| err.to_string())
+        .and_then(|status| {
+            if status.success() {
+                Ok(())
+            } else {
+                Err(format!("failed to open finder for {}", path))
+            }
+        })
 }

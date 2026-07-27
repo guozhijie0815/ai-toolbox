@@ -17,16 +17,14 @@ interface ConfigEditorViewProps {
   selectedTool?: ToolItem
   selectedFile?: ConfigFileItem
   monacoTheme: 'vs' | 'vs-dark'
-  setEditorMode: (next: boolean) => void
-  setMiddleTab: (next: 'skills' | 'editor' | 'sync') => void
+  onCloseEditor: () => void
 }
 
 function ConfigEditorView({
   selectedTool,
   selectedFile,
   monacoTheme,
-  setEditorMode,
-  setMiddleTab,
+  onCloseEditor,
 }: ConfigEditorViewProps) {
   const { message: messageApi } = AntdApp.useApp()
 
@@ -80,6 +78,7 @@ function ConfigEditorView({
                 </span>
                 <span className="config-tab__meta">
                   <span>{file.language}</span>
+                  {file.exists === false ? <span title="文件尚不存在">missing</span> : null}
                   {file.dirty ? <span className="dirty-dot" /> : null}
                 </span>
               </button>
@@ -121,10 +120,7 @@ function ConfigEditorView({
           <Button
             type="text"
             icon={<CloseOutlined />}
-            onClick={() => {
-              setEditorMode(false)
-              setMiddleTab('skills')
-            }}
+            onClick={onCloseEditor}
             title="关闭编辑"
             style={{ fontSize: 16 }}
           />

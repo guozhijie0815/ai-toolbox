@@ -239,6 +239,7 @@ const normalizeConfigFile = (value: unknown): ConfigFileItem | null => {
     name,
     path,
     language: readString(record.language, record.lang) ?? languageFromPath(path),
+    exists: record.exists === undefined ? undefined : Boolean(record.exists),
   }
 }
 
@@ -422,17 +423,14 @@ export const saveConfigFile = async (_tool: ToolItem, file: ConfigFileItem, cont
     return '已在预览模式更新本地草稿'
   }
 
-  const response = await invoke<unknown>('save_config_file', {
+  await invoke<unknown>('save_config_file', {
     request: {
       path: file.path,
       content,
     },
   })
 
-  const record = asRecord(response)
-  const backupPath = readString(record.backupPath, record.backup_path)
-
-  return backupPath ? `配置已保存，备份已写入 ${backupPath}` : '配置已保存'
+  return '配置已保存'
 }
 
 export const syncSkills = async (params: {

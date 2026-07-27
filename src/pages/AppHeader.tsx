@@ -129,7 +129,7 @@ function AppHeader({
             }}
           >
             <Title level={2} style={{ margin: 0, fontSize: 20 }}>
-              工具配置台
+              AI Toolbox
             </Title>
             <Tag
               variant="filled"
@@ -139,9 +139,7 @@ function AppHeader({
               {isPreview ? 'Preview' : 'Tauri'} · {visibleToolsCount} tools
             </Tag>
           </div>
-          <Text className="header-copy">
-            管理本机 AI 开发工具的配置文件、技能目录和跨工具同步。
-          </Text>
+          <Text className="header-copy">先选工具，再选能力：技能管理、配置编辑、模型同步。</Text>
         </div>
         <div className="header-search">
           <Input

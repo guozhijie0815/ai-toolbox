@@ -50,12 +50,30 @@ export const createConfigSlice: ToolboxSliceCreator<ConfigSlice> = (set, get) =>
           originalContent: content,
           loaded: true,
           dirty: false,
+          exists: true,
         })),
       }))
     } catch (error) {
-      set({
-        feedback: buildFeedback('error', `读取 ${file.name} 失败`, getErrorMessage(error)),
-      })
+      const message = getErrorMessage(error)
+      const missing =
+        /no such file|not found|os error 2|不存在/i.test(message) || file.exists === false
+      // 缺失文件：按空文件处理，不弹错误
+      if (missing) {
+        set((state) => ({
+          tools: mergeConfigFile(state.tools, tool.id, file.id, (current) => ({
+            ...current,
+            content: '',
+            originalContent: '',
+            loaded: true,
+            dirty: false,
+            exists: false,
+          })),
+        }))
+      } else {
+        set({
+          feedback: buildFeedback('error', `读取 ${file.name} 失败`, message),
+        })
+      }
     } finally {
       set({ isConfigLoading: false })
     }

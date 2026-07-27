@@ -1,13 +1,30 @@
 use std::path::Path;
 
 use crate::types::{
-    DeleteToolRequest, DetectToolPathsRequest, DetectToolPathsResult, LaggingToolInfo,
-    SkillInsightEntry, ToolEntry, ToolRegistryEntry, UpsertToolRequest, ConfigFile,
+    path_to_string, ConfigFile, DeleteToolRequest, DetectToolPathsRequest, DetectToolPathsResult,
+    LaggingToolInfo, SkillInsightEntry, ToolEntry, ToolRegistryEntry, UpsertToolRequest,
 };
 use crate::utils::{
-    build_tool_entry_from_user, compare_skill_folders, detect_tool_paths_from_name, get_home_dir,
-    load_tool_registry, sanitize_upsert_request, save_tool_registry,
+    build_tool_entry_from_user, compare_skill_folders, detect_tool_paths_from_name, expand_path,
+    get_home_dir, load_tool_registry, sanitize_upsert_request, save_tool_registry,
 };
+
+fn registry_config_files(files: &[crate::types::UserToolConfigFile]) -> Vec<ConfigFile> {
+    files
+        .iter()
+        .map(|file| {
+            let abs = expand_path(&file.path)
+                .map(|p| path_to_string(&p))
+                .unwrap_or_else(|_| file.path.clone());
+            ConfigFile {
+                label: file.label.clone(),
+                path: abs.clone(),
+                kind: file.kind.clone(),
+                exists: Path::new(&abs).exists(),
+            }
+        })
+        .collect()
+}
 
 #[tauri::command]
 pub fn get_home_dir_path() -> Result<String, String> {
@@ -106,16 +123,7 @@ pub fn list_tool_registry() -> Result<Vec<ToolRegistryEntry>, String> {
             id: item.id.clone(),
             name: item.name.clone(),
             enabled: item.enabled,
-            config_files: item
-                .config_files
-                .iter()
-                .map(|file| ConfigFile {
-                    label: file.label.clone(),
-                    path: file.path.clone(),
-                    kind: file.kind.clone(),
-                    exists: Path::new(&file.path).exists(),
-                })
-                .collect(),
+            config_files: registry_config_files(&item.config_files),
             skill_dir: item.skill_dir.clone(),
             is_system: item.is_system,
         })
@@ -142,16 +150,7 @@ pub fn upsert_tool_registry_item(request: UpsertToolRequest) -> Result<ToolRegis
         id: next.id,
         name: next.name,
         enabled: next.enabled,
-        config_files: next
-            .config_files
-            .iter()
-            .map(|file| ConfigFile {
-                label: file.label.clone(),
-                path: file.path.clone(),
-                kind: file.kind.clone(),
-                exists: Path::new(&file.path).exists(),
-            })
-            .collect(),
+        config_files: registry_config_files(&next.config_files),
         skill_dir: next.skill_dir,
         is_system: false,
     })

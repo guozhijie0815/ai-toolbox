@@ -2,6 +2,9 @@ import { CopyOutlined, LinkOutlined } from '@ant-design/icons'
 
 export type ThemeMode = 'system' | 'light' | 'dark'
 
+/** 当前工具下的能力页 */
+export type ToolCapability = 'skills' | 'editor' | 'sync' | 'models'
+
 export const modeOptions = [
   {
     label: (
