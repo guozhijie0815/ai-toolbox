@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": "npm run dev -- --host 0.0.0.0 --port 1420 --strictPort",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run bump-version && npm run build"
   },
   "app": {
     "macOSPrivateApi": true,
