@@ -106,14 +106,14 @@ function SyncSkillsModal({
 
     setIsSyncSubmitting(true)
     try {
-      const syncMessage = await syncSkills({
+      const syncResult = await syncSkills({
         sourceTool: selectedTool,
         targetTools,
         skills: syncSelectedSkillIds,
         mode: syncMode,
         conflictStrategy,
       })
-      void messageApi.success(syncMessage)
+      void messageApi.success(syncResult.message)
       onClose()
       await refreshTools()
     } catch (error) {

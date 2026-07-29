@@ -9,7 +9,11 @@ import { formatTime } from '../utils/appUtils'
 const { Text } = Typography
 
 interface InsightsPanelProps {
-  onTriggerSync: (sourceToolId: string, targetToolIds: string[], skillName: string) => Promise<void>
+  onTriggerSync: (
+    sourceToolId: string,
+    targetToolIds: string[],
+    skillName: string,
+  ) => Promise<string | undefined>
 }
 
 function InsightsPanel({ onTriggerSync }: InsightsPanelProps) {

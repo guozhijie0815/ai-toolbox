@@ -38,3 +38,5 @@ src-tauri/target/
 *.dmg
 *.app
 image*.png
+.reasonix/
+reasonix.toml

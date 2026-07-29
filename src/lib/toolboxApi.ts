@@ -13,6 +13,7 @@ import type {
   SkillItem,
   SnapshotMeta,
   SyncMode,
+  SyncSkillOutcome,
   ToolRegistryConfigFile,
   ToolRegistryEntry,
   ToolItem,
