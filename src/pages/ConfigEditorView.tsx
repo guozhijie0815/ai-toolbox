@@ -61,7 +61,7 @@ function ConfigEditorView({
   ])
 
   return (
-    <div className="panel-slide">
+    <div className="panel-slide child-workspace child-workspace--config">
       <div className="editor-content__header">
         <div className="config-strip" style={{ flex: 1, marginBottom: 0 }}>
           {selectedTool?.configFiles.length ? (

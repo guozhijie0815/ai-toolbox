@@ -138,7 +138,7 @@ function SyncSkillsModal({
       className="sync-modal"
       wrapClassName="sync-modal-wrap"
     >
-      <div className="sync-modal__layout">
+      <div className="sync-modal__layout child-dialog-layout">
         <div className="sync-modal__controls sync-modal__card">
           <div className="sync-control-group">
             <Text className="field-label">源工具</Text>

@@ -16,7 +16,13 @@ describe("getErrorMessage", () => {
     expect(getErrorMessage(undefined)).toBe("操作失败");
   });
 
+  it("模型不支持图片输入时返回友好提示", () => {
+    expect(
+      getErrorMessage(new Error('Cannot read "image.png" (this model does not support image input)')),
+    ).toBe('该模型不支持图片输入，请更换支持视觉能力的模型')
+  });
+
   it("支持自定义 fallback", () => {
-    expect(getErrorMessage(42, "自定义错误")).toBe("自定义错误");
+    expect(getErrorMessage(42, "自定义错误")).toBe("自定义错误")
   });
 });

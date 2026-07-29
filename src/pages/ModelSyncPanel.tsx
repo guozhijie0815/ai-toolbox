@@ -533,7 +533,7 @@ function ModelSyncPanel({ selectedTool, onDiffChange }: ModelSyncPanelProps) {
   }
 
   return (
-    <div className="model-sync">
+    <div className="model-sync child-workspace child-workspace--models">
       <div className="model-sync__header">
         <div>
           <Text className="panel-kicker">Model Sync</Text>

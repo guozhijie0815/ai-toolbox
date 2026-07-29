@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::central_repo;
 use crate::db::get_db;
 use crate::store;
-use crate::utils::{load_tool_registry, registry_tool_by_id};
+use crate::utils::{expand_path, load_tool_registry, registry_tool_by_id};
 
 #[tauri::command]
 pub fn list_center_skills() -> Result<Vec<central_repo::CenterSkillInfo>, String> {
@@ -35,7 +35,9 @@ pub fn list_center_skills() -> Result<Vec<central_repo::CenterSkillInfo>, String
             Some("imported") => {
                 let exists_in_tools = tools
                     .iter()
-                    .filter(|(_, _, dir)| Path::new(dir).join(&skill.name).exists())
+                    .filter(|(_, _, dir)| {
+                        expand_path(dir).map_or(false, |p| p.join(&skill.name).exists())
+                    })
                     .count();
                 if exists_in_tools >= 2 {
                     "system".to_string()

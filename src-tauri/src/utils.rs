@@ -467,6 +467,27 @@ pub fn set_skill_tags(skill_name: &str, tags: Vec<String>) -> Result<(), String>
     crate::store::tag_store::set_skill_tags(db, skill_name, tags)
 }
 
+fn contains_chinese(text: &str) -> bool {
+    text.chars().any(|c| ('\u{4e00}'..='\u{9fff}').contains(&c))
+}
+
+fn get_skill_category(skill_name: &str, description: Option<&str>, summary: Option<&str>) -> String {
+    // 优先查中央仓库
+    match crate::db::get_db() {
+        Ok(db) => {
+            match crate::store::center_skill_store::get_center_skill_by_name(&db, skill_name) {
+                Ok(Some(skill)) if !skill.source_type.is_empty() => return skill.source_type,
+                _ => {}
+            }
+        }
+        Err(_) => {}
+    }
+    // 兜底：描述含中文 → 自定义
+    let desc_chinese = description.map_or(false, |d| contains_chinese(d));
+    let summary_chinese = summary.map_or(false, |s| contains_chinese(s));
+    if desc_chinese || summary_chinese { "custom".to_string() } else { String::new() }
+}
+
 pub fn scan_skill_dir(skill_dir: &Path, tool_id: &str) -> Vec<SkillEntry> {
     let mut items = Vec::new();
 
@@ -517,6 +538,8 @@ pub fn scan_skill_dir(skill_dir: &Path, tool_id: &str) -> Vec<SkillEntry> {
 
         let tags = get_skill_tags(&name).unwrap_or_default();
 
+        let category = get_skill_category(&name, description.as_deref(), summary.as_deref());
+
         items.push(SkillEntry {
             name,
             description,
@@ -529,10 +552,17 @@ pub fn scan_skill_dir(skill_dir: &Path, tool_id: &str) -> Vec<SkillEntry> {
             updated_at: metadata_mtime(&path),
             tags,
             enabled,
+            category,
         });
     }
 
-    items.sort_by(|left, right| left.name.cmp(&right.name));
+    items.sort_by(|left, right| {
+        fn cat_order(c: &str) -> u8 {
+            match c { "custom" => 0, "git" => 1, "system" => 2, _ => 3 }
+        }
+        let cat_cmp = cat_order(&left.category).cmp(&cat_order(&right.category));
+        cat_cmp.then_with(|| right.updated_at.cmp(&left.updated_at))
+    });
     items
 }
 
@@ -632,33 +662,40 @@ pub fn with_conflict_policy(path: &Path, policy: &str) -> Result<(PathBuf, Strin
     }
 }
 
-pub fn get_skill_files(skill_path: &Path) -> Vec<(String, u64)> {
-    let mut files = Vec::new();
-    if let Ok(entries) = fs::read_dir(skill_path) {
+pub fn compare_skill_folders(leader_path: &Path, lagging_path: &Path) -> Vec<crate::types::SkillDiff> {
+    fn collect_files(root: &Path, current: &Path, files: &mut std::collections::HashMap<String, Vec<u8>>) {
+        let Ok(entries) = fs::read_dir(current) else {
+            return;
+        };
+
         for entry in entries.flatten() {
-            if let Ok(metadata) = entry.metadata() {
-                let name = entry.file_name().to_string_lossy().to_string();
-                let size = metadata.len();
-                files.push((name, size));
+            let path = entry.path();
+            let Ok(metadata) = fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if metadata.file_type().is_symlink() {
+                continue;
+            }
+            if metadata.is_dir() {
+                collect_files(root, &path, files);
+            } else if metadata.is_file() {
+                if let (Ok(relative), Ok(content)) = (path.strip_prefix(root), fs::read(&path)) {
+                    files.insert(relative.to_string_lossy().to_string(), content);
+                }
             }
         }
     }
-    files.sort_by(|a, b| a.0.cmp(&b.0));
-    files
-}
-
-pub fn compare_skill_folders(leader_path: &Path, lagging_path: &Path) -> Vec<crate::types::SkillDiff> {
-    let leader_files = get_skill_files(leader_path);
-    let lagging_files = get_skill_files(lagging_path);
 
     let mut diffs = Vec::new();
-    let leader_map: std::collections::HashMap<String, u64> = leader_files.into_iter().collect();
-    let lagging_map: std::collections::HashMap<String, u64> = lagging_files.into_iter().collect();
+    let mut leader_map = std::collections::HashMap::new();
+    let mut lagging_map = std::collections::HashMap::new();
+    collect_files(leader_path, leader_path, &mut leader_map);
+    collect_files(lagging_path, lagging_path, &mut lagging_map);
 
     // 检查新增和修改的文件
-    for (name, leader_size) in &leader_map {
-        if let Some(lagging_size) = lagging_map.get(name) {
-            if leader_size != lagging_size {
+    for (name, leader_content) in &leader_map {
+        if let Some(lagging_content) = lagging_map.get(name) {
+            if leader_content != lagging_content {
                 diffs.push(crate::types::SkillDiff {
                     file_name: name.clone(),
                     diff_type: "modified".to_string(),

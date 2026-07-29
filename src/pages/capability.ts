@@ -15,13 +15,13 @@ export function getToolCapabilities(tool?: ToolItem): CapabilityMeta[] {
   const items: CapabilityMeta[] = [
     {
       key: 'skills',
-      title: '技能管理',
+      title: '技能',
       desc: '查看、启停与跨工具同步',
       meta: `${tool.skills.length} 个`,
     },
     {
       key: 'editor',
-      title: '配置编辑',
+      title: '配置',
       desc: '编辑本机配置文件',
       meta: `${tool.configFiles.length} 个文件`,
     },
@@ -30,7 +30,7 @@ export function getToolCapabilities(tool?: ToolItem): CapabilityMeta[] {
   if (tool.id === 'claude') {
     items.push({
       key: 'sync',
-      title: '配置同步',
+      title: '同步',
       desc: 'Claude 配置对比与同步',
     })
   }
@@ -38,7 +38,7 @@ export function getToolCapabilities(tool?: ToolItem): CapabilityMeta[] {
   if (tool.id === 'opencode') {
     items.push({
       key: 'models',
-      title: '模型同步',
+      title: '模型',
       desc: '同步 Modelverse 模型列表',
     })
   }

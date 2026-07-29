@@ -2,35 +2,34 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import {
   CloudOutlined,
   MoonOutlined,
+  ReloadOutlined,
   SearchOutlined,
   SettingOutlined,
   SunOutlined,
 } from '@ant-design/icons'
-import { Button, Input, Tag, Typography } from 'antd'
+import { Button, Input } from 'antd'
 
 import { hasTauriRuntime, isInteractiveDragTarget } from '../utils/appUtils'
 import type { ThemeMode } from './types'
 
-const { Text, Title } = Typography
-
 interface AppHeaderProps {
-  visibleToolsCount: number
-  isPreview: boolean
   resolvedTheme: 'light' | 'dark'
   onToggleTheme: (next: ThemeMode) => void
   onOpenCommandPalette: () => void
   onOpenManager: () => void
   onOpenCenterRepo: () => void
+  onRefreshAll: () => void
+  isRefreshing: boolean
 }
 
 function AppHeader({
-  visibleToolsCount,
-  isPreview,
   resolvedTheme,
   onToggleTheme,
   onOpenCommandPalette,
   onOpenManager,
   onOpenCenterRepo,
+  onRefreshAll,
+  isRefreshing,
 }: AppHeaderProps) {
   const handleWindowDragMouseDown = (event: React.MouseEvent<HTMLElement>) => {
     if (!hasTauriRuntime() || event.button !== 0 || event.detail >= 2) return
@@ -92,85 +91,109 @@ function AppHeader({
       onMouseDown={handleWindowDragMouseDown}
       onDoubleClick={(event) => void handleWindowDragDoubleClick(event)}
     >
-      {/* 交通灯 + 标题 */}
-      <div className="title-bar">
-        <div className="traffic-lights">
-          <button
-            type="button"
-            className="traffic-light traffic-light--red"
-            onClick={() => void handleWindowClose()}
-            aria-label="关闭"
-          />
-          <button
-            type="button"
-            className="traffic-light traffic-light--yellow"
-            onClick={() => void handleWindowMinimize()}
-            aria-label="最小化"
-          />
-          <button
-            type="button"
-            className="traffic-light traffic-light--green"
-            onClick={() => void handleWindowMaximize()}
-            aria-label="最大化"
-          />
-        </div>
-        <span className="app-title">AI Toolbox</span>
+      {/* 交通灯 + 品牌标识 */}
+      <div className="traffic-lights">
+        <button
+          type="button"
+          className="traffic-light traffic-light--red"
+          onClick={() => void handleWindowClose()}
+          aria-label="关闭"
+        />
+        <button
+          type="button"
+          className="traffic-light traffic-light--yellow"
+          onClick={() => void handleWindowMinimize()}
+          aria-label="最小化"
+        />
+        <button
+          type="button"
+          className="traffic-light traffic-light--green"
+          onClick={() => void handleWindowMaximize()}
+          aria-label="最大化"
+        />
+        <svg
+          viewBox="0 0 32 32"
+          fill="none"
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            display: 'block',
+            marginLeft: 14,
+            flexShrink: 0,
+          }}
+        >
+          <rect width="32" height="32" rx="8" fill="url(#brand-grad)" />
+          <g stroke="#fff" strokeWidth="1.6" strokeLinecap="round">
+            <line x1="16" y1="16.5" x2="9.5" y2="11.1" />
+            <line x1="16" y1="16.5" x2="22.5" y2="11.1" />
+            <line x1="16" y1="16.5" x2="9.5" y2="21.9" />
+            <line x1="16" y1="16.5" x2="22.5" y2="21.9" />
+          </g>
+          <g fill="#fff">
+            <circle cx="9.5" cy="11.1" r="2.2" />
+            <circle cx="22.5" cy="11.1" r="2.2" />
+            <circle cx="9.5" cy="21.9" r="2.2" />
+            <circle cx="22.5" cy="21.9" r="2.2" />
+            <circle cx="16" cy="16.5" r="3.4" />
+          </g>
+          <circle cx="16" cy="16.5" r="1.5" fill="#d86933" />
+          <defs>
+            <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fabd7a" />
+              <stop offset="45%" stopColor="#f4a261" />
+              <stop offset="100%" stopColor="#d86933" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--muted-text)',
+            letterSpacing: '-0.01em',
+            whiteSpace: 'nowrap',
+            lineHeight: 1,
+            marginLeft: 4,
+          }}
+        >
+          AI Toolbox
+        </span>
       </div>
 
-      {/* 标题行：左侧标题 + 右侧操作 */}
-      <div className="header-top">
-        <div className="header-brand">
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              marginBottom: 4,
-            }}
-          >
-            <Title level={2} style={{ margin: 0, fontSize: 20 }}>
-              AI Toolbox
-            </Title>
-            <Tag
-              variant="filled"
-              color={isPreview ? 'gold' : 'success'}
-              className="runtime-mini-tag"
-            >
-              {isPreview ? 'Preview' : 'Tauri'} · {visibleToolsCount} tools
-            </Tag>
-          </div>
-          <Text className="header-copy">先选工具，再选能力：技能管理、配置编辑、模型同步。</Text>
-        </div>
-        <div className="header-search">
-          <Input
-            prefix={<SearchOutlined />}
-            placeholder="搜索技能、工具、配置..."
-            readOnly
-            onClick={onOpenCommandPalette}
-            style={{
-              width: '100%',
-              maxWidth: 480,
-              borderRadius: 10,
-              background: 'var(--chip-bg)',
-              borderColor: 'transparent',
-              padding: '10px 14px',
-            }}
-          />
-        </div>
-        <div className="header-actions">
-          <Button icon={<SettingOutlined />} onClick={onOpenManager}>
-            管理工具
-          </Button>
-          <Button icon={<CloudOutlined />} onClick={onOpenCenterRepo}>
-            中央仓库
-          </Button>
-          <Button
-            type="text"
-            icon={resolvedTheme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
-            onClick={() => onToggleTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            style={{ color: 'var(--color-text-secondary)' }}
-          />
-        </div>
+      {/* 搜索 */}
+      <div className="header-search">
+        <Input
+          prefix={<SearchOutlined />}
+          placeholder="搜索技能、工具、配置..."
+          readOnly
+          onClick={onOpenCommandPalette}
+          className="header-search-input"
+        />
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="header-actions">
+        <Button className="header-action-btn" icon={<SettingOutlined />} onClick={onOpenManager}>
+          管理工具
+        </Button>
+        <Button className="header-action-btn" icon={<CloudOutlined />} onClick={onOpenCenterRepo}>
+          中央仓库
+        </Button>
+        <Button
+          className="header-action-btn"
+          icon={<ReloadOutlined />}
+          loading={isRefreshing}
+          onClick={onRefreshAll}
+        >
+          刷新
+        </Button>
+        <Button
+          className="header-theme-btn"
+          type="text"
+          icon={resolvedTheme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+          onClick={() => onToggleTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+        />
       </div>
     </header>
   )

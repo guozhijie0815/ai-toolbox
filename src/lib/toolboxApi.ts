@@ -211,6 +211,9 @@ const normalizeSkill = (value: unknown): SkillItem | null => {
       typeof (record.updatedAt ?? record.updated_at) === 'number'
         ? Number(record.updatedAt ?? record.updated_at)
         : undefined,
+    tags: readArray(record.tags).map((t) => String(t)),
+    enabled: typeof record.enabled === 'boolean' ? record.enabled : undefined,
+    category: readString(record.category) || undefined,
   }
 }
 
@@ -360,7 +363,9 @@ const normalizeSkillInsightsResponse = (value: unknown): SkillInsightEntry[] => 
                 diffType: (readString(diffRecord.diffType, diffRecord.diff_type) ?? 'modified') as
                   | 'added'
                   | 'modified'
-                  | 'deleted',
+                  | 'deleted'
+                  | 'missing'
+                  | 'unavailable',
               }
             })
             .filter((diff) => diff.fileName)
@@ -441,7 +446,10 @@ export const syncSkills = async (params: {
   conflictStrategy: ConflictStrategy
 }) => {
   if (!hasTauriRuntime()) {
-    return `已模拟同步 ${params.skills.length} 个 skill 到 ${params.targetTools.length} 个目标工具`
+    return {
+      message: `已模拟同步 ${params.skills.length} 个 skill 到 ${params.targetTools.length} 个目标工具`,
+      outcomes: [] as SyncSkillOutcome[],
+    }
   }
 
   const response = await invoke<unknown>('sync_skills', {
@@ -454,12 +462,16 @@ export const syncSkills = async (params: {
     },
   })
 
-  const items = Array.isArray(response) ? response : []
-  const successCount = items.filter((item) => asRecord(item).status === 'success').length
+  const items = Array.isArray(response) ? (response as SyncSkillOutcome[]) : []
+  const successCount = items.filter((item) => item.status === 'success').length
 
-  return successCount > 0
-    ? `已完成 ${successCount} 条同步操作，目标工具 ${params.targetTools.length} 个`
-    : readMessageResponse(response, '技能同步已完成')
+  return {
+    message:
+      successCount > 0
+        ? `已完成 ${successCount} 条同步操作，目标工具 ${params.targetTools.length} 个`
+        : readMessageResponse(response, '技能同步已完成'),
+    outcomes: items as SyncSkillOutcome[],
+  }
 }
 
 const normalizeBackups = (value: unknown): BackupItem[] => {

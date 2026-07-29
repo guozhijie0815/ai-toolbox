@@ -4,6 +4,7 @@ use crate::types::{
     current_timestamp, metadata_mtime, path_to_string, read_skill_descriptions, sanitize_skill_name,
     UserToolSpec,
 };
+use crate::utils::expand_path;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -163,7 +164,10 @@ pub fn discover_skills_from_tools(tools: &[UserToolSpec]) -> Result<Vec<Discover
         let Some(skill_dir) = &tool.skill_dir else {
             continue;
         };
-        let path = Path::new(skill_dir);
+        let path = match expand_path(skill_dir) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
         if !path.exists() || !path.is_dir() {
             continue;
         }
@@ -314,8 +318,9 @@ pub fn sync_skill_to_tool(
         return Err(format!("中央仓库中不存在技能: {}", skill_name));
     }
 
-    fs::create_dir_all(target_skill_dir).map_err(|e| e.to_string())?;
-    let target_path = Path::new(target_skill_dir).join(skill_name);
+    let target_skill_dir = expand_path(target_skill_dir)?;
+    fs::create_dir_all(&target_skill_dir).map_err(|e| e.to_string())?;
+    let target_path = target_skill_dir.join(skill_name);
 
     let (target_path, conflict_message, should_sync) =
         if target_path.exists() || symlink_exists(&target_path) {
@@ -323,7 +328,7 @@ pub fn sync_skill_to_tool(
                 "skip" => {
                     return Ok(SyncOutcome {
                         skill_name: skill_name.to_string(),
-                        target_tool_id: target_skill_dir.to_string(),
+                        target_tool_id: target_skill_dir.to_string_lossy().to_string(),
                         target_path: path_to_string(&target_path),
                         status: "skipped".to_string(),
                         message: "目标已存在".to_string(),
@@ -353,7 +358,7 @@ pub fn sync_skill_to_tool(
 
     Ok(SyncOutcome {
         skill_name: skill_name.to_string(),
-        target_tool_id: target_skill_dir.to_string(),
+        target_tool_id: target_skill_dir.to_string_lossy().to_string(),
         target_path: path_to_string(&target_path),
         status: "success".to_string(),
         message: conflict_message,
@@ -371,7 +376,8 @@ pub fn import_skill_from_tool(
     ensure_center_repo()?;
     sanitize_skill_name(skill_name)?;
 
-    let source_path = Path::new(source_skill_dir).join(skill_name);
+    let source_skill_dir = expand_path(source_skill_dir)?;
+    let source_path = source_skill_dir.join(skill_name);
     if !source_path.exists() {
         return Err(format!("源工具中不存在技能: {}", skill_name));
     }
@@ -385,7 +391,7 @@ pub fn import_skill_from_tool(
 
     Ok(format!(
         "已将技能 {} 从 {} 导入中央仓库",
-        skill_name, source_skill_dir
+        skill_name, source_skill_dir.display()
     ))
 }
 
@@ -405,7 +411,11 @@ pub fn check_sync_status(
     let mut statuses = Vec::new();
 
     for (tool_id, tool_name, skill_dir) in tools.iter() {
-        let tool_path = Path::new(skill_dir).join(skill_name);
+        let skill_dir = match expand_path(skill_dir) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let tool_path = skill_dir.join(skill_name);
         let exists = tool_path.exists();
 
         statuses.push(ToolSyncStatus {
