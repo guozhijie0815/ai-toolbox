@@ -15,7 +15,7 @@ interface SkillInsightsOverlayProps {
   currentSkills: SkillItem[]
   filteredCurrentSkills: SkillItem[]
   onOpenSyncModal: () => void
-  onTriggerSync: (toolIds: string[], skillName: string) => void
+  onTriggerSync: (sourceToolId: string, targetToolIds: string[], skillName: string) => Promise<void>
 }
 
 function SkillInsightsOverlay({
@@ -193,6 +193,7 @@ function SkillInsightsOverlay({
                       style={{ borderRadius: 999 }}
                       onClick={() => {
                         onTriggerSync(
+                          insight.leaderToolId,
                           insight.laggingTools.map((lag) => lag.toolId),
                           insight.skillName,
                         )

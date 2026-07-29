@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Button, Dropdown, Modal, Form, Input, Select, Tag, Empty, message } from 'antd'
+import { Button, Dropdown, Modal, Form, Input, Select, Tag, message } from 'antd'
 import {
   PlusOutlined,
   MoreOutlined,
@@ -277,121 +277,112 @@ export default function PresetManager({
   }
 
   return (
-    <div className="preset-manager" style={{ marginBottom: 20 }}>
-      <div
-        className="preset-manager__header"
-        style={{
-          marginBottom: 12,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
+    <div className="preset-manager">
+      <div className="preset-manager__row">
         <span className="preset-manager__title">预设管理</span>
-        <Button type="primary" size="small" icon={<PlusOutlined />} onClick={openCreateModal}>
+        <Button
+          className="preset-manager__create-btn"
+          size="small"
+          icon={<PlusOutlined />}
+          onClick={openCreateModal}
+        >
           创建预设
         </Button>
-      </div>
-
-      {presets.length === 0 ? (
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="暂无预设"
-          style={{ marginTop: 24 }}
-        />
-      ) : (
-        <div className="preset-manager__list">
-          {presets.map((preset) => {
-            const status = getPresetStatus(preset.id)
-            const statusIcon =
-              status.status === 'all_installed' ? (
-                <CheckOutlined style={{ color: 'var(--positive)', fontSize: 12 }} />
-              ) : status.status === 'partial' ? (
-                <Tag
-                  className="preset-status-tag"
-                  style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px', margin: 0 }}
-                >
-                  {status.installedCount}/{status.totalCount}
-                </Tag>
-              ) : null
-
-            return (
-              <Dropdown
-                key={preset.id}
-                trigger={['click']}
-                menu={{
-                  items: [
-                    {
-                      key: 'apply',
-                      icon: <CheckCircleOutlined />,
-                      label: '应用到工具',
-                      onClick: () => openApplyModal(preset.id),
-                    },
-                    ...(status.status !== 'not_installed'
-                      ? [
-                          {
-                            key: 'remove',
-                            icon: <MinusCircleOutlined />,
-                            label: '从工具移除',
-                            onClick: () => {
-                              Modal.confirm({
-                                title: '移除预设',
-                                content: `确定要从所有工具移除「${preset.name}」吗？`,
-                                okText: '移除',
-                                okType: 'danger',
-                                cancelText: '取消',
-                                onOk: () => {
-                                  const toolIds = tools.map((t) => t.id)
-                                  onRemoveFromTools(preset.id, toolIds)
-                                },
-                              })
-                            },
-                          },
-                        ]
-                      : []),
-                    {
-                      key: 'edit',
-                      icon: <EditOutlined />,
-                      label: '编辑',
-                      onClick: () => openEditModal(preset.id),
-                    },
-                    {
-                      type: 'divider',
-                    },
-                    {
-                      key: 'delete',
-                      danger: true,
-                      icon: <DeleteOutlined />,
-                      label: '删除',
-                      onClick: () => handleDelete(preset.id),
-                    },
-                  ],
-                }}
-              >
-                <button
-                  type="button"
-                  className="preset-pill"
-                  title={preset.skills.map((s) => s.skillName).join('、')}
-                >
-                  {statusIcon && <span className="preset-pill__status">{statusIcon}</span>}
-                  <span className="preset-pill__name">{preset.name}</span>
+        {presets.length > 0 ? (
+          <div className="preset-manager__list">
+            {presets.map((preset) => {
+              const status = getPresetStatus(preset.id)
+              const statusIcon =
+                status.status === 'all_installed' ? (
+                  <CheckOutlined style={{ color: 'var(--positive)', fontSize: 12 }} />
+                ) : status.status === 'partial' ? (
                   <Tag
-                    className="preset-pill__count"
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid var(--panel-border)',
-                      color: 'var(--secondary-text)',
-                    }}
+                    className="preset-status-tag"
+                    style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px', margin: 0 }}
                   >
-                    {preset.skills.length} 个技能
+                    {status.installedCount}/{status.totalCount}
                   </Tag>
-                  <MoreOutlined className="preset-pill__more" />
-                </button>
-              </Dropdown>
-            )
-          })}
-        </div>
-      )}
+                ) : null
+
+              return (
+                <Dropdown
+                  key={preset.id}
+                  trigger={['click']}
+                  menu={{
+                    items: [
+                      {
+                        key: 'apply',
+                        icon: <CheckCircleOutlined />,
+                        label: '应用到工具',
+                        onClick: () => openApplyModal(preset.id),
+                      },
+                      ...(status.status !== 'not_installed'
+                        ? [
+                            {
+                              key: 'remove',
+                              icon: <MinusCircleOutlined />,
+                              label: '从工具移除',
+                              onClick: () => {
+                                Modal.confirm({
+                                  title: '移除预设',
+                                  content: `确定要从所有工具移除「${preset.name}」吗？`,
+                                  okText: '移除',
+                                  okType: 'danger',
+                                  cancelText: '取消',
+                                  onOk: () => {
+                                    const toolIds = tools.map((t) => t.id)
+                                    onRemoveFromTools(preset.id, toolIds)
+                                  },
+                                })
+                              },
+                            },
+                          ]
+                        : []),
+                      {
+                        key: 'edit',
+                        icon: <EditOutlined />,
+                        label: '编辑',
+                        onClick: () => openEditModal(preset.id),
+                      },
+                      {
+                        type: 'divider',
+                      },
+                      {
+                        key: 'delete',
+                        danger: true,
+                        icon: <DeleteOutlined />,
+                        label: '删除',
+                        onClick: () => handleDelete(preset.id),
+                      },
+                    ],
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="preset-pill"
+                    title={preset.skills.map((s) => s.skillName).join('、')}
+                  >
+                    {statusIcon && <span className="preset-pill__status">{statusIcon}</span>}
+                    <span className="preset-pill__name">{preset.name}</span>
+                    <Tag
+                      className="preset-pill__count"
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid var(--panel-border)',
+                        color: 'var(--secondary-text)',
+                      }}
+                    >
+                      {preset.skills.length} 个技能
+                    </Tag>
+                    <MoreOutlined className="preset-pill__more" />
+                  </button>
+                </Dropdown>
+              )
+            })}
+          </div>
+        ) : null}
+      </div>
+      {presets.length === 0 ? <span className="preset-manager__empty">暂无预设</span> : null}
 
       <CreatePresetDialog
         open={createOpen}

@@ -50,7 +50,13 @@ pub fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
         .map(build_tool_entry_from_user)
         .collect();
 
-    let mut skill_map: std::collections::HashMap<String, Vec<(String, String, u64, String)>> =
+    // 所有启用工具的 ID 和名称
+    let all_tool_ids: Vec<(String, String)> = enabled_tools
+        .iter()
+        .map(|tool| (tool.id.clone(), tool.name.clone()))
+        .collect();
+
+    let mut skill_map: std::collections::HashMap<String, Vec<(String, String, u64, String, String)>> =
         std::collections::HashMap::new();
 
     for tool in &enabled_tools {
@@ -64,6 +70,7 @@ pub fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
                         tool.name.clone(),
                         updated_at,
                         skill.path.clone(),
+                        skill.category.clone(),
                     ));
             }
         }
@@ -71,33 +78,57 @@ pub fn get_skill_insights() -> Result<Vec<SkillInsightEntry>, String> {
 
     let mut insights = Vec::new();
     for (skill_name, mut tool_records) in skill_map {
-        if tool_records.len() < 2 {
+        if tool_records.is_empty() {
+            continue;
+        }
+        // 只关心自定义技能
+        if !tool_records.iter().any(|r| r.4 == "custom") {
             continue;
         }
         tool_records.sort_by(|a, b| b.2.cmp(&a.2));
         let leader = &tool_records[0];
         let leader_path = Path::new(&leader.3);
 
-        let lagging: Vec<LaggingToolInfo> = tool_records
-            .iter()
-            .skip(1)
-            .filter(|record| record.2 < leader.2)
-            .map(|record| {
-                let lagging_path = Path::new(&record.3);
-                let diffs = if leader_path.exists() && lagging_path.exists() {
-                    compare_skill_folders(leader_path, lagging_path)
-                } else {
-                    Vec::new()
-                };
+        let existing_tool_ids: std::collections::HashSet<&str> =
+            tool_records.iter().map(|r| r.0.as_str()).collect();
 
-                LaggingToolInfo {
+        let mut lagging: Vec<LaggingToolInfo> = Vec::new();
+
+        // 已有同名技能的工具：比较文件差异
+        for record in tool_records.iter().filter(|r| r.0 != leader.0) {
+            let lagging_path = Path::new(&record.3);
+            let diffs = if leader_path.exists() && lagging_path.exists() {
+                compare_skill_folders(leader_path, lagging_path)
+            } else {
+                vec![crate::types::SkillDiff {
+                    file_name: "技能目录不可读取".to_string(),
+                    diff_type: "unavailable".to_string(),
+                }]
+            };
+            if !diffs.is_empty() {
+                lagging.push(LaggingToolInfo {
                     tool_id: record.0.clone(),
                     tool_name: record.1.clone(),
-                    behind_seconds: leader.2 - record.2,
+                    behind_seconds: leader.2.abs_diff(record.2),
                     diffs,
-                }
-            })
-            .collect();
+                });
+            }
+        }
+
+        // 没有该技能的工具：标记为 missing（只针对自定义技能存在过的工具）
+        for (tool_id, tool_name) in &all_tool_ids {
+            if !existing_tool_ids.contains(tool_id.as_str()) {
+                lagging.push(LaggingToolInfo {
+                    tool_id: tool_id.clone(),
+                    tool_name: tool_name.clone(),
+                    behind_seconds: leader.2,
+                    diffs: vec![crate::types::SkillDiff {
+                        file_name: "该工具缺少此技能".to_string(),
+                        diff_type: "missing".to_string(),
+                    }],
+                });
+            }
+        }
 
         if !lagging.is_empty() {
             insights.push(SkillInsightEntry {

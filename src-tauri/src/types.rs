@@ -30,6 +30,9 @@ pub struct SkillEntry {
     pub tags: Vec<String>,
     #[serde(default)]
     pub enabled: bool,
+    /// 来源分类：custom / git / system / "" 未知
+    #[serde(default)]
+    pub category: String,
 }
 
 #[derive(Clone, Serialize)]

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import {
   App as AntdApp,
   Button,
@@ -35,6 +36,8 @@ interface SkillListViewProps {
   filteredCurrentSkills: SkillItem[]
   skillKeyword: string
   setSkillKeyword: (next: string) => void
+  skillCategoryFilter: string[]
+  setSkillCategoryFilter: (next: string[]) => void
   allSkills: string[]
   onOpenSyncModal: () => void
 }
@@ -45,6 +48,8 @@ function SkillListView({
   filteredCurrentSkills,
   skillKeyword,
   setSkillKeyword,
+  skillCategoryFilter,
+  setSkillCategoryFilter,
   allSkills,
   onOpenSyncModal,
 }: SkillListViewProps) {
@@ -81,6 +86,15 @@ function SkillListView({
     const text = skill.summary ?? skill.description
     return text ? <Text className="skill-entry__desc">{text}</Text> : null
   }
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { custom: 0, git: 0, system: 0, '': 0 }
+    filteredCurrentSkills.forEach((skill) => {
+      const cat = skill.category || ''
+      counts[cat] = (counts[cat] || 0) + 1
+    })
+    return counts
+  }, [filteredCurrentSkills])
 
   const handleDeleteSkill = (skill: SkillItem) => {
     if (!selectedTool) return
@@ -119,7 +133,12 @@ function SkillListView({
           <Tag variant="filled" color="cyan">
             {filteredCurrentSkills.length}/{currentSkills.length}
           </Tag>
-          <Button icon={<SyncOutlined />} onClick={onOpenSyncModal}>
+          <Button
+            className="skill-sync-btn"
+            type="primary"
+            icon={<SyncOutlined />}
+            onClick={onOpenSyncModal}
+          >
             同步技能
           </Button>
         </Space>
@@ -152,23 +171,69 @@ function SkillListView({
         <TagFilter allTags={allTags} selectedTags={selectedTags} onChange={setSelectedTags} />
       )}
 
-      <Input
-        allowClear
-        size="large"
-        prefix={<SearchOutlined />}
-        placeholder="筛选当前工具已有技能"
-        value={skillKeyword}
-        onChange={(event) => setSkillKeyword(event.target.value)}
-      />
-
       <div className="skill-view-list">
+        <div className="skill-view-toolbar">
+          <Input
+            allowClear
+            size="middle"
+            prefix={<SearchOutlined />}
+            placeholder="筛选当前工具已有技能"
+            value={skillKeyword}
+            onChange={(event) => setSkillKeyword(event.target.value)}
+            className="skill-view-search"
+            style={{ flex: 1 }}
+          />
+          {[
+            { label: '自定义', value: 'custom' },
+            { label: '市场', value: 'git' },
+            { label: '系统', value: 'system' },
+          ].map((cat) => {
+            const active = skillCategoryFilter.includes(cat.value)
+            return (
+              <Button
+                key={cat.value}
+                size="small"
+                type={active ? 'primary' : 'default'}
+                onClick={() => {
+                  setSkillCategoryFilter(
+                    active
+                      ? skillCategoryFilter.filter((v) => v !== cat.value)
+                      : [...skillCategoryFilter, cat.value],
+                  )
+                }}
+              >
+                {cat.label} {categoryCounts[cat.value]}
+              </Button>
+            )
+          })}
+          {categoryCounts[''] > 0 && (
+            <Button
+              size="small"
+              type={skillCategoryFilter.includes('') ? 'primary' : 'default'}
+              onClick={() => {
+                setSkillCategoryFilter(
+                  skillCategoryFilter.includes('')
+                    ? skillCategoryFilter.filter((v) => v !== '')
+                    : [...skillCategoryFilter, ''],
+                )
+              }}
+            >
+              未分类 {categoryCounts['']}
+            </Button>
+          )}
+        </div>
+
         {filteredCurrentSkills.length > 0 ? (
-          filteredCurrentSkills.map((skill) => (
+          filteredCurrentSkills.map((skill, idx) => (
             <div
               key={skill.id}
-              className={`skill-entry${skill.enabled === false ? ' is-disabled' : ''}`}
+              className={`skill-entry${skill.enabled === false ? ' is-disabled' : ''}${
+                !skill.summary && !skill.description && !skill.path ? ' is-compact' : ''
+              }`}
             >
+              <span className="skill-entry__accent" aria-hidden="true" />
               <div className="skill-entry__top">
+                <span className="skill-entry__index">{idx + 1}</span>
                 <span
                   className="skill-entry__name"
                   title={skill.name}
@@ -181,6 +246,24 @@ function SkillListView({
                 >
                   {skill.name}
                 </span>
+                {skill.category && (
+                  <Tag
+                    color={
+                      skill.category === 'custom'
+                        ? 'orange'
+                        : skill.category === 'git'
+                          ? 'blue'
+                          : 'default'
+                    }
+                    style={{ fontSize: 11, lineHeight: '18px', marginLeft: 4 }}
+                  >
+                    {skill.category === 'custom'
+                      ? '自定义'
+                      : skill.category === 'git'
+                        ? '市场'
+                        : '系统'}
+                  </Tag>
+                )}
                 <div className="skill-entry__actions">
                   {skill.updatedAt ? (
                     <span className="skill-entry__time">{formatTime(skill.updatedAt)}</span>

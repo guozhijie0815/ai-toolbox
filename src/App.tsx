@@ -16,14 +16,13 @@ import InsightsPanel from './pages/InsightsPanel'
 import ModelSyncPanel from './pages/ModelSyncPanel'
 import ModelSyncSidePanel from './pages/ModelSyncSidePanel'
 import type { ModelDiff } from './lib/modelSync'
-import SkillInsightsOverlay from './pages/SkillInsightsOverlay'
 import SkillListView from './pages/SkillListView'
 import ToolListPanel from './pages/ToolListPanel'
 import ToolManagerModal from './pages/modals/ToolManagerModal'
 import SyncSkillsModal from './pages/modals/SyncSkillsModal'
 import type { ThemeMode, ToolCapability } from './pages/types'
 
-import { getHomeDirPath } from './lib/toolboxApi'
+import { getHomeDirPath, syncSkills } from './lib/toolboxApi'
 import { useToolboxStore } from './store/useToolboxStore'
 import { hasTauriRuntime, normalizeFsPath } from './utils/appUtils'
 import type { ConflictStrategy, OperationFeedback, SyncMode } from './types/toolbox'
@@ -93,8 +92,11 @@ function App() {
   const [syncMode, setSyncMode] = useState<SyncMode>('copy')
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>('skip')
 
-  // SkillListView 的搜索关键字（同时影响 SkillInsightsOverlay 的过滤展示）
+  // SkillListView 的搜索关键字
   const [skillKeyword, setSkillKeyword] = useState('')
+  const [skillCategoryFilter, setSkillCategoryFilter] = useState<string[]>([])
+
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false)
 
   // 模型同步右侧预览
   const [modelSide, setModelSide] = useState<{
@@ -190,16 +192,20 @@ function App() {
   const selectedFile = selectedTool?.configFiles.find((file) => file.id === selectedConfigId)
   const currentSkills = useMemo(() => selectedTool?.skills ?? [], [selectedTool?.skills])
   const sortedSkills = useMemo(() => {
-    return [...currentSkills].sort((a, b) => {
-      const timeA = a.updatedAt ?? 0
-      const timeB = b.updatedAt ?? 0
-      return timeB - timeA
-    })
+    // Rust 后端已按分类+更新时间排序，前端不重排
+    return [...currentSkills]
   }, [currentSkills])
 
   const filteredCurrentSkills = useMemo(() => {
     const keyword = skillKeyword.trim().toLowerCase()
     let result = sortedSkills
+
+    if (skillCategoryFilter.length > 0) {
+      result = result.filter((skill) => {
+        const cat = skill.category || ''
+        return skillCategoryFilter.includes(cat)
+      })
+    }
 
     if (keyword) {
       result = result.filter((skill) => {
@@ -219,7 +225,7 @@ function App() {
     }
 
     return result
-  }, [sortedSkills, skillKeyword, selectedTags])
+  }, [sortedSkills, skillKeyword, selectedTags, skillCategoryFilter])
 
   const syncTargetOptions = useMemo(() => {
     const selectedSkillDir = normalizeFsPath(_homeDir, selectedTool?.skillDir)
@@ -279,18 +285,49 @@ function App() {
     void useToolboxStore.getState().selectConfigFile(selectedConfigId)
   }, [capability, selectedConfigId, selectedTool?.id])
 
-  const isPreview = typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)
-
   const openSyncModal = () => {
     setSyncModalOpen(true)
     setSyncTargetToolIds([])
     setSyncSelectedSkillIds([])
   }
 
-  const handleTriggerSync = (toolIds: string[], skillName: string) => {
-    setSyncTargetToolIds(toolIds)
-    setSyncSelectedSkillIds([skillName])
-    setSyncModalOpen(true)
+  const handleTriggerSync = async (sourceToolId: string, toolIds: string[], skillName: string) => {
+    const sourceTool = tools.find((tool) => tool.id === sourceToolId)
+    if (!sourceTool) return
+    const targetTools = tools.filter((tool) => toolIds.includes(tool.id))
+    if (targetTools.length === 0) return
+
+    const result = await syncSkills({
+      sourceTool,
+      targetTools,
+      skills: [skillName],
+      mode: 'copy',
+      conflictStrategy: 'overwrite',
+    })
+    // 等待文件系统落盘后再刷新
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await useToolboxStore.getState().refreshTools()
+    await useToolboxStore.getState().refreshInsights()
+    // 构建逐条结果消息
+    const parts = result.outcomes.map((item) => {
+      const targetName =
+        targetTools.find((t) => t.id === item.targetToolId)?.name ?? item.targetToolId
+      return `${targetName}：${item.status === 'success' ? '已同步' : item.message || item.status}`
+    })
+    return parts.length > 0 ? parts.join('；') : result.message
+  }
+
+  const refreshAll = async () => {
+    setIsRefreshingAll(true)
+    try {
+      await Promise.all([
+        refreshTools(),
+        refreshPresets(),
+        useToolboxStore.getState().refreshInsights(),
+      ])
+    } finally {
+      setIsRefreshingAll(false)
+    }
   }
 
   return (
@@ -327,13 +364,13 @@ function App() {
         <FeedbackBridge feedback={feedback} />
         <div className="toolbox-shell" data-theme={resolvedTheme}>
           <AppHeader
-            visibleToolsCount={visibleTools.length}
-            isPreview={isPreview}
             resolvedTheme={resolvedTheme}
             onToggleTheme={setThemeMode}
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onOpenManager={() => setManagerOpen(true)}
             onOpenCenterRepo={() => setCenterRepoOpen(true)}
+            onRefreshAll={() => void refreshAll()}
+            isRefreshing={isRefreshingAll}
           />
 
           <div className="app-layout">
@@ -350,7 +387,7 @@ function App() {
               />
 
               {/* 中间：按工具能力切换 */}
-              <main className="panel panel--skills">
+              <main className="main">
                 <CapabilityBar
                   selectedTool={selectedTool}
                   active={capability}
@@ -377,6 +414,8 @@ function App() {
                         filteredCurrentSkills={filteredCurrentSkills}
                         skillKeyword={skillKeyword}
                         setSkillKeyword={setSkillKeyword}
+                        skillCategoryFilter={skillCategoryFilter}
+                        setSkillCategoryFilter={setSkillCategoryFilter}
                         allSkills={allSkills}
                         onOpenSyncModal={openSyncModal}
                       />
@@ -404,21 +443,20 @@ function App() {
                     onApply={modelSide.onApply}
                   />
                 ) : (
-                  <aside className="panel panel--insights">
+                  <aside className="panel-right">
                     <Empty description="加载变更预览…" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                   </aside>
                 )
               ) : capability === 'skills' || capability === 'editor' ? (
-                <aside className="panel panel--insights">
-                  <div className="panel--insights__container">
-                    <InsightsPanel selectedTool={selectedTool} onTriggerSync={handleTriggerSync} />
-                    <SkillInsightsOverlay
-                      selectedTool={selectedTool}
-                      currentSkills={currentSkills}
-                      filteredCurrentSkills={filteredCurrentSkills}
-                      onOpenSyncModal={openSyncModal}
-                      onTriggerSync={handleTriggerSync}
-                    />
+                <aside className="panel-right" id="rightPanel">
+                  <div className="panel-right-head">
+                    <div className="head-left">
+                      <span className="lbl">Insights</span>
+                      <span className="ttl">变动洞察</span>
+                    </div>
+                  </div>
+                  <div className="panel-right-body" id="insightBody">
+                    <InsightsPanel onTriggerSync={handleTriggerSync} />
                   </div>
                 </aside>
               ) : null}

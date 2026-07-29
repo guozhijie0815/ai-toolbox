@@ -2,6 +2,15 @@ export type SyncMode = 'copy' | 'symlink'
 
 export type ConflictStrategy = 'skip' | 'overwrite' | 'rename'
 
+export interface SyncSkillOutcome {
+  sourceToolId: string
+  sourceSkill: string
+  targetToolId: string
+  targetPath: string
+  status: string
+  message: string
+}
+
 export type FeedbackTone = 'success' | 'error' | 'info'
 
 export interface SkillItem {
@@ -17,6 +26,8 @@ export interface SkillItem {
   updatedAt?: number
   tags?: string[]
   enabled?: boolean
+  /** 来源分类：custom / git / system */
+  category?: string
 }
 
 export interface ConfigFileItem {
@@ -75,7 +86,7 @@ export interface ToolRegistryEntry {
 
 export interface SkillDiff {
   fileName: string
-  diffType: 'added' | 'modified' | 'deleted'
+  diffType: 'added' | 'modified' | 'deleted' | 'missing' | 'unavailable'
 }
 
 export interface LaggingToolInfo {

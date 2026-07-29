@@ -120,7 +120,7 @@ export const createToolSlice: ToolboxSliceCreator<ToolSlice> = (set, get) => ({
     set({ isSyncing: true })
 
     try {
-      const message = await syncSkills({
+      const { message } = await syncSkills({
         sourceTool,
         targetTools: [targetTool],
         skills: state.selectedSkillIds,

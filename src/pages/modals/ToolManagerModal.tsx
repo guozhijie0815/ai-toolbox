@@ -158,7 +158,7 @@ function ToolManagerModal({ open, onClose }: ToolManagerModalProps) {
       centered
       className="tool-manager-modal"
     >
-      <div className="tool-manager-layout">
+      <div className="tool-manager-layout child-dialog-layout">
         <div className="tool-manager-list">
           <div className="tool-manager-toolbar">
             <Text className="field-label">已登记工具</Text>
