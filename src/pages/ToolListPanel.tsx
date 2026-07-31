@@ -42,7 +42,7 @@ function ToolListPanel({
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
-        <span className="label">Source</span>
+        <span className="label">工具</span>
         <span className="count">{visibleTools.length}</span>
       </div>
       <div className="tool-list">

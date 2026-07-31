@@ -27,6 +27,8 @@ interface Props {
   onClose: () => void
   /** 可选：当组件内部监听到 Cmd+K 且当前未打开时调用 */
   onOpen?: () => void
+  /** 外部搜索关键词（从 Header 搜索框传入） */
+  externalKeyword?: string
 }
 
 export default function CommandPalette({
@@ -37,6 +39,7 @@ export default function CommandPalette({
   onSelectSkill,
   onClose,
   onOpen,
+  externalKeyword,
 }: Props) {
   const [keyword, setKeyword] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
@@ -79,15 +82,18 @@ export default function CommandPalette({
     setActiveIndex(0)
   }, [trimmedKeyword])
 
-  // 打开时聚焦输入框
+  // 打开时聚焦输入框，并同步外部搜索关键词
   useEffect(() => {
     if (open) {
       const timer = window.setTimeout(() => {
+        if (externalKeyword !== undefined) {
+          setKeyword(externalKeyword)
+        }
         inputRef.current?.focus()
       }, 50)
       return () => window.clearTimeout(timer)
     }
-  }, [open])
+  }, [open, externalKeyword])
 
   // 关闭时清空关键词
   useEffect(() => {

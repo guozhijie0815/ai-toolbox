@@ -1,0 +1,378 @@
+/* ---- 能力 Tab 栏 ---- */
+.cap-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel-bg-solid);
+  flex-shrink: 0;
+}
+
+.cap-tab {
+  padding: 9px 14px;
+  border: none;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  position: relative;
+  font-weight: 500;
+  transition: color 120ms cubic-bezier(0.2, 0, 0, 1);
+  font-family: var(--font-body);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cap-tab:hover {
+  color: var(--primary-text);
+}
+
+.cap-tab.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.cap-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+
+.cap-tab__icon {
+  font-size: 13px;
+}
+
+.cap-tab__meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted-text);
+  margin-left: 2px;
+}
+
+.cap-tab__sync {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--warning-glow);
+  color: var(--warning);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+/* ---- 能力卡片栏（旧样式保留） ---- */
+.capability-bar {
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+}
+
+.capability-bar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.capability-bar__grid {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.capability-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 12px;
+  text-align: left;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--primary-text);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.capability-card:hover {
+  color: var(--accent);
+}
+
+.capability-card.is-active {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.capability-card__icon {
+  display: inline-flex;
+  color: inherit;
+}
+
+.capability-card.is-active .capability-card__icon {
+  background: transparent;
+}
+
+.capability-card__title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.capability-card__meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--secondary-text);
+  white-space: nowrap;
+}
+
+.capability-card__sync {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--warning-glow);
+  color: var(--warning);
+  font: 600 10px var(--font-mono);
+}
+
+.capability-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.capability-content--scroll {
+  overflow: auto;
+  padding: 12px 16px 16px;
+}
+
+/* ---- 工具配置文件列表 ---- */
+.tool-configs {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--panel-border);
+}
+
+.tool-configs__label {
+  font-size: 11px;
+  color: var(--muted-text);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tool-configs__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tool-config-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--panel-bg-soft);
+  border: 1px solid var(--chip-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--secondary-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tool-config-file:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tool-config-file .config-icon {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.tool-config-file .config-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-config-file .config-type {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--chip-bg);
+  border-radius: var(--radius-sm);
+  color: var(--muted-text);
+  flex-shrink: 0;
+}
+
+.tool-config-file:hover .config-type {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tool-config-file .dirty-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--error);
+  flex-shrink: 0;
+}
+
+/* ---- 配置标签 ---- */
+.config-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.config-tab {
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding: 12px 14px;
+  max-width: 220px;
+  flex: 0 1 auto;
+}
+
+.config-tab__name {
+  min-width: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.config-tab__meta {
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted-text);
+}
+
+/* ---- 修改标记 ---- */
+.dirty-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--error);
+  box-shadow: 0 0 10px var(--error-glow);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ---- 编辑器工具栏 ---- */
+.editor-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.editor-toolbar__meta {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.editor-toolbar__path {
+  min-width: 0;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.editor-toolbar__path .path-chip {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* ---- 备份 ---- */
+.backup-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg-soft);
+}
+
+.backup-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.backup-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  color: var(--primary-text);
+}
+
+.backup-item__name {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-item__time {
+  font-size: 11px;
+  color: var(--muted-text);
+}
+
+@media (max-width: 1024px) {
+  .capability-card {
+    padding-inline: 8px;
+  }
+}
+
+.child-workspace--config .editor-content__header {
+  min-height: 56px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel-bg-solid);
+}
+
+.child-workspace--config .editor-content__body {
+  padding: 12px 20px 16px;
+  background: var(--page-bg);
+}
+
+.child-workspace--config .editor-content__editor {
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel-bg-solid);
+  overflow: hidden;
+}
+
+.child-workspace--config .config-strip {
+  gap: 6px;
+}
+
+.child-workspace--config .config-tab {
+  min-height: 34px;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.child-workspace--config .config-tab.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: none;
+}

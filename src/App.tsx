@@ -96,6 +96,10 @@ function App() {
   const [skillKeyword, setSkillKeyword] = useState('')
   const [skillCategoryFilter, setSkillCategoryFilter] = useState<string[]>([])
 
+  // Header 搜索框关键词（与 CommandPalette 双向同步）
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [commandPaletteOpen, setCommandPaletteOpenState] = useState(false)
+
   const [isRefreshingAll, setIsRefreshingAll] = useState(false)
 
   // 模型同步右侧预览
@@ -138,8 +142,6 @@ function App() {
   const selectedSkillDetail = useToolboxStore((state) => state.selectedSkillDetail)
   const isSkillDetailLoading = useToolboxStore((state) => state.isSkillDetailLoading)
   const setSkillDetailOpen = useToolboxStore((state) => state.setSkillDetailOpen)
-  const commandPaletteOpen = useToolboxStore((state) => state.commandPaletteOpen)
-  const setCommandPaletteOpen = useToolboxStore((state) => state.setCommandPaletteOpen)
   const refreshPresets = useToolboxStore((state) => state.refreshPresets)
   const selectedTags = useToolboxStore((state) => state.selectedTags)
 
@@ -337,8 +339,8 @@ function App() {
         token:
           resolvedTheme === 'dark'
             ? {
-                colorPrimary: '#22d3ee',
-                colorInfo: '#22d3ee',
+                colorPrimary: '#f08c4a',
+                colorInfo: '#f08c4a',
                 colorSuccess: '#4ade80',
                 colorWarning: '#fbbf24',
                 colorError: '#f87171',
@@ -366,11 +368,13 @@ function App() {
           <AppHeader
             resolvedTheme={resolvedTheme}
             onToggleTheme={setThemeMode}
-            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+            onOpenCommandPalette={() => setCommandPaletteOpenState(true)}
             onOpenManager={() => setManagerOpen(true)}
             onOpenCenterRepo={() => setCenterRepoOpen(true)}
             onRefreshAll={() => void refreshAll()}
             isRefreshing={isRefreshingAll}
+            searchKeyword={searchKeyword}
+            onSearchKeywordChange={setSearchKeyword}
           />
 
           <div className="app-layout">
@@ -503,8 +507,9 @@ function App() {
           onSelectSkill={(toolId) => {
             void selectTool(toolId)
           }}
-          onClose={() => setCommandPaletteOpen(false)}
-          onOpen={() => setCommandPaletteOpen(true)}
+          onClose={() => setCommandPaletteOpenState(false)}
+          onOpen={() => setCommandPaletteOpenState(true)}
+          externalKeyword={searchKeyword}
         />
 
         <SkillDetailDrawer

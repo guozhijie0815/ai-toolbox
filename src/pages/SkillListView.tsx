@@ -255,7 +255,7 @@ function SkillListView({
                           ? 'blue'
                           : 'default'
                     }
-                    style={{ fontSize: 11, lineHeight: '18px', marginLeft: 4 }}
+                    style={{ fontSize: 12, lineHeight: '18px', marginLeft: 4 }}
                   >
                     {skill.category === 'custom'
                       ? '自定义'

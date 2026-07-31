@@ -20,6 +20,8 @@ interface AppHeaderProps {
   onOpenCenterRepo: () => void
   onRefreshAll: () => void
   isRefreshing: boolean
+  searchKeyword: string
+  onSearchKeywordChange: (value: string) => void
 }
 
 function AppHeader({
@@ -30,6 +32,8 @@ function AppHeader({
   onOpenCenterRepo,
   onRefreshAll,
   isRefreshing,
+  searchKeyword,
+  onSearchKeywordChange,
 }: AppHeaderProps) {
   const handleWindowDragMouseDown = (event: React.MouseEvent<HTMLElement>) => {
     if (!hasTauriRuntime() || event.button !== 0 || event.detail >= 2) return
@@ -165,8 +169,12 @@ function AppHeader({
       <div className="header-search">
         <Input
           prefix={<SearchOutlined />}
-          placeholder="搜索技能、工具、配置..."
-          readOnly
+          placeholder="搜索技能或工具... (⌘K)"
+          value={searchKeyword}
+          onChange={(e) => {
+            onSearchKeywordChange(e.target.value)
+            onOpenCommandPalette()
+          }}
           onClick={onOpenCommandPalette}
           className="header-search-input"
         />
@@ -192,6 +200,8 @@ function AppHeader({
           className="header-theme-btn"
           type="text"
           icon={resolvedTheme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+          aria-label={resolvedTheme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
+          title={resolvedTheme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
           onClick={() => onToggleTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
         />
       </div>

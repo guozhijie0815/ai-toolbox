@@ -34,22 +34,9 @@ function InsightsPanel({ onTriggerSync }: InsightsPanelProps) {
             {skillInsights.map((insight: SkillInsightEntry) => (
               <div key={insight.skillName} className="skill-insight-card">
                 <div className="insight-card-top">
-                  <span className="insight-card-name">{insight.skillName}</span>
-                  <Tooltip title={insight.laggingTools.map((t) => t.toolName).join('、')}>
-                    <span className="insight-badge">
-                      {insight.laggingTools.length} 个工具未同步
-                    </span>
-                  </Tooltip>
-                </div>
-                <div className="insight-card-bottom">
-                  <div className="insight-meta">
-                    <span
-                      className={`tool-chip ${insight.leaderToolId === 'codex' ? 'light' : 'dark'}`}
-                    >
-                      {insight.leaderToolName}
-                    </span>
-                    <span className="insight-time">{formatTime(insight.leaderUpdatedAt)}</span>
-                  </div>
+                  <span className="insight-card-name" title={insight.skillName}>
+                    {insight.skillName}
+                  </span>
                   <Button
                     aria-label={`同步 ${insight.skillName}`}
                     className="btn-sync"
@@ -74,6 +61,18 @@ function InsightsPanel({ onTriggerSync }: InsightsPanelProps) {
                     }}
                   />
                 </div>
+                <div className="insight-meta">
+                  <span className="insight-source" data-tool={insight.leaderToolId}>
+                    {insight.leaderToolName}
+                  </span>
+                  <span className="insight-time">{formatTime(insight.leaderUpdatedAt)}</span>
+                </div>
+                <Tooltip title={insight.laggingTools.map((t) => t.toolName).join('、')}>
+                  <div className="insight-status">
+                    <span className="insight-status__dot" aria-hidden="true" />
+                    <span>{insight.laggingTools.length} 个目标工具待同步</span>
+                  </div>
+                </Tooltip>
               </div>
             ))}
           </div>
@@ -81,7 +80,7 @@ function InsightsPanel({ onTriggerSync }: InsightsPanelProps) {
           <Empty
             className="insights-empty"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无变动洞察"
+            description="所有技能均已同步"
           />
         )}
       </div>
@@ -102,7 +101,9 @@ function InsightsPanel({ onTriggerSync }: InsightsPanelProps) {
             <span className="tool-info-value">{totalConfigs}</span>
             <span className="tool-info-label">配置</span>
           </div>
-          <div className="tool-info-item">
+          <div
+            className={`tool-info-item${skillInsights.length > 0 ? ' tool-info-item--pending' : ''}`}
+          >
             <span className="tool-info-value">{skillInsights.length}</span>
             <span className="tool-info-label">未同步</span>
           </div>

@@ -1,0 +1,148 @@
+/* ---- 预设胶囊 (preset-pill) ---- */
+.preset-manager__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preset-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--item-bg);
+  border: 1px solid var(--chip-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-pill:hover {
+  border-color: var(--panel-border-hover);
+  background: var(--item-hover);
+}
+
+.preset-pill__status {
+  display: inline-flex;
+  align-items: center;
+}
+
+.preset-pill__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-text);
+}
+
+.preset-pill__count {
+  font-size: 11px;
+}
+
+.preset-pill__more {
+  color: var(--muted-text);
+  font-size: 14px;
+  margin-left: 2px;
+}
+
+.preset-pill__more:hover {
+  color: var(--accent);
+}
+
+/* 预设状态标签深色模式适配 */
+.preset-status-tag {
+  background: rgba(194, 138, 26, 0.1);
+  border-color: rgba(194, 138, 26, 0.2);
+  color: var(--warning);
+}
+
+[data-theme='dark'] .preset-status-tag {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--warning);
+}
+
+[data-theme='dark'] .preset-pill .ant-tag {
+  border-color: var(--chip-border);
+}
+
+@media (max-width: 860px) {
+  .center-repo-drawer .ant-drawer-content-wrapper {
+    width: 100% !important;
+  }
+
+  .center-repo-drawer .ant-drawer-header {
+    padding: 14px 16px;
+  }
+
+  .center-repo-actions {
+    max-width: 360px;
+  }
+
+  .center-repo-shell {
+    padding: 14px 16px 18px;
+  }
+
+  .center-repo-card .ant-card-body {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .center-repo-card__ops {
+    grid-column: 2;
+    grid-template-columns: repeat(3, 32px);
+    justify-content: start;
+    padding-top: 2px;
+  }
+}
+
+.panel-slide:first-child .preset-manager {
+  margin-bottom: 12px;
+}
+
+.panel-slide:first-child .preset-manager__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.panel-slide:first-child .preset-manager__title {
+  color: var(--muted-text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.panel-slide:first-child .preset-manager__list {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.panel-slide:first-child .preset-pill {
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--panel-bg-elevated);
+}
+
+.panel-slide:first-child .preset-manager__empty {
+  display: none;
+}
+
+.panel-slide:first-child .preset-manager__create-btn {
+  color: var(--secondary-text);
+  border-color: var(--chip-border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel-slide:first-child .preset-manager__create-btn:hover,
+.panel-slide:first-child .preset-manager__create-btn:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
